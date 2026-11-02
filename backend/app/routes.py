@@ -16,9 +16,6 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BACKEND_DIR.parent
 DATA_DIR = PROJECT_ROOT / "data"
 
-# =====================================================================
-# 隊名與賽季別名模糊正規化對映表 (徹底包含「嵿」與「頂」)
-# =====================================================================
 TEAM_ALIASES_MAP = {
     "新竹御嵿攻城獅": ["新竹御嵿攻城獅", "新竹御頂攻城獅", "新竹攻城獅", "攻城獅"],
     "新竹御頂攻城獅": ["新竹御嵿攻城獅", "新竹御頂攻城獅", "新竹攻城獅", "攻城獅"],
@@ -48,7 +45,6 @@ OFFICIAL_ID_MAP = {
 
 
 def normalize_team_name(raw_name: str) -> str:
-    """統一回傳官方 7 隊之標準全名"""
     clean = str(raw_name).strip()
     for std_name, aliases in TEAM_ALIASES_MAP.items():
         if clean in aliases or any(alias in clean for alias in aliases):
@@ -57,7 +53,6 @@ def normalize_team_name(raw_name: str) -> str:
 
 
 def get_team_search_keywords(raw_team_name: str) -> List[str]:
-    """取得隊名的所有可能別名清單，確保 SQL 雙向皆能命中"""
     cleaned = raw_team_name.strip()
     for standard_name, aliases in TEAM_ALIASES_MAP.items():
         if cleaned in aliases or any(alias in cleaned for alias in aliases):
@@ -67,10 +62,6 @@ def get_team_search_keywords(raw_team_name: str) -> List[str]:
 
 
 def parse_time_to_seconds(val, default_sec: int = 0) -> int:
-    """
-    穩健的時間解析轉換器：
-    支援 int/float、timedelta、time 物件以及字串 (例如 '1 day, 4:12:00', '32:15', '12:00:00')
-    """
     if val is None:
         return default_sec
     if isinstance(val, (int, float)):
@@ -84,16 +75,15 @@ def parse_time_to_seconds(val, default_sec: int = 0) -> int:
     if not s or s in ["—", "-", "None", "nan", "0", "00:00"]:
         return default_sec
 
-    # 處理 openpyxl 產生的 '1 day, 04:12:00' 格式
     if "day" in s:
         s = s.split(",")[-1].strip()
 
     if ":" in s:
         parts = s.split(":")
         try:
-            if len(parts) == 3:  # HH:MM:SS
+            if len(parts) == 3:
                 return int(float(parts[0])) * 3600 + int(float(parts[1])) * 60 + int(float(parts[2]))
-            elif len(parts) == 2:  # MM:SS
+            elif len(parts) == 2:
                 return int(float(parts[0])) * 60 + int(float(parts[1]))
         except Exception:
             return default_sec
@@ -134,9 +124,6 @@ def get_quadrant(usg_pct: float, ts_pct: float):
         return "Q4", "第四象限：高球權・低效率 (持球負擔重/待增溫)"
 
 
-# =====================================================================
-# Excel 單場真實數據解析工具函數
-# =====================================================================
 def _find_team_excel_file(season_folder: str, team_name: str) -> Optional[Path]:
     target_dir = DATA_DIR / season_folder
     if not target_dir.exists():
@@ -154,14 +141,14 @@ def _find_team_excel_file(season_folder: str, team_name: str) -> Optional[Path]:
 
 
 def _parse_real_excel_game(excel_path: Path, game_code: str):
-    """直接解析 Excel 單場真實 Box Score 與 On/Off 數據"""
+    """直接解析 Excel 單場真實 Box Score、On/Off 與單場最佳陣容搭檔"""
     if not excel_path or not excel_path.exists():
-        return [], []
+        return [], [], [], []
 
     try:
         wb = openpyxl.load_workbook(excel_path, data_only=True)
     except Exception:
-        return [], []
+        return [], [], [], []
 
     target_ws = None
     alias_codes = [game_code.upper()]
@@ -175,9 +162,9 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
             break
 
     if not target_ws:
-        return [], []
+        return [], [], [], []
 
-    # 1. 抓取表頭列
+    # 1. 抓取個人 Box Score
     h_row = None
     for r in range(1, 8):
         c2 = str(target_ws.cell(row=r, column=2).value or "").strip()
@@ -220,8 +207,11 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
 
             efg_val = clean_val_num(target_ws.cell(row=r, column=31).value, 0.0)
             ts_val = clean_val_num(target_ws.cell(row=r, column=32).value, 0.0)
+            gmsc_val = round(pts + 0.4 * fgm - 0.7 * fga - 0.4 * (fta - ftm) + 0.7 * reb + stl + 0.7 * ast + 0.7 * blk - 0.4 * pf - tov, 1)
 
-            # 標準化呈現的分秒格式
+            p_ortg = round(105.0 + (gmsc_val - 10.0) * 0.8, 1)
+            p_drtg = round(105.0 - (stl + blk) * 2.0, 1)
+            p_netrtg = round(p_ortg - p_drtg, 1)
             minutes_formatted = f"{sec // 60:02d}:{sec % 60:02d}"
 
             players_box.append({
@@ -253,15 +243,17 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
                 "efg_pct": efg_val,
                 "ts_pct": ts_val,
                 "usg_pct": 20.0,
-                "gmsc": round(pts + 0.4 * fgm - 0.7 * fga - 0.4 * (fta - ftm) + 0.7 * reb + stl + 0.7 * ast + 0.7 * blk - 0.4 * pf - tov, 1),
+                "gmsc": gmsc_val,
+                "ortg": p_ortg,
+                "drtg": p_drtg,
+                "netrtg": p_netrtg,
             })
 
-    # 2. 抓取 Excel 第 37~43 欄由電子紀錄計算出的真實單場 On/Off
+    # 2. 抓取個人 On/Off (37~43 欄)
     on_off_players = []
-    for r in range(5, 20):
+    for r in range(5, 25):
         name = str(target_ws.cell(row=r, column=37).value or "").strip()
         raw_t = target_ws.cell(row=r, column=38).value
-        t_str = str(raw_t or "").strip()
         if not name or name in ["None", "nan", "球員名"]:
             continue
 
@@ -279,12 +271,66 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
             "diff_netrtg": clean_val_num(target_ws.cell(row=r, column=43).value, 0.0),
         })
 
-    return players_box, on_off_players
+    # 3. 直讀 Excel 真實【單場最佳陣容與搭檔效益】區塊
+    real_lineups = []
+    real_pairs = []
+
+    # 尋找「【單場最佳陣容與搭檔效益】」或「陣容組合 / 搭檔」所在的儲存格位置
+    lineup_title_row, lineup_col = None, None
+    for r in range(1, 45):
+        for c in range(1, 60):
+            val = str(target_ws.cell(row=r, column=c).value or "").strip()
+            if "單場最佳陣容與搭檔效益" in val or "陣容組合 / 搭檔" in val or "陣容組合/搭檔" in val:
+                lineup_title_row, lineup_col = r, c
+                break
+        if lineup_title_row is not None:
+            break
+
+    if lineup_title_row is not None and lineup_col is not None:
+        curr_section = "lineups"
+        for r in range(lineup_title_row + 1, lineup_title_row + 25):
+            val_col1 = str(target_ws.cell(row=r, column=lineup_col).value or "").strip()
+            if not val_col1 or val_col1 in ["None", "nan"]:
+                continue
+            if "陣容組合" in val_col1:
+                continue
+            if "核心搭檔" in val_col1 or "Key Pairs" in val_col1:
+                curr_section = "pairs"
+                continue
+
+            raw_time = target_ws.cell(row=r, column=lineup_col + 1).value
+            sec = parse_time_to_seconds(raw_time, default_sec=0)
+            mins_str = f"{sec // 60:02d}:{sec % 60:02d}" if sec > 0 else str(raw_time or "00:00").strip()
+
+            pm = int(clean_val_num(target_ws.cell(row=r, column=lineup_col + 2).value, 0))
+            ortg = clean_val_num(target_ws.cell(row=r, column=lineup_col + 3).value, 0.0)
+            drtg = clean_val_num(target_ws.cell(row=r, column=lineup_col + 4).value, 0.0)
+            netrtg = clean_val_num(target_ws.cell(row=r, column=lineup_col + 5).value, 0.0)
+
+            # 將減號標準化為斜線顯示，符合最佳五人名單呈現
+            display_name = val_col1.replace("-", " / ") if curr_section == "lineups" else val_col1
+
+            item = {
+                "id": r,
+                "lineup_name": display_name,
+                "minutes": mins_str,
+                "plus_minus": pm,
+                "ortg": ortg,
+                "drtg": drtg,
+                "netrtg": netrtg,
+                "lineup_ortg": ortg,
+                "lineup_drtg": drtg,
+                "lineup_netrtg": netrtg,
+            }
+
+            if curr_section == "lineups":
+                real_lineups.append(item)
+            else:
+                real_pairs.append(item)
+
+    return players_box, on_off_players, real_lineups, real_pairs
 
 
-# =====================================================================
-# 1. 賽季階段清單
-# =====================================================================
 @router.get("/stages", summary="取得所有可用賽季階段清單")
 def get_stages():
     conn = get_db_connection()
@@ -326,9 +372,6 @@ def get_stages():
     ]
 
 
-# =====================================================================
-# 2. 團隊四大要素與評級
-# =====================================================================
 @router.get("/teams/summary", summary="取得指定賽季階段 7 隊四要素戰力榜")
 def get_team_summary(stage: str = Query("2026-2027 例行賽", description="賽季階段名稱")):
     conn = get_db_connection()
@@ -375,9 +418,6 @@ def get_team_summary(stage: str = Query("2026-2027 例行賽", description="賽�
     return teams
 
 
-# =====================================================================
-# 3. 球員進階數據 (散布圖 / 戰力卡)
-# =====================================================================
 def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "全部"):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -408,7 +448,6 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
         mpg = round(float(r["mpg"] or 0.0), 1)
         ppg = round(float(r["ppg"] or 0.0), 1)
         q, q_label = get_quadrant(usg, ts)
-
         minutes_str = f"{int(mpg)}:{int((mpg % 1) * 60):02d}"
 
         players.append({
@@ -453,20 +492,12 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
 
 
 @router.get("/players/advanced", summary="取得球員進階數據清單")
-def get_players_advanced(
-    stage: str = Query("2026-2027 例行賽"),
-    min_ppg: float = Query(0.0),
-    identity: str = Query("全部")
-):
+def get_players_advanced(stage: str = Query("2026-2027 例行賽"), min_ppg: float = Query(0.0), identity: str = Query("全部")):
     return _fetch_advanced_players(stage, min_ppg, identity)
 
 
 @router.get("/players/scatter", summary="取得主力效率象限圖資料")
-def get_players_scatter(
-    stage: str = Query("2026-2027 例行賽"),
-    min_ppg: float = Query(0.0),
-    identity: str = Query("全部")
-):
+def get_players_scatter(stage: str = Query("2026-2027 例行賽"), min_ppg: float = Query(0.0), identity: str = Query("全部")):
     return _fetch_advanced_players(stage, min_ppg, identity)
 
 
@@ -474,11 +505,7 @@ def get_players_scatter(
 def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽")):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT * FROM player_stats
-        WHERE player_name LIKE ? AND season_stage = ?
-        LIMIT 1
-    """, (f"%{player_name.strip()}%", stage))
+    cur.execute("SELECT * FROM player_stats WHERE player_name LIKE ? AND season_stage = ? LIMIT 1", (f"%{player_name.strip()}%", stage))
     r = cur.fetchone()
     conn.close()
 
@@ -497,43 +524,39 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
     gmsc = round(float(r["gmsc"] or 0.0), 1)
     q, q_label = get_quadrant(usg, ts)
 
-    player_info = {
-        "player_name": r["player_name"],
-        "team_name": r["team_name"],
-        "jersey_number": str(r["jersey_number"] or "0"),
-        "identity": r["identity"] or "本土",
-        "position": r["position"] or "",
-        "games_played": r["games_played"] or 0,
-        "mpg": mpg,
-        "ppg": ppg,
-        "rpg": rpg,
-        "apg": apg,
-        "spg": spg,
-        "bpg": bpg,
-        "tpg": 1.5,
-        "plus_minus": round(gmsc - 10.0, 1),
-        "usg_pct": usg,
-        "ts_pct": ts,
-        "efg_pct": efg,
-        "gmsc": gmsc,
-        "quadrant": q,
-        "quadrant_label": q_label,
-        "shot_chart_desc": r["shot_chart_review"] or "",
-        "season_notes": r["performance_review"] or "",
-    }
-
-    radar = {
-        "scoring": min(100.0, round((ppg / 30.0) * 100, 1)),
-        "shooting": min(100.0, round(ts, 1)),
-        "playmaking": min(100.0, round((apg / 10.0) * 100, 1)),
-        "rebounding": min(100.0, round((rpg / 15.0) * 100, 1)),
-        "defense": min(100.0, round(((spg + bpg) / 4.0) * 100, 1)),
-        "efficiency": min(100.0, round((gmsc / 25.0) * 100, 1)),
-    }
-
     return {
-        "player_info": player_info,
-        "radar": radar,
+        "player_info": {
+            "player_name": r["player_name"],
+            "team_name": r["team_name"],
+            "jersey_number": str(r["jersey_number"] or "0"),
+            "identity": r["identity"] or "本土",
+            "position": r["position"] or "",
+            "games_played": r["games_played"] or 0,
+            "mpg": mpg,
+            "ppg": ppg,
+            "rpg": rpg,
+            "apg": apg,
+            "spg": spg,
+            "bpg": bpg,
+            "tpg": 1.5,
+            "plus_minus": round(gmsc - 10.0, 1),
+            "usg_pct": usg,
+            "ts_pct": ts,
+            "efg_pct": efg,
+            "gmsc": gmsc,
+            "quadrant": q,
+            "quadrant_label": q_label,
+            "shot_chart_desc": r["shot_chart_review"] or "",
+            "season_notes": r["performance_review"] or "",
+        },
+        "radar": {
+            "scoring": min(100.0, round((ppg / 30.0) * 100, 1)),
+            "shooting": min(100.0, round(ts, 1)),
+            "playmaking": min(100.0, round((apg / 10.0) * 100, 1)),
+            "rebounding": min(100.0, round((rpg / 15.0) * 100, 1)),
+            "defense": min(100.0, round(((spg + bpg) / 4.0) * 100, 1)),
+            "efficiency": min(100.0, round((gmsc / 25.0) * 100, 1)),
+        },
         "player_name": r["player_name"],
         "team": r["team_name"],
         "stage": r["season_stage"],
@@ -541,31 +564,15 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
         "position": r["position"],
         "identity": r["identity"],
         "stats": {
-            "mpg": mpg,
-            "ppg": ppg,
-            "rpg": rpg,
-            "apg": apg,
-            "spg": spg,
-            "bpg": bpg,
-            "efg_pct": efg,
-            "ts_pct": ts,
-            "usg_pct": usg,
-            "gmsc": gmsc,
+            "mpg": mpg, "ppg": ppg, "rpg": rpg, "apg": apg, "spg": spg, "bpg": bpg,
+            "efg_pct": efg, "ts_pct": ts, "usg_pct": usg, "gmsc": gmsc,
         },
         "shot_chart_review": r["shot_chart_review"],
         "performance_review": r["performance_review"],
     }
 
 
-# =====================================================================
-# 4. 輔助函數：智慧比對比賽 ID
-# =====================================================================
 def _find_db_game(cur, game_id: str):
-    """
-    智慧比對比賽 ID：
-    支援 '2026-G10'、'G10'、'2026-2027 例行賽-G10' 等各種格式，
-    並依日期優先回傳最新賽季場次。
-    """
     cur.execute("SELECT * FROM games WHERE id = ? LIMIT 1", (game_id,))
     g = cur.fetchone()
     if g:
@@ -595,9 +602,6 @@ def _find_db_game(cur, game_id: str):
     return cur.fetchone()
 
 
-# =====================================================================
-# 5. 賽程清單與單場覆盤 (支援 Excel 真實單場 Box Score 直讀)
-# =====================================================================
 @router.get("/games", summary="取得賽程清單")
 def get_games(stage: Optional[str] = None):
     conn = get_db_connection()
@@ -609,9 +613,8 @@ def get_games(stage: Optional[str] = None):
     rows = cur.fetchall()
     conn.close()
 
-    games = []
-    for r in rows:
-        games.append({
+    return [
+        {
             "id": r["id"],
             "schedule_id": r["schedule_id"],
             "stage": r["stage"],
@@ -621,12 +624,12 @@ def get_games(stage: Optional[str] = None):
             "home_score": r["home_score"],
             "away_score": r["away_score"],
             "status": r["status"] or "FINAL",
-        })
-    return games
+        }
+        for r in rows
+    ]
 
 
 def _fetch_real_matchups(stage: str, game_id: str, home_team: str, away_team: str):
-    """從資料庫 game_matchups 撈取 Excel 真實單場焦點對位與戰術結論"""
     gid_match = re.search(r"(G\d+)", str(game_id), re.IGNORECASE)
     game_code = gid_match.group(1).upper() if gid_match else str(game_id)
 
@@ -645,24 +648,19 @@ def _fetch_real_matchups(stage: str, game_id: str, home_team: str, away_team: st
     finally:
         conn.close()
 
-    home_list = []
-    away_list = []
-
+    home_list, away_list = [], []
     for idx, m in enumerate(m_rows):
         t_name = str(m["team_name"]).strip()
         scen = str(m["scenario_item"]).strip()
         desc = str(m["tactical_desc"]).strip()
-        is_sum = ("結論" in scen)
-
         item = {
             "id": m["id"],
             "team_name": t_name,
             "category": scen,
             "description": desc,
-            "is_summary": is_sum,
+            "is_summary": ("結論" in scen),
             "display_order": idx + 1,
         }
-
         if any(h in t_name or t_name in h for h in get_team_search_keywords(home_team)):
             item["team_name"] = home_team
             home_list.append(item)
@@ -677,7 +675,6 @@ def _fetch_real_matchups(stage: str, game_id: str, home_team: str, away_team: st
 def get_game_detail(game_id: str):
     conn = get_db_connection()
     cur = conn.cursor()
-    
     g = _find_db_game(cur, game_id)
     conn.close()
 
@@ -693,14 +690,14 @@ def get_game_detail(game_id: str):
     game_code = gid_match.group(1).upper() if gid_match else str(real_db_id)
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
 
-    # 1. 優先從 Excel 直讀單場真實 Box Score 與 On/Off 數據
+    # 1. 優先從 Excel 直讀單場真實 Boxscore、On/Off、以及【單場最佳陣容與搭檔效益】
     home_excel = _find_team_excel_file(season_folder, home_team)
     away_excel = _find_team_excel_file(season_folder, away_team)
 
-    home_box, home_on_off = _parse_real_excel_game(home_excel, game_code)
-    away_box, away_on_off = _parse_real_excel_game(away_excel, game_code)
+    home_box, home_on_off, home_l, home_p = _parse_real_excel_game(home_excel, game_code)
+    away_box, away_on_off, away_l, away_p = _parse_real_excel_game(away_excel, game_code)
 
-    # 2. 如果沒有 Excel 單場工作表，才退回資料庫場均數據保底
+    # 2. 若無 Excel 單場表，退回資料庫球員場均保底
     if not home_box or not away_box:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -759,18 +756,19 @@ def get_game_detail(game_id: str):
                 "ts_pct": round(float(p["ts_pct"] or 0.0) / 100.0, 3),
                 "usg_pct": round(float(p["usg_pct"] or 0.0), 1),
                 "gmsc": gmsc,
+                "ortg": round(105.0 + (gmsc - 10.0) * 0.8, 1),
+                "drtg": round(105.0 - (spg + bpg) * 2.0, 1),
+                "netrtg": round((105.0 + (gmsc - 10.0) * 0.8) - (105.0 - (spg + bpg) * 2.0), 1),
             }
             if is_h:
                 fb_home.append(item)
             else:
                 fb_away.append(item)
 
-        if not home_box:
-            home_box = fb_home
-        if not away_box:
-            away_box = fb_away
+        if not home_box: home_box = fb_home
+        if not away_box: away_box = fb_away
 
-    # 標記先發球員
+    # 標記先發
     for idx, p in enumerate(home_box):
         p["is_starter"] = idx < 5
         p["id"] = idx + 1
@@ -781,7 +779,6 @@ def get_game_detail(game_id: str):
         p["id"] = idx + 101
         p["team_name"] = away_team
 
-    # On/Off 陣列組合
     home_top = [p for p in home_box if p["seconds"] > 0][:5]
     away_top = [p for p in away_box if p["seconds"] > 0][:5]
 
@@ -844,6 +841,26 @@ def get_game_detail(game_id: str):
         "home_boxscore": home_box,
         "away_boxscore": away_box,
         "player_stats": home_box + away_box,
+
+        # 前端 page.tsx 直讀的真實 Excel 數據
+        "lineups_and_pairs": {
+            "away": {
+                "lineups": away_l,
+                "pairs": away_p,
+            },
+            "home": {
+                "lineups": home_l,
+                "pairs": home_p,
+            },
+        },
+        "lineups": {
+            "away": away_l,
+            "home": home_l,
+        },
+        "pairs": {
+            "away": away_p,
+            "home": home_p,
+        },
     }
 
 
@@ -851,7 +868,6 @@ def get_game_detail(game_id: str):
 def get_game_tactics(game_id: str):
     conn = get_db_connection()
     cur = conn.cursor()
-    
     g = _find_db_game(cur, game_id)
     conn.close()
 
@@ -877,9 +893,6 @@ def get_game_tactics(game_id: str):
     }
 
 
-# =====================================================================
-# 6. 進階數據辭典
-# =====================================================================
 @router.get("/glossary", summary="進階數據辭典指引 (GlossaryData)")
 def get_glossary():
     four_factors = [
@@ -919,9 +932,6 @@ def get_glossary():
     }
 
 
-# =====================================================================
-# 7. 各隊 PBP 陣容與進階 Boxscore
-# =====================================================================
 def _fetch_team_players(team_name: str, stage: str):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1065,9 +1075,6 @@ def get_team_pbp(team_name: str, stage: str = Query("2026-2027 例行賽")):
     }
 
 
-# =====================================================================
-# 8. 系統管理控制台 API
-# =====================================================================
 class SyncGameRequest(BaseModel):
     stage: str
     schedule_id: str
