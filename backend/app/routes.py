@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import timedelta, time
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Query
@@ -65,19 +66,60 @@ def get_team_search_keywords(raw_team_name: str) -> List[str]:
     return [cleaned, short_fallback]
 
 
+def parse_time_to_seconds(val, default_sec: int = 0) -> int:
+    """
+    穩健的時間解析轉換器：
+    支援 int/float、timedelta、time 物件以及字串 (例如 '1 day, 4:12:00', '32:15', '12:00:00')
+    """
+    if val is None:
+        return default_sec
+    if isinstance(val, (int, float)):
+        return int(val)
+    if isinstance(val, timedelta):
+        return int(val.total_seconds())
+    if isinstance(val, time):
+        return val.hour * 3600 + val.minute * 60 + val.second
+
+    s = str(val).strip()
+    if not s or s in ["—", "-", "None", "nan", "0", "00:00"]:
+        return default_sec
+
+    # 處理 openpyxl 產生的 '1 day, 04:12:00' 格式
+    if "day" in s:
+        s = s.split(",")[-1].strip()
+
+    if ":" in s:
+        parts = s.split(":")
+        try:
+            if len(parts) == 3:  # HH:MM:SS
+                return int(float(parts[0])) * 3600 + int(float(parts[1])) * 60 + int(float(parts[2]))
+            elif len(parts) == 2:  # MM:SS
+                return int(float(parts[0])) * 60 + int(float(parts[1]))
+        except Exception:
+            return default_sec
+
+    try:
+        return int(float(s) * 60)
+    except Exception:
+        return default_sec
+
+
 def clean_val_num(val, default=0.0):
     if val is None or str(val).strip() in ["—", "-", "None", "", "nan"]:
         return default
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, (timedelta, time)):
+        sec = parse_time_to_seconds(val)
+        return round(sec / 60.0, 1)
+
     s = str(val).replace("%", "").strip()
     try:
         return float(s)
     except Exception:
-        if ":" in s:
-            parts = s.split(":")
-            try:
-                return round(float(parts[0]) + float(parts[1]) / 60.0, 1)
-            except Exception:
-                return default
+        if ":" in s or "day" in s:
+            sec = parse_time_to_seconds(s)
+            return round(sec / 60.0, 1)
         return default
 
 
@@ -122,7 +164,6 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
         return [], []
 
     target_ws = None
-    # 支援 G09 與官方 ID 27550 / 27551 雙向尋找
     alias_codes = [game_code.upper()]
     for off_id, g_alias in OFFICIAL_ID_MAP.items():
         if g_alias == game_code.upper():
@@ -151,8 +192,13 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
             if not p_name or any(k in p_name for k in ["總計", "合計", "DNP", "None", "nan"]):
                 continue
             clean_name = p_name.split(" ")[0].split("(")[0].strip()
-            time_str = str(target_ws.cell(row=r, column=7).value or "00:00").strip()
+            raw_time = target_ws.cell(row=r, column=7).value
+            time_str = str(raw_time or "00:00").strip()
             if time_str in ["00:00", "0", "—", "-", "nan"]:
+                continue
+
+            sec = parse_time_to_seconds(raw_time, default_sec=0)
+            if sec == 0:
                 continue
 
             pts = int(clean_val_num(target_ws.cell(row=r, column=8).value, 0))
@@ -175,21 +221,15 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
             efg_val = clean_val_num(target_ws.cell(row=r, column=31).value, 0.0)
             ts_val = clean_val_num(target_ws.cell(row=r, column=32).value, 0.0)
 
-            # 秒數換算
-            sec = 0
-            if ":" in time_str:
-                parts = time_str.split(":")
-                try:
-                    sec = int(parts[0]) * 60 + int(parts[1])
-                except Exception:
-                    sec = 0
+            # 標準化呈現的分秒格式
+            minutes_formatted = f"{sec // 60:02d}:{sec % 60:02d}"
 
             players_box.append({
                 "jersey_number": str(target_ws.cell(row=r, column=1).value or "").replace(".0", ""),
                 "player_name": clean_name,
                 "position": str(target_ws.cell(row=r, column=4).value or ""),
                 "identity": str(target_ws.cell(row=r, column=3).value or "本土"),
-                "minutes": time_str,
+                "minutes": minutes_formatted,
                 "seconds": sec,
                 "pts": pts,
                 "fgm": fgm,
@@ -220,13 +260,18 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
     on_off_players = []
     for r in range(5, 20):
         name = str(target_ws.cell(row=r, column=37).value or "").strip()
-        t_str = str(target_ws.cell(row=r, column=38).value or "").strip()
+        raw_t = target_ws.cell(row=r, column=38).value
+        t_str = str(raw_t or "").strip()
         if not name or name in ["None", "nan", "球員名"]:
             continue
+
+        sec_on = parse_time_to_seconds(raw_t, default_sec=0)
+        minutes_formatted = f"{sec_on // 60:02d}:{sec_on % 60:02d}"
+
         on_off_players.append({
             "player_name": name,
-            "minutes_on": t_str,
-            "seconds_on": int(clean_val_num(t_str) * 60) if ":" not in t_str else (int(t_str.split(":")[0]) * 60 + int(t_str.split(":")[1])),
+            "minutes_on": minutes_formatted,
+            "seconds_on": sec_on,
             "on_ortg": clean_val_num(target_ws.cell(row=r, column=39).value, 0.0),
             "on_drtg": clean_val_num(target_ws.cell(row=r, column=40).value, 0.0),
             "on_netrtg": clean_val_num(target_ws.cell(row=r, column=41).value, 0.0),
@@ -521,17 +566,14 @@ def _find_db_game(cur, game_id: str):
     支援 '2026-G10'、'G10'、'2026-2027 例行賽-G10' 等各種格式，
     並依日期優先回傳最新賽季場次。
     """
-    # 1. 優先精確比對
     cur.execute("SELECT * FROM games WHERE id = ? LIMIT 1", (game_id,))
     g = cur.fetchone()
     if g:
         return g
 
-    # 2. 提取場次編號 (例如從 "2026-G10" 或 "G10" 抓出 "G10")
     gid_match = re.search(r"(G\d+)", str(game_id), re.IGNORECASE)
     game_code = gid_match.group(1).upper() if gid_match else str(game_id).strip()
 
-    # 3. 提取年份 (例如 "2026")
     year_match = re.search(r"\b(20\d{2})\b", str(game_id))
     year = year_match.group(1) if year_match else None
 
@@ -545,7 +587,6 @@ def _find_db_game(cur, game_id: str):
         if g:
             return g
 
-    # 4. 若無年份或查無資料，直接取最新一筆包含該場次編號的比賽
     cur.execute("""
         SELECT * FROM games 
         WHERE id LIKE ? OR id LIKE ?
@@ -637,7 +678,6 @@ def get_game_detail(game_id: str):
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # 透過智慧比對函式自動命中 2026-G10、G10 或完整 ID
     g = _find_db_game(cur, game_id)
     conn.close()
 
@@ -780,7 +820,6 @@ def get_game_detail(game_id: str):
         "home": home_on_off,
     }
 
-    # 焦點對位自 DB 取得 (使用真實 match 到的 real_db_id)
     home_wowy, away_wowy = _fetch_real_matchups(stage, real_db_id, home_team, away_team)
 
     return {
@@ -813,7 +852,6 @@ def get_game_tactics(game_id: str):
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # 透過智慧比對函式自動命中比賽
     g = _find_db_game(cur, game_id)
     conn.close()
 
