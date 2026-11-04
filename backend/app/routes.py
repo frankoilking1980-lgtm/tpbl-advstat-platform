@@ -71,6 +71,9 @@ def parse_time_to_seconds(val, default_sec: int = 0) -> int:
     if val is None:
         return default_sec
     if isinstance(val, (int, float)):
+        # 若為數值且介於 1 到 60 之間，通常是分鐘數，轉為秒數
+        if 0 < val <= 60:
+            return int(val * 60)
         return int(val)
     if isinstance(val, timedelta):
         return int(val.total_seconds())
@@ -95,7 +98,10 @@ def parse_time_to_seconds(val, default_sec: int = 0) -> int:
             return default_sec
 
     try:
-        return int(float(s) * 60)
+        f_val = float(s)
+        if 0 < f_val <= 60:
+            return int(f_val * 60)
+        return int(f_val)
     except Exception:
         return default_sec
 
@@ -548,6 +554,51 @@ def get_team_summary(stage: str = Query("2026-2027 例行賽", description="賽�
 # 3. 球員進階數據 (散布圖 / 戰力卡)
 # =====================================================================
 def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "全部"):
+    season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
+    excel_player_map = {}
+
+    target_dir = DATA_DIR / season_folder
+    if not target_dir.exists():
+        target_dir = BACKEND_DIR / "data" / season_folder
+
+    if target_dir.exists():
+        for f in target_dir.glob("*.xlsx"):
+            if "summary" in f.name.lower() or "總表" in f.name:
+                continue
+            try:
+                wb = openpyxl.load_workbook(f, data_only=True)
+                if "平均數據" in wb.sheetnames:
+                    ws = wb["平均數據"]
+                    h_row = None
+                    for r in range(1, 8):
+                        c2 = str(ws.cell(row=r, column=2).value or "").strip()
+                        if c2 in ["球員名", "球員"]:
+                            h_row = r
+                            break
+                    if h_row:
+                        for r in range(h_row + 1, ws.max_row + 1):
+                            p_name = str(ws.cell(row=r, column=2).value or "").strip()
+                            if not p_name or any(k in p_name for k in ["總計", "合計", "DNP", "None", "nan"]):
+                                continue
+                            clean_name = p_name.split(" ")[0].split("(")[0].strip()
+                            excel_player_map[clean_name] = {
+                                "fgm": clean_val_num(ws.cell(row=r, column=9).value, 0.0),
+                                "fga": clean_val_num(ws.cell(row=r, column=10).value, 0.0),
+                                "fg_pct": clean_val_num(ws.cell(row=r, column=11).value, 0.0),
+                                "p3m": clean_val_num(ws.cell(row=r, column=15).value, 0.0),
+                                "p3a": clean_val_num(ws.cell(row=r, column=16).value, 0.0),
+                                "p3_pct": clean_val_num(ws.cell(row=r, column=17).value, 0.0),
+                                "ftm": clean_val_num(ws.cell(row=r, column=18).value, 0.0),
+                                "fta": clean_val_num(ws.cell(row=r, column=19).value, 0.0),
+                                "ft_pct": clean_val_num(ws.cell(row=r, column=20).value, 0.0),
+                                "orb": clean_val_num(ws.cell(row=r, column=21).value, 0.0),
+                                "drb": clean_val_num(ws.cell(row=r, column=22).value, 0.0),
+                                "tov": clean_val_num(ws.cell(row=r, column=27).value, 0.0),
+                                "pf": clean_val_num(ws.cell(row=r, column=28).value, 0.0),
+                            }
+            except Exception:
+                pass
+
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -571,16 +622,36 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
 
     players = []
     for r in rows:
+        p_name = r["player_name"]
         usg = round(float(r["usg_pct"] or 0.0), 1)
         ts = round(float(r["ts_pct"] or 0.0), 1)
         efg = round(float(r["efg_pct"] or 0.0), 1)
         mpg = round(float(r["mpg"] or 0.0), 1)
         ppg = round(float(r["ppg"] or 0.0), 1)
+        rpg = round(float(r["rpg"] or 0.0), 1)
+        apg = round(float(r["apg"] or 0.0), 1)
+        spg = round(float(r["spg"] or 0.0), 1)
+        bpg = round(float(r["bpg"] or 0.0), 1)
         q, q_label = get_quadrant(usg, ts)
         minutes_str = f"{int(mpg)}:{int((mpg % 1) * 60):02d}"
 
+        ex = excel_player_map.get(p_name, {})
+        fgm = ex.get("fgm", round(ppg * 0.38, 1))
+        fga = ex.get("fga", round(ppg * 0.85, 1))
+        fg_pct = ex.get("fg_pct", round(45.0, 1))
+        p3m = ex.get("p3m", round(ppg * 0.15, 1))
+        p3a = ex.get("p3a", round(ppg * 0.42, 1))
+        p3_pct = ex.get("p3_pct", round(35.0, 1))
+        ftm = ex.get("ftm", round(ppg * 0.12, 1))
+        fta = ex.get("fta", round(ppg * 0.16, 1))
+        ft_pct = ex.get("ft_pct", round(75.0, 1))
+        tpg = ex.get("tov", 1.5)
+
+        three_par = round((p3a / fga * 100.0), 1) if fga > 0 else 0.0
+        ftr = round((fta / fga * 100.0), 1) if fga > 0 else 0.0
+
         players.append({
-            "player_name": r["player_name"],
+            "player_name": p_name,
             "team_name": r["team_name"],
             "jersey_number": r["jersey_number"] or "",
             "identity": r["identity"] or "本土",
@@ -589,25 +660,25 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
             "minutes_str": minutes_str,
             "mpg": mpg,
             "ppg": ppg,
-            "fgm": round(ppg * 0.38, 1),
-            "fga": round(ppg * 0.85, 1),
-            "fg_pct": round(45.0, 1),
-            "p3m": round(ppg * 0.15, 1),
-            "p3a": round(ppg * 0.42, 1),
-            "p3_pct": round(35.0, 1),
-            "ftm": round(ppg * 0.12, 1),
-            "fta": round(ppg * 0.16, 1),
-            "ft_pct": round(75.0, 1),
-            "rpg": round(float(r["rpg"] or 0.0), 1),
-            "apg": round(float(r["apg"] or 0.0), 1),
-            "spg": round(float(r["spg"] or 0.0), 1),
-            "bpg": round(float(r["bpg"] or 0.0), 1),
-            "tpg": 1.5,
+            "fgm": fgm,
+            "fga": fga,
+            "fg_pct": fg_pct,
+            "p3m": p3m,
+            "p3a": p3a,
+            "p3_pct": p3_pct,
+            "ftm": ftm,
+            "fta": fta,
+            "ft_pct": ft_pct,
+            "rpg": rpg,
+            "apg": apg,
+            "spg": spg,
+            "bpg": bpg,
+            "tpg": tpg,
             "plus_minus": round(float(r["gmsc"] or 0.0) - 10.0, 1),
-            "three_par": 35.0,
-            "ftr": 20.0,
+            "three_par": three_par,
+            "ftr": ftr,
             "usg_pct": usg,
-            "ast_pct": round(float(r["apg"] or 0.0) * 4.0, 1),
+            "ast_pct": round(apg * 4.0, 1),
             "tov_pct": 12.0,
             "ts_pct": ts,
             "efg_pct": efg,
@@ -825,14 +896,12 @@ def get_game_detail(game_id: str):
     game_code = gid_match.group(1).upper() if gid_match else str(real_db_id)
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
 
-    # 1. 優先從 Excel 直讀單場真實 Boxscore、On/Off、以及【單場最佳陣容與搭檔效益】
     home_excel = _find_team_excel_file(season_folder, home_team)
     away_excel = _find_team_excel_file(season_folder, away_team)
 
     home_box, home_on_off, home_l, home_p = _parse_real_excel_game(home_excel, game_code)
     away_box, away_on_off, away_l, away_p = _parse_real_excel_game(away_excel, game_code)
 
-    # 2. 若無 Excel 單場表，退回資料庫場均保底
     if not home_box or not away_box:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -976,8 +1045,6 @@ def get_game_detail(game_id: str):
         "home_boxscore": home_box,
         "away_boxscore": away_box,
         "player_stats": home_box + away_box,
-
-        # 前端 page.tsx 嚴格讀取的路徑: lineups_and_pairs
         "lineups_and_pairs": {
             "away": {
                 "lineups": away_l,
@@ -1074,6 +1141,199 @@ def get_glossary():
 # 7. 各隊 PBP 陣容與進階 Boxscore (直讀 Excel 賽季五人與雙洋將矩陣)
 # =====================================================================
 def _fetch_team_players(team_name: str, stage: str):
+    # 先從 SQLite 查詢該隊該賽季球員的保底場次與出場時間字典
+    db_player_meta = {}
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        clean_team = team_name.strip()
+        for kw in ["攻城獅", "夢想家", "雲豹", "海神", "特攻", "戰神", "國王"]:
+            if kw in clean_team:
+                clean_team = kw
+                break
+        cur.execute("""
+            SELECT player_name, games_played, mpg, identity, position, jersey_number
+            FROM player_stats
+            WHERE team_name LIKE ? AND season_stage = ?
+        """, (f"%{clean_team}%", stage))
+        for row in cur.fetchall():
+            db_player_meta[row["player_name"]] = {
+                "games_played": int(row["games_played"] or 0),
+                "mpg": float(row["mpg"] or 0.0),
+                "identity": row["identity"],
+                "position": row["position"],
+                "jersey_number": str(row["jersey_number"] or ""),
+            }
+        conn.close()
+    except Exception:
+        pass
+
+    # 1. 優先從各隊賽季 Excel「平均數據」工作表直讀官方真實投籃與攻守數據
+    season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
+    team_excel = _find_team_excel_file(season_folder, team_name)
+
+    if team_excel and team_excel.exists():
+        try:
+            wb = openpyxl.load_workbook(team_excel, data_only=True)
+            if "平均數據" in wb.sheetnames:
+                ws = wb["平均數據"]
+                h_row = None
+                for r in range(1, 8):
+                    c2 = str(ws.cell(row=r, column=2).value or "").strip()
+                    if c2 in ["球員名", "球員"]:
+                        h_row = r
+                        break
+
+                if h_row:
+                    excel_players = []
+                    for r in range(h_row + 1, ws.max_row + 1):
+                        p_name = str(ws.cell(row=r, column=2).value or "").strip()
+                        if not p_name or any(k in p_name for k in ["總計", "合計", "DNP", "None", "nan"]):
+                            continue
+                        clean_name = p_name.split(" ")[0].split("(")[0].strip()
+
+                        # 取得資料庫保底備查
+                        db_meta = db_player_meta.get(clean_name, {})
+
+                        # 智慧解析出賽場次 (GP) 與場均時間 (Minutes)
+                        v_col5 = ws.cell(row=r, column=5).value
+                        v_col6 = ws.cell(row=r, column=6).value
+                        v_col7 = ws.cell(row=r, column=7).value
+
+                        gp = 0
+                        raw_time = None
+
+                        # 1. 先檢驗是否有標準字串/格式時間
+                        time_candidate = None
+                        for val in [v_col7, v_col6, v_col5]:
+                            if val is not None and isinstance(val, (time, timedelta)):
+                                time_candidate = val
+                                break
+                            if val is not None and ":" in str(val):
+                                time_candidate = str(val).strip()
+                                break
+
+                        if time_candidate is not None:
+                            raw_time = time_candidate
+                            # 剩下的數值中取整數場次
+                            num_cands = [clean_val_num(x, 0.0) for x in [v_col5, v_col6] if x != time_candidate and x is not None]
+                            for n in num_cands:
+                                if 0 < n <= 82 and n.is_integer():
+                                    gp = int(n)
+                                    break
+                        else:
+                            # 2. 若純數值，大值 (>=10.0) 必定是出場分鐘，小值整數 (<=82) 必定是場次
+                            n5 = clean_val_num(v_col5, 0.0)
+                            n6 = clean_val_num(v_col6, 0.0)
+                            n7 = clean_val_num(v_col7, 0.0)
+
+                            # 尋找分鐘數 (通常介於 5 到 48 分鐘)
+                            min_cand = None
+                            for n in [n7, n6, n5]:
+                                if 5.0 <= n <= 48.0:
+                                    min_cand = n
+                                    break
+
+                            if min_cand is not None:
+                                raw_time = f"{int(min_cand)}:{int(round((min_cand % 1) * 60)):02d}"
+                                for n in [n5, n6, n7]:
+                                    if n != min_cand and 0 < n <= 82 and n.is_integer():
+                                        gp = int(n)
+                                        break
+                            else:
+                                raw_time = v_col6 or v_col7 or "00:00"
+                                gp = int(clean_val_num(v_col5, 0))
+
+                        # 保底機制：若場次未讀到，採用資料庫記錄
+                        if gp <= 0:
+                            gp = db_meta.get("games_played", 0)
+
+                        sec = parse_time_to_seconds(raw_time, default_sec=0)
+                        if sec == 0 and db_meta.get("mpg", 0) > 0:
+                            db_mpg = db_meta["mpg"]
+                            sec = int(db_mpg * 60)
+                            mins_str = f"{int(db_mpg)}:{int(round((db_mpg % 1) * 60)):02d}"
+                        else:
+                            mins_str = f"{sec // 60:02d}:{sec % 60:02d}" if sec > 0 else "00:00"
+
+                        pts = clean_val_num(ws.cell(row=r, column=8).value, 0.0)
+                        fgm = clean_val_num(ws.cell(row=r, column=9).value, 0.0)
+                        fga = clean_val_num(ws.cell(row=r, column=10).value, 0.0)
+                        p3m = clean_val_num(ws.cell(row=r, column=15).value, 0.0)
+                        p3a = clean_val_num(ws.cell(row=r, column=16).value, 0.0)
+                        ftm = clean_val_num(ws.cell(row=r, column=18).value, 0.0)
+                        fta = clean_val_num(ws.cell(row=r, column=19).value, 0.0)
+                        orb = clean_val_num(ws.cell(row=r, column=21).value, 0.0)
+                        drb = clean_val_num(ws.cell(row=r, column=22).value, 0.0)
+                        reb = clean_val_num(ws.cell(row=r, column=23).value, 0.0)
+                        ast = clean_val_num(ws.cell(row=r, column=24).value, 0.0)
+                        stl = clean_val_num(ws.cell(row=r, column=25).value, 0.0)
+                        blk = clean_val_num(ws.cell(row=r, column=26).value, 0.0)
+                        tov = clean_val_num(ws.cell(row=r, column=27).value, 0.0)
+                        pf = clean_val_num(ws.cell(row=r, column=28).value, 0.0)
+                        pm = int(clean_val_num(ws.cell(row=r, column=30).value, 0))
+
+                        efg_val = clean_val_num(ws.cell(row=r, column=31).value, 0.0)
+                        ts_val = clean_val_num(ws.cell(row=r, column=32).value, 0.0)
+                        gmsc_val = round(pts + 0.4 * fgm - 0.7 * fga - 0.4 * (fta - ftm) + 0.7 * reb + stl + 0.7 * ast + 0.7 * blk - 0.4 * pf - tov, 1)
+
+                        p_ortg = round(105.0 + (gmsc_val - 10.0) * 0.8, 1)
+                        p_drtg = round(105.0 - (stl + blk) * 2.0, 1)
+                        p_netrtg = round(p_ortg - p_drtg, 1)
+
+                        jersey_num = str(ws.cell(row=r, column=1).value or "").replace(".0", "").strip()
+                        if not jersey_num and db_meta.get("jersey_number"):
+                            jersey_num = db_meta["jersey_number"]
+
+                        pos = str(ws.cell(row=r, column=4).value or "").strip()
+                        if not pos and db_meta.get("position"):
+                            pos = db_meta["position"]
+
+                        ident = str(ws.cell(row=r, column=3).value or "").strip()
+                        if not ident or ident == "None":
+                            ident = db_meta.get("identity", "本土")
+
+                        excel_players.append({
+                            "id": r,
+                            "player_name": clean_name,
+                            "jersey_number": jersey_num,
+                            "identity": ident,
+                            "position": pos,
+                            "is_starter": bool(len(excel_players) < 5),
+                            "games_played": gp,
+                            "minutes": mins_str,
+                            "seconds": sec,
+                            "pts": pts,
+                            "fgm": fgm,
+                            "fga": fga,
+                            "tpm": p3m,
+                            "tpa": p3a,
+                            "ftm": ftm,
+                            "fta": fta,
+                            "orb": orb,
+                            "drb": drb,
+                            "reb": reb,
+                            "ast": ast,
+                            "stl": stl,
+                            "blk": blk,
+                            "tov": tov,
+                            "pf": pf,
+                            "plus_minus": pm,
+                            "efg_pct": round(efg_val / 100.0, 3) if efg_val > 1.0 else efg_val,
+                            "ts_pct": round(ts_val / 100.0, 3) if ts_val > 1.0 else ts_val,
+                            "usg_pct": 20.0,
+                            "gmsc": gmsc_val,
+                            "ortg": p_ortg,
+                            "drtg": p_drtg,
+                            "netrtg": p_netrtg,
+                        })
+
+                    if excel_players:
+                        return excel_players
+        except Exception as e:
+            print(f"直讀 Excel 球隊平均數據失敗: {e}")
+
+    # 2. 保底：若無 Excel 則讀取 SQLite 資料庫
     conn = get_db_connection()
     cur = conn.cursor()
 

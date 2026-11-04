@@ -7,6 +7,7 @@ import { useStage } from '@/context/StageContext';
 import { fetcher } from '@/lib/api';
 import { PlayerPortrait } from '@/components/PlayerPortrait';
 import PlayerSituationsTab, { PlayerSituationsData } from './PlayerSituationsTab';
+import PlayerSituationsLeaderboard, { LeaderboardMetric } from './PlayerSituationsLeaderboard';
 import {
   Users,
   Swords,
@@ -19,6 +20,137 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+
+/* ------------------------------------------------------------------ */
+/* 戰術角色標籤 (Player Archetypes) 引擎                                */
+/* ------------------------------------------------------------------ */
+
+interface ArchetypeBadge {
+  id: string;
+  name: string;
+  enName: string;
+  desc: string;
+  bgClass: string;
+  borderClass: string;
+  textClass: string;
+}
+
+function determinePlayerArchetypes(playerInfo?: PlayerInfo, situationsData?: PlayerSituationsData): ArchetypeBadge[] {
+  if (!playerInfo) return [];
+
+  const badges: ArchetypeBadge[] = [];
+
+  const usg = Number(playerInfo.usg_pct || 0);
+  const apg = Number(playerInfo.apg || 0);
+  const rpg = Number(playerInfo.rpg || 0);
+  const bpg = Number(playerInfo.bpg || 0);
+  const spg = Number(playerInfo.spg || 0);
+  const ts = Number(playerInfo.ts_pct || 0);
+
+  // Situations 情境數據取樣
+  const q4Data = (situationsData as any)?.q4;
+  const q4Ppg = Number(q4Data?.ppg || (situationsData as any)?.q4_ppg || 0);
+  const q4Ts = Number(q4Data?.ts_pct || (situationsData as any)?.q4_ts_pct || 0);
+  const fbData = (situationsData as any)?.fast_break;
+  const fbPpg = Number(fbData?.ppg || (situationsData as any)?.fast_break_ppg || 0);
+
+  // 1. 持球大核 (Helio-Creator)
+  if (usg >= 27.0 && apg >= 4.0) {
+    badges.push({
+      id: 'HelioCreator',
+      name: '持球大核',
+      enName: 'Helio-Creator',
+      desc: '戰術發動機，具備極高球權主導率與擋拆分球視野',
+      bgClass: 'bg-gradient-to-r from-orange-500/20 to-red-500/20',
+      borderClass: 'border-orange-500/50',
+      textClass: 'text-orange-300',
+    });
+  }
+
+  // 2. 末節終結者 (Clutch Closer)
+  if (q4Ppg >= 5.0 || (q4Ppg >= 4.2 && q4Ts >= 55.0)) {
+    badges.push({
+      id: 'ClutchCloser',
+      name: '末節終結者',
+      enName: 'Clutch Closer',
+      desc: '關鍵第四節攻堅核心，讀秒階段具備強大硬解把握度',
+      bgClass: 'bg-gradient-to-r from-purple-500/20 to-pink-500/20',
+      borderClass: 'border-purple-500/50',
+      textClass: 'text-purple-300',
+    });
+  }
+
+  // 3. 快攻推進尖兵 (Transition Finisher)
+  if (fbPpg >= 3.8) {
+    badges.push({
+      id: 'TransitionFinisher',
+      name: '快攻尖兵',
+      enName: 'Transition Finisher',
+      desc: '轉換進攻推動箭頭，第一時間反擊偷跑與切入衝筐極具威脅',
+      bgClass: 'bg-gradient-to-r from-cyan-500/20 to-emerald-500/20',
+      borderClass: 'border-cyan-500/50',
+      textClass: 'text-cyan-300',
+    });
+  }
+
+  // 4. 禁區護框錨點 (Rim Protector)
+  if (rpg >= 8.5 && (bpg >= 0.8 || playerInfo.position?.includes('C'))) {
+    badges.push({
+      id: 'RimAnchor',
+      name: '禁區錨點',
+      enName: 'Rim Anchor',
+      desc: '油漆區屏障與籃板保障，掌控禁區制空權與護框干擾',
+      bgClass: 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20',
+      borderClass: 'border-amber-500/50',
+      textClass: 'text-amber-300',
+    });
+  }
+
+  // 5. 外線空間砲塔 (Floor Spacer)
+  if (playerInfo.position?.includes('G') && ts >= 55.0 && usg < 23.0) {
+    badges.push({
+      id: 'PerimeterSniper',
+      name: '空間砲塔',
+      enName: 'Floor Spacer',
+      desc: '外線定點高威脅牽制點，無球跑動為持球隊友拉開半場空間',
+      bgClass: 'bg-gradient-to-r from-sky-500/20 to-blue-500/20',
+      borderClass: 'border-sky-500/50',
+      textClass: 'text-sky-300',
+    });
+  }
+
+  // 6. 側翼防守大閘 (Two-Way Stopper)
+  if (spg >= 1.5) {
+    badges.push({
+      id: 'TwoWayStopper',
+      name: '側翼大閘',
+      enName: 'Perimeter Stopper',
+      desc: '外圍第一線纏鬥鎖匠，擅長破壞傳球路徑並迫使對手失誤',
+      bgClass: 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20',
+      borderClass: 'border-emerald-500/50',
+      textClass: 'text-emerald-300',
+    });
+  }
+
+  // 若無特定標籤，給予均衡體系核心標籤
+  if (badges.length === 0) {
+    badges.push({
+      id: 'SystemRotational',
+      name: '體系核心',
+      enName: 'System Rotational',
+      desc: '穩定銜接團隊攻防節奏，恪守體系戰術紀律之全能拼圖',
+      bgClass: 'bg-slate-800/40',
+      borderClass: 'border-slate-700',
+      textClass: 'text-slate-300',
+    });
+  }
+
+  return badges.slice(0, 2);
+}
+
+/* ------------------------------------------------------------------ */
+/* 型別定義                                                            */
+/* ------------------------------------------------------------------ */
 
 interface PlayerInfo {
   player_name: string;
@@ -130,8 +262,9 @@ function PlayerCardsContent() {
   const { stage: globalStage } = useStage();
   const searchParams = useSearchParams();
   const queryPlayer = searchParams.get('player');
+  const queryStage = searchParams.get('stage');
 
-  const [stageA, setStageA] = useState<string>(globalStage || '2026-2027 例行賽');
+  const [stageA, setStageA] = useState<string>(queryStage || globalStage || '2026-2027 例行賽');
   const [teamA, setTeamA] = useState<string>('新北國王');
   const [playerA, setPlayerA] = useState<string>('');
 
@@ -142,9 +275,14 @@ function PlayerCardsContent() {
   // Tab 狀態：'overview' (綜合) | 'scoring' (得分情境與終結) | 'q4' (末節抗壓)
   const [cardTab, setCardTab] = useState<'overview' | 'scoring' | 'q4'>('overview');
 
-  // 預設收起排行榜
+  // PR 排名總表狀態
   const [isRankingsOpen, setIsRankingsOpen] = useState(false);
   const [focusedPlayer, setFocusedPlayer] = useState<string | null>(null);
+
+  // 進階專題排行榜 (Situations Leaderboard) 狀態
+  const [isSituationsOpen, setIsSituationsOpen] = useState(false);
+  const [situationsMetric, setSituationsMetric] = useState<LeaderboardMetric>('q4');
+  const [focusedSituationPlayer, setFocusedSituationPlayer] = useState<string | null>(null);
 
   const { data: prData } = useSWR<PRStatsResponse>('/player_pr_stats.json', staticJsonFetcher);
   const { data: situationsRaw } = useSWR<SituationsResponse>('/player_situations_stats.json', staticJsonFetcher);
@@ -185,11 +323,33 @@ function PlayerCardsContent() {
     return listB.filter((p) => (p.team_name || '').trim() === teamB.trim());
   }, [listB, teamB]);
 
+  // 當外部帶入 stage 參數時同步 stageA
   useEffect(() => {
+    if (queryStage && STAGES.includes(queryStage) && queryStage !== stageA) {
+      setStageA(queryStage);
+    }
+  }, [queryStage]);
+
+  // 強化 Deep-linking：從外部網址帶入球員時，自動在名單中反查所屬球隊並切換
+  useEffect(() => {
+    if (!listA || listA.length === 0) return;
+
+    if (queryPlayer) {
+      const decodedQuery = decodeURIComponent(queryPlayer).trim();
+      const target = listA.find((p) => p.player_name.trim() === decodedQuery);
+      if (target) {
+        if (target.team_name && target.team_name !== teamA) {
+          setTeamA(target.team_name);
+        }
+        setPlayerA(target.player_name);
+        return;
+      }
+    }
+
     if (teamsA.length > 0 && !teamsA.includes(teamA)) {
       setTeamA(teamsA[0]);
     }
-  }, [teamsA]);
+  }, [listA, queryPlayer, teamsA]);
 
   useEffect(() => {
     if (!filteredPlayersA || filteredPlayersA.length === 0) return;
@@ -256,6 +416,16 @@ function PlayerCardsContent() {
     return situationsData[playerBName.trim()];
   }, [situationsData, playerBName, stageB]);
 
+  // 動態判定當前球員的戰術角色標籤
+  const archetypesA = useMemo(() => {
+    return determinePlayerArchetypes(cardA?.player_info, sitPlayerA);
+  }, [cardA, sitPlayerA]);
+
+  const archetypesB = useMemo(() => {
+    return determinePlayerArchetypes(cardB?.player_info, sitPlayerB);
+  }, [cardB, sitPlayerB]);
+
+  // 滾動至 PR 排名總表
   const scrollToPlayerInRankings = (name: string) => {
     if (!name) return;
     setFocusedPlayer(name);
@@ -266,6 +436,40 @@ function PlayerCardsContent() {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 150);
+  };
+
+  // 滾動至進階專題排行榜 (自動展開、切換指標並高亮)
+  const scrollToPlayerInSituationsLeaderboard = (name: string) => {
+    if (!name) return;
+    
+    if (cardTab === 'q4') {
+      setSituationsMetric('q4');
+    } else if (cardTab === 'scoring') {
+      setSituationsMetric('fast_break');
+    }
+
+    setIsSituationsOpen(true);
+    setFocusedSituationPlayer(name);
+
+    setTimeout(() => {
+      const el = document.getElementById(`sit-row-${name}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        const boardEl = document.getElementById('situations-leaderboard-section');
+        if (boardEl) boardEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 180);
+  };
+
+  // 點擊球員姓名統整分流處理
+  const handlePlayerNameClick = (name: string) => {
+    if (!name) return;
+    if (cardTab === 'overview') {
+      scrollToPlayerInRankings(name);
+    } else {
+      scrollToPlayerInSituationsLeaderboard(name);
+    }
   };
 
   const handleSelectFromRankings = (p: PRPlayerItem) => {
@@ -360,7 +564,7 @@ function PlayerCardsContent() {
             🃏 球員戰力卡與雙雄正面對決 (Head-to-Head)
           </h1>
           <p className="text-gray-300 text-sm max-w-3xl leading-relaxed">
-            支援跨賽季、跨隊伍任意球員比對。切換下方分頁可檢視得分情境佔比與第四節抗壓表現。
+            支援跨賽季、跨隊伍任意球員比對。點擊球員姓名可直接展開下方對應排行榜並自動定位。
           </p>
         </div>
 
@@ -497,18 +701,19 @@ function PlayerCardsContent() {
         /* ========== Tab 1: 既有綜合戰力與雷達圖 ========== */
         <div className="w-full">
           {playerB ? (
-            /* 雙人對決模式 */
-            <div className="flex flex-col xl:flex-row items-center xl:items-stretch justify-between gap-5">
+            /* 雙人對決模式 (嚴格對稱居中版) */
+            <div className="flex flex-col xl:flex-row items-center justify-center gap-4 xl:gap-6 max-w-7xl mx-auto w-full">
+              {/* 球員 A 肖像 */}
               <div
-                className="hidden xl:flex items-center justify-center flex-shrink-0 cursor-pointer"
-                onClick={() => scrollToPlayerInRankings(playerAName)}
+                className="hidden xl:flex items-center justify-end w-56 2xl:w-64 shrink-0 cursor-pointer"
+                onClick={() => handlePlayerNameClick(playerAName)}
               >
                 <PlayerPortrait playerName={playerAName} stage={stageA} />
               </div>
 
               {/* 球員 A 數據戰力卡 */}
-              <div className="w-full xl:w-72 p-7 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-xl flex flex-col justify-between">
-                <div className="space-y-5">
+              <div className="w-full sm:w-72 p-6 2xl:p-7 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-xl flex flex-col justify-between shrink-0">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
                     <span className="px-3 py-1 rounded-xl bg-[#FF9100]/20 text-[#FF9100] font-black text-xs tracking-wider">
                       球員 A
@@ -523,14 +728,28 @@ function PlayerCardsContent() {
                       [{stageA}]
                     </div>
                     <h3
-                      onClick={() => scrollToPlayerInRankings(playerAName)}
+                      onClick={() => handlePlayerNameClick(playerAName)}
                       className="text-2xl font-black text-white tracking-tight cursor-pointer hover:text-[#FF9100] transition-colors"
+                      title="點擊可展開下方總表查看即時排名"
                     >
                       {playerAName}
                     </h3>
                     <p className="text-xs text-gray-400 font-medium pt-1">
                       {cardA?.player_info.team_name} • {cardA?.player_info.identity}
                     </p>
+
+                    {/* 戰術角色標籤 (Player Archetypes) */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
+                      {archetypesA.map((b) => (
+                        <span
+                          key={b.id}
+                          title={b.desc}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border tracking-tight cursor-help transition-all shadow-sm ${b.bgClass} ${b.borderClass} ${b.textClass}`}
+                        >
+                          {b.name} <span className="opacity-70 font-mono text-[9px] font-normal">({b.enName})</span>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -565,11 +784,11 @@ function PlayerCardsContent() {
                 </div>
               </div>
 
-              {/* 中間六維雷達圖 */}
-              <div className="flex-1 w-full p-6 sm:p-7 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center min-h-[420px]">
-                <div className="w-full flex items-center justify-center space-x-6 text-xs sm:text-sm font-bold pb-2">
+              {/* 中間六維雷達圖 (精準定寬置中) */}
+              <div className="w-full sm:w-[360px] 2xl:w-[400px] p-5 2xl:p-6 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center shrink-0 min-h-[420px]">
+                <div className="w-full flex items-center justify-center space-x-4 text-xs font-bold pb-2">
                   <div className="flex items-center space-x-1.5 text-[#FF9100] whitespace-nowrap">
-                    <span className="w-3 h-3 rounded-full bg-[#FF9100] flex-shrink-0" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FF9100] flex-shrink-0" />
                     <span className="font-black text-sm">{playerAName}</span>
                     <span className="text-[11px] opacity-75 font-mono">({stageA.slice(2, 9)})</span>
                   </div>
@@ -577,14 +796,14 @@ function PlayerCardsContent() {
                   <span className="text-gray-500 font-mono font-bold text-xs">VS</span>
 
                   <div className="flex items-center space-x-1.5 text-[#00E676] whitespace-nowrap">
-                    <span className="w-3 h-3 rounded-full bg-[#00E676] flex-shrink-0" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#00E676] flex-shrink-0" />
                     <span className="font-black text-sm">{playerBName}</span>
                     <span className="text-[11px] opacity-75 font-mono">({stageB.slice(2, 9)})</span>
                   </div>
                 </div>
 
                 <div className="w-full flex-1 flex items-center justify-center py-2">
-                  <svg viewBox="0 0 400 400" className="w-full max-w-[340px] sm:max-w-[380px] h-auto select-none">
+                  <svg viewBox="0 0 400 400" className="w-full max-w-[320px] sm:max-w-[350px] h-auto select-none">
                     {[0.25, 0.5, 0.75, 1.0].map((scale) => {
                       const points = radarDims
                         .map((_, i) => {
@@ -665,8 +884,8 @@ function PlayerCardsContent() {
               </div>
 
               {/* 球員 B 數據戰力卡 */}
-              <div className="w-full xl:w-72 p-7 rounded-3xl border border-[#00E676]/40 bg-[#161B22] shadow-xl flex flex-col justify-between">
-                <div className="space-y-5">
+              <div className="w-full sm:w-72 p-6 2xl:p-7 rounded-3xl border border-[#00E676]/40 bg-[#161B22] shadow-xl flex flex-col justify-between shrink-0">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
                     <span className="px-3 py-1 rounded-xl bg-[#00E676]/20 text-[#00E676] font-black text-xs tracking-wider">
                       球員 B
@@ -681,14 +900,28 @@ function PlayerCardsContent() {
                       [{stageB}]
                     </div>
                     <h3
-                      onClick={() => scrollToPlayerInRankings(playerBName)}
+                      onClick={() => handlePlayerNameClick(playerBName)}
                       className="text-2xl font-black text-white tracking-tight cursor-pointer hover:text-[#00E676] transition-colors"
+                      title="點擊可展開下方總表查看即時排名"
                     >
                       {playerBName}
                     </h3>
                     <p className="text-xs text-gray-400 font-medium pt-1">
                       {cardB?.player_info.team_name} • {cardB?.player_info.identity}
                     </p>
+
+                    {/* 戰術角色標籤 (Player Archetypes) */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
+                      {archetypesB.map((b) => (
+                        <span
+                          key={b.id}
+                          title={b.desc}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border tracking-tight cursor-help transition-all shadow-sm ${b.bgClass} ${b.borderClass} ${b.textClass}`}
+                        >
+                          {b.name} <span className="opacity-70 font-mono text-[9px] font-normal">({b.enName})</span>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -723,9 +956,10 @@ function PlayerCardsContent() {
                 </div>
               </div>
 
+              {/* 球員 B 肖像 */}
               <div
-                className="hidden xl:flex items-center justify-center flex-shrink-0 cursor-pointer"
-                onClick={() => scrollToPlayerInRankings(playerBName)}
+                className="hidden xl:flex items-center justify-start w-56 2xl:w-64 shrink-0 cursor-pointer"
+                onClick={() => handlePlayerNameClick(playerBName)}
               >
                 <PlayerPortrait playerName={playerBName} stage={stageB} isRightSide />
               </div>
@@ -735,7 +969,7 @@ function PlayerCardsContent() {
             <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-center gap-8 max-w-6xl mx-auto">
               <div
                 className="flex-shrink-0 flex items-center justify-center cursor-pointer"
-                onClick={() => scrollToPlayerInRankings(playerAName)}
+                onClick={() => handlePlayerNameClick(playerAName)}
               >
                 <PlayerPortrait playerName={playerAName} stage={stageA} />
               </div>
@@ -756,14 +990,28 @@ function PlayerCardsContent() {
                       [{stageA}]
                     </div>
                     <h3
-                      onClick={() => scrollToPlayerInRankings(playerAName)}
+                      onClick={() => handlePlayerNameClick(playerAName)}
                       className="text-3xl font-black text-white tracking-tight cursor-pointer hover:text-[#FF9100] transition-colors"
+                      title="點擊可展開下方總表查看即時排名"
                     >
                       {playerAName}
                     </h3>
                     <p className="text-xs text-gray-400 font-medium pt-1">
                       {cardA?.player_info.team_name} • {cardA?.player_info.identity}
                     </p>
+
+                    {/* 單人模式戰術標籤 */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-3">
+                      {archetypesA.map((b) => (
+                        <span
+                          key={b.id}
+                          title={b.desc}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border tracking-tight cursor-help transition-all shadow-sm ${b.bgClass} ${b.borderClass} ${b.textClass}`}
+                        >
+                          {b.name} <span className="opacity-70 font-mono text-[9px] font-normal">({b.enName})</span>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -887,7 +1135,13 @@ function PlayerCardsContent() {
               <div className="space-y-3">
                 <div className="flex items-center space-x-2 border-b border-[#FF9100]/30 pb-2">
                   <span className="w-3 h-3 rounded-full bg-[#FF9100]" />
-                  <span className="font-black text-white text-base">{playerAName}</span>
+                  <span 
+                    onClick={() => handlePlayerNameClick(playerAName)}
+                    className="font-black text-white text-base cursor-pointer hover:text-[#FF9100] transition-colors"
+                    title="點擊展開下方專題榜單查看即時排名"
+                  >
+                    {playerAName}
+                  </span>
                   <span className="text-xs text-amber-400 font-mono">({stageA})</span>
                 </div>
                 <PlayerSituationsTab activeTab={cardTab} data={sitPlayerA} />
@@ -896,7 +1150,13 @@ function PlayerCardsContent() {
               <div className="space-y-3">
                 <div className="flex items-center space-x-2 border-b border-[#00E676]/30 pb-2">
                   <span className="w-3 h-3 rounded-full bg-[#00E676]" />
-                  <span className="font-black text-white text-base">{playerBName}</span>
+                  <span 
+                    onClick={() => handlePlayerNameClick(playerBName)}
+                    className="font-black text-white text-base cursor-pointer hover:text-[#00E676] transition-colors"
+                    title="點擊展開下方專題榜單查看即時排名"
+                  >
+                    {playerBName}
+                  </span>
                   <span className="text-xs text-emerald-400 font-mono">({stageB})</span>
                 </div>
                 <PlayerSituationsTab activeTab={cardTab} data={sitPlayerB} />
@@ -908,7 +1168,13 @@ function PlayerCardsContent() {
               <div className="flex items-center justify-between border-b border-[#30363D] pb-3">
                 <div className="flex items-center space-x-2">
                   <span className="w-3 h-3 rounded-full bg-[#FF9100]" />
-                  <span className="font-black text-white text-lg">{playerAName}</span>
+                  <span 
+                    onClick={() => handlePlayerNameClick(playerAName)}
+                    className="font-black text-white text-lg cursor-pointer hover:text-[#FF9100] transition-colors"
+                    title="點擊展開下方專題榜單查看即時排名"
+                  >
+                    {playerAName}
+                  </span>
                   <span className="text-xs text-gray-400 font-mono">#{cardA?.player_info.jersey_number || '0'} • {cardA?.player_info.team_name}</span>
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 font-mono border border-amber-500/20">
@@ -921,7 +1187,7 @@ function PlayerCardsContent() {
         </div>
       )}
 
-      {/* Tale of the Tape 細項表格 (僅在 Overview Tab 下顯示，避免畫面過度冗長) */}
+      {/* Tale of the Tape 細項表格 */}
       {cardTab === 'overview' && (
         <section className="space-y-4">
           <div className={`${playerB ? 'w-full' : 'max-w-2xl mx-auto'} flex items-center justify-between`}>
@@ -1098,7 +1364,29 @@ function PlayerCardsContent() {
         )}
       </section>
 
-      {/* ========== 最底部：全聯盟球員 PR 排行榜 (預設收合 + 凍結表頭) ========== */}
+      {/* ========== 進階專題排行榜 (Q4 / 快攻 / 單打 / 禁區) ========== */}
+      {stageA === '2026-2027 例行賽' && (
+        <section id="situations-leaderboard-section" className="pt-8">
+          <PlayerSituationsLeaderboard
+            situationsData={situationsData}
+            selectedPlayerName={playerAName}
+            isOpen={isSituationsOpen}
+            setIsOpen={setIsSituationsOpen}
+            metric={situationsMetric}
+            setMetric={setSituationsMetric}
+            focusedPlayer={focusedSituationPlayer}
+            onSelectPlayer={(name, team) => {
+              if (teamsA.includes(team)) {
+                setTeamA(team);
+              }
+              setPlayerA(name);
+              setFocusedSituationPlayer(name);
+            }}
+          />
+        </section>
+      )}
+
+      {/* ========== 最底部：全聯盟球員 PR 排行榜 ========== */}
       <section className="pt-8">
         <div className="rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl overflow-hidden transition-all">
           <button
@@ -1107,12 +1395,17 @@ function PlayerCardsContent() {
           >
             <div className="flex items-center gap-3">
               <span className="w-3 h-3 rounded-full bg-[#FF9100] animate-pulse" />
-              <h3 className="text-lg font-black text-white tracking-wide flex items-center gap-2">
-                <span>全聯盟輪替球員 PR 排名總表 (Box Score)</span>
+              <div className="flex items-center flex-wrap gap-2">
+                <h3 className="text-lg font-black text-white tracking-wide">
+                  全聯盟輪替球員 PR 排名總表 (Box Score)
+                </h3>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-gray-300 font-mono font-normal">
                   {rankingList.length > 0 ? `${rankingList.length} 位達標球員` : '載入中...'}
                 </span>
-              </h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-800/80 text-gray-400 font-mono border border-gray-700/60">
+                  達標標準：出賽達標 且 場均時間 ≥ {prData?.meta?.min_mpg || 8.0} 分鐘
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-white transition-colors">
               <span>{isRankingsOpen ? '收合總表' : '展開完整列表 (點選球員可置頂分析)'}</span>
