@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useStage } from '@/context/StageContext';
 import { fetcher } from '@/lib/api';
 import ScoreBanner from '@/components/ScoreBanner';
+import { PlayerLink } from '@/components/PlayerLink';
 import { Calendar, Swords, Users, Zap, Crosshair, Table2, RefreshCw, Filter } from 'lucide-react';
 import type {
   GameListItem,
@@ -208,7 +209,7 @@ function MetricsPanel({ items, away, home }: { items: MetricComparisonItem[]; aw
 /* 結構化對稱表格（五人名單自適應寬度不截斷）                             */
 /* ------------------------------------------------------------------ */
 
-/** 表格 1：單場最佳陣容與核心搭檔效益 */
+/** 表格 1：單場最佳陣容與核心搭檔效益 (五人名單維持純文字展示) */
 function LineupPairTable({
   team,
   lineups,
@@ -291,10 +292,12 @@ function PlayerOnOffTable({
   team,
   items,
   accent,
+  stage,
 }: {
   team: string;
   items: any[];
   accent: 'amber' | 'emerald';
+  stage?: string;
 }) {
   const head = 'py-2 px-2 font-semibold text-right';
 
@@ -347,7 +350,7 @@ function PlayerOnOffTable({
                 return (
                   <tr key={w.id ?? idx} className="hover:bg-gray-800/40 transition-colors">
                     <td className="py-2 px-2.5 font-sans font-bold text-white">
-                      {name}
+                      <PlayerLink name={name} stage={stage} className="text-white hover:text-amber-400" />
                     </td>
                     <td className="py-2 px-2 text-right text-gray-400">{mins}</td>
                     <td className="py-2 px-2 text-right text-gray-300">{fx(onOrtg)}</td>
@@ -427,7 +430,17 @@ function TacticsWowyTable({
 }
 
 /** 表格 4：單場進階 Box Score */
-function BoxScoreTable({ team, players, accent }: { team: string; players: BoxScorePlayer[]; accent: 'amber' | 'emerald' }) {
+function BoxScoreTable({
+  team,
+  players,
+  accent,
+  stage,
+}: {
+  team: string;
+  players: BoxScorePlayer[];
+  accent: 'amber' | 'emerald';
+  stage?: string;
+}) {
   const head = 'py-3 px-2.5 font-semibold text-right';
   return (
     <div className="space-y-3">
@@ -435,11 +448,11 @@ function BoxScoreTable({ team, players, accent }: { team: string; players: BoxSc
         <span className="font-bold text-sm">{accent === 'amber' ? '客隊' : '主隊'}：{team}</span>
         <span className="text-xs font-mono opacity-80">{players.length} 人</span>
       </div>
-      <div className="overflow-x-auto rounded-2xl border border-cardBorder bg-card shadow-lg">
+      <div className="overflow-x-auto rounded-2xl border border-cardBorder bg-card shadow-lg relative">
         <table className="w-full text-left text-xs whitespace-nowrap">
-          <thead className="bg-gray-900/90 text-gray-400 uppercase font-mono border-b border-cardBorder">
+          <thead className="bg-gray-900/90 text-gray-400 uppercase font-mono border-b border-cardBorder sticky top-0 z-20">
             <tr>
-              <th className="py-3 px-3 font-semibold text-white sticky left-0 bg-gray-900/90">球員</th>
+              <th className="py-3 px-3 font-semibold text-white sticky left-0 z-30 bg-gray-900/95">球員</th>
               <th className={head}>時間</th>
               <th className={head}>PTS</th>
               <th className={head}>FG</th>
@@ -469,10 +482,10 @@ function BoxScoreTable({ team, players, accent }: { team: string; players: BoxSc
               const c = (v: React.ReactNode) => (played ? v : '-');
               return (
                 <tr key={p.id} className="hover:bg-gray-800/50 transition-colors group">
-                  <td className="py-3 px-3 sticky left-0 bg-card group-hover:bg-gray-800/80 font-sans font-bold text-white">
+                  <td className="py-3 px-3 sticky left-0 z-10 bg-card group-hover:bg-gray-800/90 font-sans font-bold text-white shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
                     <div className="flex items-center space-x-2">
                       <span className="text-gray-500 text-xs font-mono w-6">{p.jersey_number ? `#${p.jersey_number}` : '-'}</span>
-                      <span>{p.player_name}</span>
+                      <PlayerLink name={p.player_name} stage={stage} className="font-bold text-white group-hover:text-amber-400" />
                       {p.is_starter && <span className="text-[10px] px-1 rounded bg-amber-500/20 text-amber-300">先</span>}
                       {p.identity?.includes('洋將') && <span className="text-[10px] px-1 rounded bg-blue-500/20 text-blue-300">洋</span>}
                     </div>
@@ -523,7 +536,7 @@ export default function GamesReviewPage() {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
 
-  // 切換賽季時重置球隊/對手篩選與選取場次，避免沿用上一賽季的隊伍造成『查無賽事』
+  // 切換賽季時重置球隊/對手篩選與選取場次
   useEffect(() => {
     setFilterTeam('ALL');
     setFilterOpponent('ALL');
@@ -565,7 +578,6 @@ export default function GamesReviewPage() {
       setSelectedGameId(null);
       return;
     }
-    // 若當前選取的比賽仍在過濾結果中，保持選取；否則選取過濾結果中的「最後一場」
     setSelectedGameId((cur) => {
       if (cur && filteredGames.some((g) => g.id === cur)) return cur;
       return filteredGames[filteredGames.length - 1].id;
@@ -734,7 +746,7 @@ export default function GamesReviewPage() {
             <EmptyBox text="本場尚無攻防指標數據" />
           )}
 
-          {/* 3a. 單場最佳陣容與搭檔效益 (自適應欄寬，五人完整呈現) */}
+          {/* 3a. 單場最佳陣容與搭檔效益 (五人名單維持純文字) */}
           <section className="space-y-4">
             <SectionTitle icon={<Users className="w-5 h-5" />} title="單場最佳陣容與核心搭檔效益" hint="含最佳五人與 Key Pairs 雙人搭檔" />
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
@@ -747,8 +759,8 @@ export default function GamesReviewPage() {
           <section className="space-y-4">
             <SectionTitle icon={<Crosshair className="w-5 h-5" />} title="單場主力 On/Off 淨勝分 (≥ 8分鐘)" hint="依淨影響力排序" />
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-              <PlayerOnOffTable team={game.away_team} items={awayOnOff} accent="amber" />
-              <PlayerOnOffTable team={game.home_team} items={homeOnOff} accent="emerald" />
+              <PlayerOnOffTable team={game.away_team} items={awayOnOff} accent="amber" stage={game.stage} />
+              <PlayerOnOffTable team={game.home_team} items={homeOnOff} accent="emerald" stage={game.stage} />
             </div>
           </section>
 
@@ -765,8 +777,8 @@ export default function GamesReviewPage() {
           <section className="space-y-4">
             <SectionTitle icon={<Table2 className="w-5 h-5" />} title="單場進階 Box Score" hint="含 eFG%、TS%、USG%、GmSc" />
             <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 items-start">
-              <BoxScoreTable team={game.away_team} players={awayPlayers} accent="amber" />
-              <BoxScoreTable team={game.home_team} players={homePlayers} accent="emerald" />
+              <BoxScoreTable team={game.away_team} players={awayPlayers} accent="amber" stage={game.stage} />
+              <BoxScoreTable team={game.home_team} players={homePlayers} accent="emerald" stage={game.stage} />
             </div>
           </section>
         </>

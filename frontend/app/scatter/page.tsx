@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { useStage } from '@/context/StageContext';
 import { fetcher } from '@/lib/api';
+import { PlayerLink } from '@/components/PlayerLink';
 import {
   ScatterChart as ScatterIcon,
   Filter,
@@ -73,13 +74,12 @@ export default function ScatterPage() {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
 
-  // 1. 座標百分比歸一化（防止熱身賽或小數格式擠在左下角）
+  // 1. 座標百分比歸一化
   const normalizedPlayers = useMemo(() => {
     if (!rawPlayers) return [];
 
     const fixPct = (val: number | undefined | null): number => {
       if (val === undefined || val === null) return 0;
-      // 若數值介於 0 與 1.0 之間（如 0.235, 0.582, 1.0），統一乘以 100 轉為百分比
       if (val > 0 && val <= 1.0) {
         return Number((val * 100).toFixed(1));
       }
@@ -107,13 +107,10 @@ export default function ScatterPage() {
     }));
   }, [rawPlayers]);
 
-  // 2. 身分篩選器邏輯校正與過濾得分為 0 的未出賽球員：
-  // 「本土」：僅 identity 包含 "本土" 且不含 "洋將"、"外籍生"、"歸化"
-  // 「洋將」：包含 "洋將"、"外籍生"、"外籍生/華裔"、"洋將/歸化"
+  // 2. 身分篩選器邏輯校正與過濾得分為 0 的未出賽球員
   const filteredPlayers = useMemo(() => {
     if (!normalizedPlayers) return [];
     return normalizedPlayers.filter((p) => {
-      // 過濾掉得分為 0 的未出賽球員 (出賽場次為 0 或出賽為 0 且得分為 0)
       if ((p.games_played ?? 0) <= 0 && (p.ppg ?? 0) <= 0) {
         return false;
       }
@@ -135,7 +132,7 @@ export default function ScatterPage() {
     });
   }, [normalizedPlayers, minPpg, identityFilter]);
 
-  // 3. 象限動態十字基準線：計算當前篩選球員的 USG% 與 TS% 動態平均值
+  // 3. 象限動態十字基準線
   const { avgUsg, avgTs } = useMemo(() => {
     if (filteredPlayers.length === 0) {
       return { avgUsg: 20.0, avgTs: 52.0 };
@@ -151,7 +148,6 @@ export default function ScatterPage() {
   const baselineUsg = avgUsg;
   const baselineTs = avgTs;
 
-  // 根據動態基準線指派象限
   const getPlayerQuadrant = (p: AdvancedPlayer): 'Q1' | 'Q2' | 'Q3' | 'Q4' => {
     if (p.usg_pct >= baselineUsg && p.ts_pct >= baselineTs) return 'Q1';
     if (p.usg_pct < baselineUsg && p.ts_pct >= baselineTs) return 'Q2';
@@ -196,7 +192,6 @@ export default function ScatterPage() {
     return { minUsg: minU, maxUsg: maxU, minTs: minT, maxTs: maxT, xTicks: xT, yTicks: yT };
   }, [filteredPlayers]);
 
-  // SVG 畫布尺寸
   const width = 800;
   const height = 520;
   const padding = { top: 40, right: 40, bottom: 60, left: 60 };
@@ -223,7 +218,6 @@ export default function ScatterPage() {
   const splitX = getX(baselineUsg);
   const splitY = getY(baselineTs);
 
-  // 氣泡半徑大小：舒適溫和區間 6px ~ 12px
   const getBubbleRadius = (gmsc: number) => {
     const clampedGmsc = Math.max(0, Math.min(25, gmsc || 0));
     return 6 + (clampedGmsc / 25) * 6;
@@ -232,19 +226,32 @@ export default function ScatterPage() {
   const getQuadrantColor = (q: string) => {
     switch (q) {
       case 'Q1':
-        return '#00E676'; // 綠色：高球權・高效率
+        return '#00E676';
       case 'Q2':
-        return '#38BDF8'; // 天藍：低球權・高效率
+        return '#38BDF8';
       case 'Q3':
-        return '#94A3B8'; // 灰藍：低球權・低效率
+        return '#94A3B8';
       case 'Q4':
-        return '#FF9100'; // 橘色：高球權・低效率
+        return '#FF9100';
       default:
         return '#FFFFFF';
     }
   };
 
-  // 表格排序切換
+  // 點擊散點圖圈圈：選中該球員 + 自動展開下方表格 + 平滑滾動定位至該行
+  const handleBubbleClick = (player: AdvancedPlayer) => {
+    setSelectedPlayer(player);
+    setIsTableExpanded(true);
+
+    setTimeout(() => {
+      const rowId = `scatter-row-${encodeURIComponent(player.player_name.trim())}`;
+      const rowEl = document.getElementById(rowId);
+      if (rowEl) {
+        rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+  };
+
   const handleSort = (field: keyof AdvancedPlayer) => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
@@ -283,11 +290,11 @@ export default function ScatterPage() {
               🎯 主力球員效率象限圖 (USG% vs TS%)
             </h1>
             <p className="text-gray-300 text-sm max-w-2xl leading-relaxed">
-              橫軸為球權使用率 (USG%)，縱軸為真實命中率 (TS%)，氣泡大小依單場綜合表現評分 (GmSc) 等比縮放 (6px~12px)。
+              橫軸為球權使用率 (USG%)，縱軸為真實命中率 (TS%)，氣泡大小依單場綜合表現評分 (GmSc) 等比縮放。點擊圓圈可直接展開下方數據表並自動定位。
             </p>
           </div>
 
-          {/* 控制面板：PPG 滑桿與身分篩選 */}
+          {/* 控制面板 */}
           <div className="p-4 rounded-2xl bg-[#0E1117] border border-[#30363D] space-y-3 min-w-[280px]">
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-400 font-semibold flex items-center space-x-1">
@@ -308,7 +315,6 @@ export default function ScatterPage() {
               className="w-full accent-[#FF9100] cursor-pointer"
             />
 
-            {/* 本土 / 洋將 切換 */}
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs text-gray-400 font-semibold">球員身分:</span>
               <div className="inline-flex p-0.5 rounded-lg bg-[#161B22] border border-[#30363D]">
@@ -367,7 +373,6 @@ export default function ScatterPage() {
             viewBox={`0 0 ${width} ${height}`}
             className="w-full h-auto min-w-[700px] select-none"
           >
-            {/* 背景分區與四象限底色 */}
             {/* Q1: 右上 */}
             <rect
               x={splitX}
@@ -514,7 +519,7 @@ export default function ScatterPage() {
               真實命中率 (TS%) →
             </text>
 
-            {/* 球員氣泡繪製 */}
+            {/* 球員氣泡繪製 (點擊連動展開下方表格並滾動定位) */}
             {filteredPlayers.map((p) => {
               const cx = getX(p.usg_pct);
               const cy = getY(p.ts_pct);
@@ -528,9 +533,8 @@ export default function ScatterPage() {
                 <g
                   key={`${p.team_name}-${p.player_name}`}
                   className="cursor-pointer transition-all duration-200"
-                  onClick={() => setSelectedPlayer(p)}
+                  onClick={() => handleBubbleClick(p)}
                 >
-                  {/* 外圈高亮 */}
                   {isSelected && (
                     <circle
                       cx={cx}
@@ -540,7 +544,6 @@ export default function ScatterPage() {
                       fillOpacity="0.3"
                     />
                   )}
-                  {/* 氣泡本體 */}
                   <circle
                     cx={cx}
                     cy={cy}
@@ -550,7 +553,6 @@ export default function ScatterPage() {
                     stroke="#FFFFFF"
                     strokeWidth={isSelected ? 2 : 1}
                   />
-                  {/* 球員簡稱 */}
                   <text
                     x={cx}
                     y={cy - r - 3}
@@ -568,7 +570,7 @@ export default function ScatterPage() {
           </svg>
         </div>
 
-        {/* 頂部選中球員卡片外層容器 (固定/最小高度 min-h-[76px]，防止內容變動推擠下方表格產生跳動) */}
+        {/* 頂部選中球員卡片外層容器 */}
         <div className="mt-4 min-h-[76px] flex items-center">
           {selectedPlayer ? (
             <div className="w-full min-h-[76px] p-4 rounded-2xl bg-[#0E1117] border border-[#FF9100]/60 shadow-2xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in">
@@ -618,23 +620,24 @@ export default function ScatterPage() {
                   <span className="text-gray-500 block">GmSc</span>
                   <span className="text-amber-400 font-bold">{selectedPlayer.gmsc}</span>
                 </div>
-                <Link
-                  href={`/player-cards?player=${encodeURIComponent(selectedPlayer.player_name)}`}
+                <PlayerLink
+                  name={selectedPlayer.player_name}
+                  stage={stage}
                   className="px-3 py-1.5 rounded-lg bg-[#FF9100] text-slate-950 font-black text-xs hover:bg-amber-400 transition-colors"
                 >
                   查看球員戰力卡 →
-                </Link>
+                </PlayerLink>
               </div>
             </div>
           ) : (
             <div className="w-full min-h-[76px] p-4 rounded-2xl bg-[#0E1117]/50 border border-dashed border-[#30363D] flex items-center justify-center text-xs text-gray-500">
-              點擊下方表格行或象限圖氣泡以選中球員
+              點擊上方象限圖氣泡或下方表格以選中球員
             </div>
           )}
         </div>
       </div>
 
-      {/* 5. 掛載下方球員詳細數據清單表格（1:1 還原舊版） */}
+      {/* 5. 掛載下方球員詳細數據清單表格 */}
       <section className="space-y-4">
         <div
           onClick={() => setIsTableExpanded(!isTableExpanded)}
@@ -789,13 +792,17 @@ export default function ScatterPage() {
                     const q = getPlayerQuadrant(player);
                     const qColor = getQuadrantColor(q);
                     const isSelected = selectedPlayer?.player_name === player.player_name;
+                    const rowId = `scatter-row-${encodeURIComponent(player.player_name.trim())}`;
 
                     return (
                       <tr
                         key={`${player.team_name}-${player.player_name}`}
+                        id={rowId}
                         onClick={() => setSelectedPlayer(player)}
-                        className={`transition-colors cursor-pointer ${
-                          isSelected ? 'bg-[#21262D]' : 'hover:bg-[#21262D]/50'
+                        className={`transition-all duration-300 cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#FF9100]/20 ring-1 ring-inset ring-[#FF9100]/50'
+                            : 'hover:bg-[#21262D]/50'
                         }`}
                       >
                         <td className="py-2.5 px-2 text-center">
@@ -817,12 +824,11 @@ export default function ScatterPage() {
                           {player.jersey_number || '-'}
                         </td>
                         <td className="py-2.5 px-2 font-sans font-bold text-white">
-                          <Link
-                            href={`/player-cards?player=${encodeURIComponent(player.player_name)}`}
-                            className="hover:text-[#00E676] transition-colors"
-                          >
-                            {player.player_name}
-                          </Link>
+                          <PlayerLink
+                            name={player.player_name}
+                            stage={stage}
+                            className="text-white hover:text-[#00E676]"
+                          />
                         </td>
                         <td className="py-2.5 px-2 text-center">
                           <span

@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useStage } from '@/context/StageContext';
 import { fetcher } from '@/lib/api';
+import { PlayerLink } from '@/components/PlayerLink';
 import {
   Zap,
   Users,
@@ -281,7 +282,7 @@ export default function PBPPage() {
               </p>
             </div>
 
-            {/* 球隊切換按鈕：保持在吉祥物左側，獨立自成區塊 */}
+            {/* 球隊切換按鈕 */}
             <div className="inline-flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-[#0E1117]/90 border border-[#30363D] shadow-xl backdrop-blur-md max-w-sm shrink-0">
               {teams.map((t) => (
                 <button
@@ -299,18 +300,16 @@ export default function PBPPage() {
             </div>
           </div>
 
-          {/* 吉祥物立體去背展示層：純透明輪廓，無任何方框與穿透問題 */}
+          {/* 吉祥物立體去背展示層 */}
           {currentMascot && (
             <div
               key={currentMascot.id}
               className={`absolute pointer-events-none select-none z-30 flex items-end justify-center transition-all duration-300 ease-out animate-fadeIn ${currentMascot.containerClass}`}
             >
-              {/* 身後光暈：只在吉祥物身後發散，營造卡牌立體感 */}
               <div
                 className="absolute inset-0 rounded-full blur-3xl opacity-75 -z-10"
                 style={{ backgroundColor: currentMascot.glowColor }}
               />
-              {/* 吉祥物本體：完全實心透明底，加上擬真環境陰影 */}
               <img
                 src={currentMascot.file}
                 alt={currentMascot.name}
@@ -484,7 +483,9 @@ export default function PBPPage() {
                     {data?.on_off_players && data.on_off_players.length > 0 ? (
                       data.on_off_players.map((p) => (
                         <tr key={p.player_name} className="hover:bg-[#21262D]/60 transition-colors">
-                          <td className="py-3.5 px-4 font-sans font-bold text-white">{p.player_name}</td>
+                          <td className="py-3.5 px-4 font-sans font-bold text-white">
+                            <PlayerLink name={p.player_name} stage={stage} className="text-white hover:text-amber-400" />
+                          </td>
                           <td className="py-3.5 px-4 text-center text-gray-300">{p.total_time}</td>
                           <td className="py-3.5 px-4 text-right text-[#FF9100]">{p.on_ortg}</td>
                           <td className="py-3.5 px-4 text-right text-sky-400">{p.on_drtg}</td>
@@ -637,7 +638,11 @@ export default function PBPPage() {
                                   <span className="text-gray-500 text-xs font-mono w-6">
                                     {p.jersey_number ? `#${p.jersey_number}` : '-'}
                                   </span>
-                                  <span>{p.player_name}</span>
+                                  <PlayerLink
+                                    name={p.player_name}
+                                    stage={stage}
+                                    className="font-bold text-white group-hover:text-amber-400"
+                                  />
                                   {p.is_starter && (
                                     <span className="text-[10px] px-1 rounded bg-[#FF9100]/20 text-[#FF9100]">
                                       先

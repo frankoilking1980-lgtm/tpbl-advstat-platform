@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import ScoreBanner from '@/components/ScoreBanner';
 import TacticsCard from '@/components/TacticsCard';
 import FourFactorsBar from '@/components/FourFactorsBar';
+import { PlayerLink } from '@/components/PlayerLink';
 import {
   ShieldAlert,
   Swords,
@@ -156,7 +157,6 @@ export default function GameReviewPage() {
     (p) => p.team_name === game.home_team
   );
   const activePlayers = activeTeamTab === 'away' ? awayPlayers : homePlayers;
-  const activeTeamName = activeTeamTab === 'away' ? game.away_team : game.home_team;
 
   return (
     <div className="space-y-10">
@@ -318,11 +318,11 @@ export default function GameReviewPage() {
         </div>
 
         {/* 數據表格 */}
-        <div className="overflow-x-auto rounded-2xl border border-cardBorder bg-card shadow-lg">
+        <div className="overflow-x-auto rounded-2xl border border-cardBorder bg-card shadow-lg relative">
           <table className="w-full text-left text-xs whitespace-nowrap">
-            <thead className="bg-gray-900/90 text-gray-400 uppercase font-mono tracking-wider border-b border-cardBorder">
+            <thead className="bg-gray-900/95 text-gray-400 uppercase font-mono tracking-wider border-b border-cardBorder sticky top-0 z-20">
               <tr>
-                <th className="py-3.5 px-3 font-semibold text-white sticky left-0 bg-gray-900/90">球員</th>
+                <th className="py-3.5 px-3 font-semibold text-white sticky left-0 z-30 bg-gray-900">球員</th>
                 <th className="py-3.5 px-2.5 font-semibold">時間</th>
                 <th className="py-3.5 px-2.5 font-semibold text-right">得分</th>
                 <th className="py-3.5 px-2.5 font-semibold text-right">投籃 (FGM/A)</th>
@@ -348,12 +348,17 @@ export default function GameReviewPage() {
                     key={p.id}
                     className="hover:bg-gray-800/50 transition-colors group"
                   >
-                    <td className="py-3 px-3 sticky left-0 bg-card group-hover:bg-gray-800/80 font-sans font-bold text-white">
+                    {/* 將 sticky 欄位明確加上 z-20，讓點擊事件正常觸發 */}
+                    <td className="py-3 px-3 sticky left-0 z-20 bg-card group-hover:bg-gray-800/90 font-sans font-bold text-white shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
                       <div className="flex items-center space-x-2">
                         <span className="text-gray-500 text-xs font-mono w-5">
                           {p.jersey_number ? `#${p.jersey_number}` : '-'}
                         </span>
-                        <span>{p.player_name}</span>
+                        <PlayerLink
+                          name={p.player_name}
+                          stage={game.stage}
+                          className="font-bold text-white group-hover:text-amber-400"
+                        />
                         {p.identity && p.identity.includes('洋將') && (
                           <span className="text-[10px] px-1 rounded bg-blue-500/20 text-blue-300">
                             洋
