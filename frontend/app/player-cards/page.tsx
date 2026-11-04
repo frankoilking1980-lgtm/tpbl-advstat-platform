@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useStage } from '@/context/StageContext';
 import { fetcher } from '@/lib/api';
 import { PlayerPortrait } from '@/components/PlayerPortrait';
+import PlayerSituationsTab, { PlayerSituationsData } from './PlayerSituationsTab';
 import {
   Users,
   Swords,
@@ -86,6 +87,14 @@ interface PRStatsResponse {
   rankings?: PRPlayerItem[];
 }
 
+interface SituationsResponse {
+  meta?: {
+    season: string;
+    total_games: number;
+  };
+  players?: { [name: string]: PlayerSituationsData };
+}
+
 const STAGES = [
   '2026-2027 季前熱身賽',
   '2026-2027 例行賽',
@@ -130,11 +139,19 @@ function PlayerCardsContent() {
   const [teamB, setTeamB] = useState<string>('臺北台新戰神');
   const [playerB, setPlayerB] = useState<string>('');
 
-  // 1. 預設收起排行榜
+  // Tab 狀態：'overview' (綜合) | 'scoring' (得分情境與終結) | 'q4' (末節抗壓)
+  const [cardTab, setCardTab] = useState<'overview' | 'scoring' | 'q4'>('overview');
+
+  // 預設收起排行榜
   const [isRankingsOpen, setIsRankingsOpen] = useState(false);
   const [focusedPlayer, setFocusedPlayer] = useState<string | null>(null);
 
   const { data: prData } = useSWR<PRStatsResponse>('/player_pr_stats.json', staticJsonFetcher);
+  const { data: situationsRaw } = useSWR<SituationsResponse>('/player_situations_stats.json', staticJsonFetcher);
+
+  const situationsData = useMemo(() => {
+    return situationsRaw?.players || {};
+  }, [situationsRaw]);
 
   const { data: listA } = useSWR<PlayerInfo[]>(
     `/api/players/advanced?stage=${encodeURIComponent(stageA)}`,
@@ -211,7 +228,7 @@ function PlayerCardsContent() {
   const playerAName = cardA?.player_info.player_name || playerA;
   const playerBName = cardB?.player_info.player_name || playerB;
 
-  // 嚴格賽季比對校驗：只有當前選擇賽季與 PR 資料集對應賽季完全一致時才顯示 PR
+  // 嚴格賽季比對校驗
   const currentPRStage = prData?.meta?.stage || '2026-2027 例行賽';
 
   const prPlayerA = useMemo(() => {
@@ -227,6 +244,17 @@ function PlayerCardsContent() {
     if (!dict || !playerBName) return null;
     return dict[playerBName.trim()] || null;
   }, [prData, playerBName, stageB, currentPRStage]);
+
+  // 情境數據索引（僅在 2026-2027 例行賽生效）
+  const sitPlayerA = useMemo(() => {
+    if (stageA !== '2026-2027 例行賽' || !playerAName) return undefined;
+    return situationsData[playerAName.trim()];
+  }, [situationsData, playerAName, stageA]);
+
+  const sitPlayerB = useMemo(() => {
+    if (stageB !== '2026-2027 例行賽' || !playerBName) return undefined;
+    return situationsData[playerBName.trim()];
+  }, [situationsData, playerBName, stageB]);
 
   const scrollToPlayerInRankings = (name: string) => {
     if (!name) return;
@@ -326,13 +354,13 @@ function PlayerCardsContent() {
             <span className="px-3 py-1 rounded-full bg-[#FF9100]/15 text-[#FF9100] text-xs font-black uppercase tracking-wider border border-[#FF9100]/30">
               跨賽季獨立對比
             </span>
-            <span className="text-xs text-gray-400 font-medium">六維戰力雷達與 Percentile Ranking</span>
+            <span className="text-xs text-gray-400 font-medium">六維戰力雷達、情境拆解與末節關鍵分析</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
             🃏 球員戰力卡與雙雄正面對決 (Head-to-Head)
           </h1>
           <p className="text-gray-300 text-sm max-w-3xl leading-relaxed">
-            支援跨賽季、跨隊伍任意球員比對。點擊下方表格任一球員可切換為分析對象。
+            支援跨賽季、跨隊伍任意球員比對。切換下方分頁可檢視得分情境佔比與第四節抗壓表現。
           </p>
         </div>
 
@@ -426,494 +454,573 @@ function PlayerCardsContent() {
         </div>
       </div>
 
-      {/* 戰力卡與雷達圖展示區 */}
-      <div className="w-full">
-        {playerB ? (
-          /* ========== 雙人對決模式 ========== */
-          <div className="flex flex-col xl:flex-row items-center xl:items-stretch justify-between gap-5">
-            {/* 1. 最左側：球員 A 肖像 (帶入 stageA 嚴格校驗) */}
-            <div
-              className="hidden xl:flex items-center justify-center flex-shrink-0 cursor-pointer"
-              onClick={() => scrollToPlayerInRankings(playerAName)}
-            >
-              <PlayerPortrait playerName={playerAName} stage={stageA} />
-            </div>
+      {/* ========== Tab 切換控制列 (Overview / Scoring / Q4) ========== */}
+      <div className="flex items-center justify-center">
+        <div className="inline-flex p-1.5 rounded-2xl bg-[#161B22] border border-[#30363D] shadow-xl space-x-2">
+          <button
+            onClick={() => setCardTab('overview')}
+            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center space-x-2 ${
+              cardTab === 'overview'
+                ? 'bg-[#FF9100] text-black shadow-lg shadow-[#FF9100]/20'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <span>📊 綜合戰力 (Overview)</span>
+          </button>
 
-            {/* 2. 球員 A 數據戰力卡 */}
-            <div className="w-full xl:w-72 p-7 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-xl flex flex-col justify-between">
-              <div className="space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
-                  <span className="px-3 py-1 rounded-xl bg-[#FF9100]/20 text-[#FF9100] font-black text-xs tracking-wider">
-                    球員 A
-                  </span>
-                  <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
-                    #{cardA?.player_info.jersey_number || '0'} • {cardA?.player_info.position}
-                  </span>
-                </div>
+          <button
+            onClick={() => setCardTab('scoring')}
+            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center space-x-2 ${
+              cardTab === 'scoring'
+                ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <span>🎯 得分情境與終結 (Scoring & Finishing)</span>
+          </button>
 
-                <div>
-                  <div className="text-xs font-mono text-amber-400 font-bold mb-1">
-                    [{stageA}]
-                  </div>
-                  <h3
-                    onClick={() => scrollToPlayerInRankings(playerAName)}
-                    className="text-2xl font-black text-white tracking-tight cursor-pointer hover:text-[#FF9100] transition-colors"
-                  >
-                    {playerAName}
-                  </h3>
-                  <p className="text-xs text-gray-400 font-medium pt-1">
-                    {cardA?.player_info.team_name} • {cardA?.player_info.identity}
-                  </p>
-                </div>
+          <button
+            onClick={() => setCardTab('q4')}
+            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center space-x-2 ${
+              cardTab === 'q4'
+                ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <span>⏱️ 末節決勝抗壓 (Q4 Crunch Time)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 戰力卡展示區 */}
+      {cardTab === 'overview' ? (
+        /* ========== Tab 1: 既有綜合戰力與雷達圖 ========== */
+        <div className="w-full">
+          {playerB ? (
+            /* 雙人對決模式 */
+            <div className="flex flex-col xl:flex-row items-center xl:items-stretch justify-between gap-5">
+              <div
+                className="hidden xl:flex items-center justify-center flex-shrink-0 cursor-pointer"
+                onClick={() => scrollToPlayerInRankings(playerAName)}
+              >
+                <PlayerPortrait playerName={playerAName} stage={stageA} />
               </div>
 
-              <div className="space-y-3 text-xs sm:text-sm font-mono pt-4">
-                <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">場均時間</span>
-                  <span className="text-white font-bold whitespace-nowrap">{cardA?.player_info.mpg ?? '-'} 分</span>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
-                  <div className="flex items-center">
-                    <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{cardA?.player_info.ppg ?? '-'}</span>
-                    <PRTag pr={prPlayerA?.badges?.PTS?.pr} />
-                  </div>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
-                  <div className="flex items-center">
-                    <span className="text-amber-300 font-bold whitespace-nowrap">
-                      {cardA?.player_info.ts_pct !== undefined ? `${cardA.player_info.ts_pct}%` : '-'}
+              {/* 球員 A 數據戰力卡 */}
+              <div className="w-full xl:w-72 p-7 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-xl flex flex-col justify-between">
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
+                    <span className="px-3 py-1 rounded-xl bg-[#FF9100]/20 text-[#FF9100] font-black text-xs tracking-wider">
+                      球員 A
                     </span>
-                    <PRTag pr={prPlayerA?.badges?.['TS%']?.pr} />
+                    <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
+                      #{cardA?.player_info.jersey_number || '0'} • {cardA?.player_info.position}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-mono text-amber-400 font-bold mb-1">
+                      [{stageA}]
+                    </div>
+                    <h3
+                      onClick={() => scrollToPlayerInRankings(playerAName)}
+                      className="text-2xl font-black text-white tracking-tight cursor-pointer hover:text-[#FF9100] transition-colors"
+                    >
+                      {playerAName}
+                    </h3>
+                    <p className="text-xs text-gray-400 font-medium pt-1">
+                      {cardA?.player_info.team_name} • {cardA?.player_info.identity}
+                    </p>
                   </div>
                 </div>
-                <div className="flex justify-between items-center py-1.5">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
-                  <div className="flex items-center">
-                    <span className="text-white font-bold text-base whitespace-nowrap">{cardA?.player_info.gmsc ?? '-'}</span>
-                    <PRTag pr={prPlayerA?.badges?.GmSC?.pr} />
+
+                <div className="space-y-3 text-xs sm:text-sm font-mono pt-4">
+                  <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">場均時間</span>
+                    <span className="text-white font-bold whitespace-nowrap">{cardA?.player_info.mpg ?? '-'} 分</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
+                    <div className="flex items-center">
+                      <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{cardA?.player_info.ppg ?? '-'}</span>
+                      <PRTag pr={prPlayerA?.badges?.PTS?.pr} />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
+                    <div className="flex items-center">
+                      <span className="text-amber-300 font-bold whitespace-nowrap">
+                        {cardA?.player_info.ts_pct !== undefined ? `${cardA.player_info.ts_pct}%` : '-'}
+                      </span>
+                      <PRTag pr={prPlayerA?.badges?.['TS%']?.pr} />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
+                    <div className="flex items-center">
+                      <span className="text-white font-bold text-base whitespace-nowrap">{cardA?.player_info.gmsc ?? '-'}</span>
+                      <PRTag pr={prPlayerA?.badges?.GmSC?.pr} />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* 3. 中間六維雷達圖 */}
-            <div className="flex-1 w-full p-6 sm:p-7 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center min-h-[420px]">
-              <div className="w-full flex items-center justify-center space-x-6 text-xs sm:text-sm font-bold pb-2">
-                <div className="flex items-center space-x-1.5 text-[#FF9100] whitespace-nowrap">
-                  <span className="w-3 h-3 rounded-full bg-[#FF9100] flex-shrink-0" />
+              {/* 中間六維雷達圖 */}
+              <div className="flex-1 w-full p-6 sm:p-7 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center min-h-[420px]">
+                <div className="w-full flex items-center justify-center space-x-6 text-xs sm:text-sm font-bold pb-2">
+                  <div className="flex items-center space-x-1.5 text-[#FF9100] whitespace-nowrap">
+                    <span className="w-3 h-3 rounded-full bg-[#FF9100] flex-shrink-0" />
+                    <span className="font-black text-sm">{playerAName}</span>
+                    <span className="text-[11px] opacity-75 font-mono">({stageA.slice(2, 9)})</span>
+                  </div>
+
+                  <span className="text-gray-500 font-mono font-bold text-xs">VS</span>
+
+                  <div className="flex items-center space-x-1.5 text-[#00E676] whitespace-nowrap">
+                    <span className="w-3 h-3 rounded-full bg-[#00E676] flex-shrink-0" />
+                    <span className="font-black text-sm">{playerBName}</span>
+                    <span className="text-[11px] opacity-75 font-mono">({stageB.slice(2, 9)})</span>
+                  </div>
+                </div>
+
+                <div className="w-full flex-1 flex items-center justify-center py-2">
+                  <svg viewBox="0 0 400 400" className="w-full max-w-[340px] sm:max-w-[380px] h-auto select-none">
+                    {[0.25, 0.5, 0.75, 1.0].map((scale) => {
+                      const points = radarDims
+                        .map((_, i) => {
+                          const angle = (Math.PI / 3) * i - Math.PI / 2;
+                          const r = radius * scale;
+                          return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+                        })
+                        .join(' ');
+                      return (
+                        <polygon
+                          key={scale}
+                          points={points}
+                          fill="none"
+                          stroke="#30363D"
+                          strokeWidth="1"
+                          strokeDasharray={scale === 1 ? 'none' : '3 3'}
+                        />
+                      );
+                    })}
+
+                    {radarDims.map((_, i) => {
+                      const angle = (Math.PI / 3) * i - Math.PI / 2;
+                      const x = center + radius * Math.cos(angle);
+                      const y = center + radius * Math.sin(angle);
+                      return (
+                        <line
+                          key={i}
+                          x1={center}
+                          y1={center}
+                          x2={x}
+                          y2={y}
+                          stroke="#30363D"
+                          strokeWidth="1"
+                        />
+                      );
+                    })}
+
+                    {polyA && (
+                      <polygon
+                        points={polyA}
+                        fill="#FF9100"
+                        fillOpacity="0.32"
+                        stroke="#FF9100"
+                        strokeWidth="2.5"
+                      />
+                    )}
+
+                    {polyB && (
+                      <polygon
+                        points={polyB}
+                        fill="#00E676"
+                        fillOpacity="0.32"
+                        stroke="#00E676"
+                        strokeWidth="2.5"
+                      />
+                    )}
+
+                    {radarDims.map((d, i) => {
+                      const angle = (Math.PI / 3) * i - Math.PI / 2;
+                      const lx = center + (radius + 25) * Math.cos(angle);
+                      const ly = center + (radius + 18) * Math.sin(angle);
+                      return (
+                        <text
+                          key={d.key}
+                          x={lx}
+                          y={ly + 4}
+                          fill="#94A3B8"
+                          fontSize="12"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                        >
+                          {d.label.split(' ')[0]}
+                        </text>
+                      );
+                    })}
+                  </svg>
+                </div>
+              </div>
+
+              {/* 球員 B 數據戰力卡 */}
+              <div className="w-full xl:w-72 p-7 rounded-3xl border border-[#00E676]/40 bg-[#161B22] shadow-xl flex flex-col justify-between">
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
+                    <span className="px-3 py-1 rounded-xl bg-[#00E676]/20 text-[#00E676] font-black text-xs tracking-wider">
+                      球員 B
+                    </span>
+                    <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
+                      #{cardB?.player_info.jersey_number || '0'} • {cardB?.player_info.position}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-mono text-emerald-400 font-bold mb-1">
+                      [{stageB}]
+                    </div>
+                    <h3
+                      onClick={() => scrollToPlayerInRankings(playerBName)}
+                      className="text-2xl font-black text-white tracking-tight cursor-pointer hover:text-[#00E676] transition-colors"
+                    >
+                      {playerBName}
+                    </h3>
+                    <p className="text-xs text-gray-400 font-medium pt-1">
+                      {cardB?.player_info.team_name} • {cardB?.player_info.identity}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-xs sm:text-sm font-mono pt-4">
+                  <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">場均時間</span>
+                    <span className="text-white font-bold whitespace-nowrap">{cardB?.player_info.mpg ?? '-'} 分</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
+                    <div className="flex items-center">
+                      <span className="text-[#00E676] font-bold text-base whitespace-nowrap">{cardB?.player_info.ppg ?? '-'}</span>
+                      <PRTag pr={prPlayerB?.badges?.PTS?.pr} />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
+                    <div className="flex items-center">
+                      <span className="text-emerald-300 font-bold whitespace-nowrap">
+                        {cardB?.player_info.ts_pct !== undefined ? `${cardB.player_info.ts_pct}%` : '-'}
+                      </span>
+                      <PRTag pr={prPlayerB?.badges?.['TS%']?.pr} />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
+                    <div className="flex items-center">
+                      <span className="text-white font-bold text-base whitespace-nowrap">{cardB?.player_info.gmsc ?? '-'}</span>
+                      <PRTag pr={prPlayerB?.badges?.GmSC?.pr} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="hidden xl:flex items-center justify-center flex-shrink-0 cursor-pointer"
+                onClick={() => scrollToPlayerInRankings(playerBName)}
+              >
+                <PlayerPortrait playerName={playerBName} stage={stageB} isRightSide />
+              </div>
+            </div>
+          ) : (
+            /* 單人模式 */
+            <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-center gap-8 max-w-6xl mx-auto">
+              <div
+                className="flex-shrink-0 flex items-center justify-center cursor-pointer"
+                onClick={() => scrollToPlayerInRankings(playerAName)}
+              >
+                <PlayerPortrait playerName={playerAName} stage={stageA} />
+              </div>
+
+              <div className="w-full lg:w-80 p-7 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-xl flex flex-col justify-between">
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
+                    <span className="px-3 py-1 rounded-xl bg-[#FF9100]/20 text-[#FF9100] font-black text-xs tracking-wider">
+                      選手檔案
+                    </span>
+                    <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
+                      #{cardA?.player_info.jersey_number || '0'} • {cardA?.player_info.position}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-mono text-amber-400 font-bold mb-1">
+                      [{stageA}]
+                    </div>
+                    <h3
+                      onClick={() => scrollToPlayerInRankings(playerAName)}
+                      className="text-3xl font-black text-white tracking-tight cursor-pointer hover:text-[#FF9100] transition-colors"
+                    >
+                      {playerAName}
+                    </h3>
+                    <p className="text-xs text-gray-400 font-medium pt-1">
+                      {cardA?.player_info.team_name} • {cardA?.player_info.identity}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-xs sm:text-sm font-mono pt-4">
+                  <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">場均時間</span>
+                    <span className="text-white font-bold whitespace-nowrap">{cardA?.player_info.mpg ?? '-'} 分</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
+                    <div className="flex items-center">
+                      <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{cardA?.player_info.ppg ?? '-'}</span>
+                      <PRTag pr={prPlayerA?.badges?.PTS?.pr} />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
+                    <div className="flex items-center">
+                      <span className="text-amber-300 font-bold whitespace-nowrap">
+                        {cardA?.player_info.ts_pct !== undefined ? `${cardA.player_info.ts_pct}%` : '-'}
+                      </span>
+                      <PRTag pr={prPlayerA?.badges?.['TS%']?.pr} />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5">
+                    <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
+                    <div className="flex items-center">
+                      <span className="text-white font-bold text-base whitespace-nowrap">{cardA?.player_info.gmsc ?? '-'}</span>
+                      <PRTag pr={prPlayerA?.badges?.GmSC?.pr} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 w-full max-w-xl p-6 sm:p-7 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center min-h-[420px]">
+                <div className="flex items-center space-x-2 text-xs sm:text-sm font-bold pb-2 text-[#FF9100] whitespace-nowrap">
+                  <span className="w-3 h-3 rounded-full bg-[#FF9100]" />
                   <span className="font-black text-sm">{playerAName}</span>
                   <span className="text-[11px] opacity-75 font-mono">({stageA.slice(2, 9)})</span>
                 </div>
 
-                <span className="text-gray-500 font-mono font-bold text-xs">VS</span>
+                <div className="w-full flex-1 flex items-center justify-center py-2">
+                  <svg viewBox="0 0 400 400" className="w-full max-w-[380px] h-auto select-none">
+                    {[0.25, 0.5, 0.75, 1.0].map((scale) => {
+                      const points = radarDims
+                        .map((_, i) => {
+                          const angle = (Math.PI / 3) * i - Math.PI / 2;
+                          const r = radius * scale;
+                          return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+                        })
+                        .join(' ');
+                      return (
+                        <polygon
+                          key={scale}
+                          points={points}
+                          fill="none"
+                          stroke="#30363D"
+                          strokeWidth="1"
+                          strokeDasharray={scale === 1 ? 'none' : '3 3'}
+                        />
+                      );
+                    })}
 
-                <div className="flex items-center space-x-1.5 text-[#00E676] whitespace-nowrap">
-                  <span className="w-3 h-3 rounded-full bg-[#00E676] flex-shrink-0" />
-                  <span className="font-black text-sm">{playerBName}</span>
-                  <span className="text-[11px] opacity-75 font-mono">({stageB.slice(2, 9)})</span>
-                </div>
-              </div>
+                    {radarDims.map((_, i) => {
+                      const angle = (Math.PI / 3) * i - Math.PI / 2;
+                      const x = center + radius * Math.cos(angle);
+                      const y = center + radius * Math.sin(angle);
+                      return (
+                        <line
+                          key={i}
+                          x1={center}
+                          y1={center}
+                          x2={x}
+                          y2={y}
+                          stroke="#30363D"
+                          strokeWidth="1"
+                        />
+                      );
+                    })}
 
-              <div className="w-full flex-1 flex items-center justify-center py-2">
-                <svg viewBox="0 0 400 400" className="w-full max-w-[340px] sm:max-w-[380px] h-auto select-none">
-                  {[0.25, 0.5, 0.75, 1.0].map((scale) => {
-                    const points = radarDims
-                      .map((_, i) => {
-                        const angle = (Math.PI / 3) * i - Math.PI / 2;
-                        const r = radius * scale;
-                        return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
-                      })
-                      .join(' ');
-                    return (
+                    {polyA && (
                       <polygon
-                        key={scale}
-                        points={points}
-                        fill="none"
-                        stroke="#30363D"
-                        strokeWidth="1"
-                        strokeDasharray={scale === 1 ? 'none' : '3 3'}
+                        points={polyA}
+                        fill="#FF9100"
+                        fillOpacity="0.32"
+                        stroke="#FF9100"
+                        strokeWidth="2.5"
                       />
-                    );
-                  })}
+                    )}
 
-                  {radarDims.map((_, i) => {
-                    const angle = (Math.PI / 3) * i - Math.PI / 2;
-                    const x = center + radius * Math.cos(angle);
-                    const y = center + radius * Math.sin(angle);
-                    return (
-                      <line
-                        key={i}
-                        x1={center}
-                        y1={center}
-                        x2={x}
-                        y2={y}
-                        stroke="#30363D"
-                        strokeWidth="1"
-                      />
-                    );
-                  })}
-
-                  {polyA && (
-                    <polygon
-                      points={polyA}
-                      fill="#FF9100"
-                      fillOpacity="0.32"
-                      stroke="#FF9100"
-                      strokeWidth="2.5"
-                    />
-                  )}
-
-                  {polyB && (
-                    <polygon
-                      points={polyB}
-                      fill="#00E676"
-                      fillOpacity="0.32"
-                      stroke="#00E676"
-                      strokeWidth="2.5"
-                    />
-                  )}
-
-                  {radarDims.map((d, i) => {
-                    const angle = (Math.PI / 3) * i - Math.PI / 2;
-                    const lx = center + (radius + 25) * Math.cos(angle);
-                    const ly = center + (radius + 18) * Math.sin(angle);
-                    return (
-                      <text
-                        key={d.key}
-                        x={lx}
-                        y={ly + 4}
-                        fill="#94A3B8"
-                        fontSize="12"
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {d.label.split(' ')[0]}
-                      </text>
-                    );
-                  })}
-                </svg>
-              </div>
-            </div>
-
-            {/* 4. 球員 B 數據戰力卡 */}
-            <div className="w-full xl:w-72 p-7 rounded-3xl border border-[#00E676]/40 bg-[#161B22] shadow-xl flex flex-col justify-between">
-              <div className="space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
-                  <span className="px-3 py-1 rounded-xl bg-[#00E676]/20 text-[#00E676] font-black text-xs tracking-wider">
-                    球員 B
-                  </span>
-                  <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
-                    #{cardB?.player_info.jersey_number || '0'} • {cardB?.player_info.position}
-                  </span>
-                </div>
-
-                <div>
-                  <div className="text-xs font-mono text-emerald-400 font-bold mb-1">
-                    [{stageB}]
-                  </div>
-                  <h3
-                    onClick={() => scrollToPlayerInRankings(playerBName)}
-                    className="text-2xl font-black text-white tracking-tight cursor-pointer hover:text-[#00E676] transition-colors"
-                  >
-                    {playerBName}
-                  </h3>
-                  <p className="text-xs text-gray-400 font-medium pt-1">
-                    {cardB?.player_info.team_name} • {cardB?.player_info.identity}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3 text-xs sm:text-sm font-mono pt-4">
-                <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">場均時間</span>
-                  <span className="text-white font-bold whitespace-nowrap">{cardB?.player_info.mpg ?? '-'} 分</span>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
-                  <div className="flex items-center">
-                    <span className="text-[#00E676] font-bold text-base whitespace-nowrap">{cardB?.player_info.ppg ?? '-'}</span>
-                    <PRTag pr={prPlayerB?.badges?.PTS?.pr} />
-                  </div>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
-                  <div className="flex items-center">
-                    <span className="text-emerald-300 font-bold whitespace-nowrap">
-                      {cardB?.player_info.ts_pct !== undefined ? `${cardB.player_info.ts_pct}%` : '-'}
-                    </span>
-                    <PRTag pr={prPlayerB?.badges?.['TS%']?.pr} />
-                  </div>
-                </div>
-                <div className="flex justify-between items-center py-1.5">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
-                  <div className="flex items-center">
-                    <span className="text-white font-bold text-base whitespace-nowrap">{cardB?.player_info.gmsc ?? '-'}</span>
-                    <PRTag pr={prPlayerB?.badges?.GmSC?.pr} />
-                  </div>
+                    {radarDims.map((d, i) => {
+                      const angle = (Math.PI / 3) * i - Math.PI / 2;
+                      const lx = center + (radius + 25) * Math.cos(angle);
+                      const ly = center + (radius + 18) * Math.sin(angle);
+                      return (
+                        <text
+                          key={d.key}
+                          x={lx}
+                          y={ly + 4}
+                          fill="#94A3B8"
+                          fontSize="12"
+                          fontWeight="bold"
+                          textAnchor="middle"
+                        >
+                          {d.label.split(' ')[0]}
+                        </text>
+                      );
+                    })}
+                  </svg>
                 </div>
               </div>
             </div>
-
-            {/* 5. 最右側：球員 B 肖像 (帶入 stageB 嚴格校驗) */}
-            <div
-              className="hidden xl:flex items-center justify-center flex-shrink-0 cursor-pointer"
-              onClick={() => scrollToPlayerInRankings(playerBName)}
-            >
-              <PlayerPortrait playerName={playerBName} stage={stageB} isRightSide />
-            </div>
-          </div>
-        ) : (
-          /* ========== 單人模式 ========== */
-          <div className="flex flex-col lg:flex-row items-center lg:items-stretch justify-center gap-8 max-w-6xl mx-auto">
-            {/* 1. 球員肖像 (帶入 stageA 嚴格校驗) */}
-            <div
-              className="flex-shrink-0 flex items-center justify-center cursor-pointer"
-              onClick={() => scrollToPlayerInRankings(playerAName)}
-            >
-              <PlayerPortrait playerName={playerAName} stage={stageA} />
-            </div>
-
-            {/* 2. 球員檔案卡片 */}
-            <div className="w-full lg:w-80 p-7 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-xl flex flex-col justify-between">
-              <div className="space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
-                  <span className="px-3 py-1 rounded-xl bg-[#FF9100]/20 text-[#FF9100] font-black text-xs tracking-wider">
-                    選手檔案
-                  </span>
-                  <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
-                    #{cardA?.player_info.jersey_number || '0'} • {cardA?.player_info.position}
-                  </span>
-                </div>
-
-                <div>
-                  <div className="text-xs font-mono text-amber-400 font-bold mb-1">
-                    [{stageA}]
-                  </div>
-                  <h3
-                    onClick={() => scrollToPlayerInRankings(playerAName)}
-                    className="text-3xl font-black text-white tracking-tight cursor-pointer hover:text-[#FF9100] transition-colors"
-                  >
-                    {playerAName}
-                  </h3>
-                  <p className="text-xs text-gray-400 font-medium pt-1">
-                    {cardA?.player_info.team_name} • {cardA?.player_info.identity}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3 text-xs sm:text-sm font-mono pt-4">
-                <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">場均時間</span>
-                  <span className="text-white font-bold whitespace-nowrap">{cardA?.player_info.mpg ?? '-'} 分</span>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
-                  <div className="flex items-center">
-                    <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{cardA?.player_info.ppg ?? '-'}</span>
-                    <PRTag pr={prPlayerA?.badges?.PTS?.pr} />
-                  </div>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
-                  <div className="flex items-center">
-                    <span className="text-amber-300 font-bold whitespace-nowrap">
-                      {cardA?.player_info.ts_pct !== undefined ? `${cardA.player_info.ts_pct}%` : '-'}
-                    </span>
-                    <PRTag pr={prPlayerA?.badges?.['TS%']?.pr} />
-                  </div>
-                </div>
-                <div className="flex justify-between items-center py-1.5">
-                  <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
-                  <div className="flex items-center">
-                    <span className="text-white font-bold text-base whitespace-nowrap">{cardA?.player_info.gmsc ?? '-'}</span>
-                    <PRTag pr={prPlayerA?.badges?.GmSC?.pr} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. 六維戰力雷達圖 */}
-            <div className="flex-1 w-full max-w-xl p-6 sm:p-7 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center min-h-[420px]">
-              <div className="flex items-center space-x-2 text-xs sm:text-sm font-bold pb-2 text-[#FF9100] whitespace-nowrap">
-                <span className="w-3 h-3 rounded-full bg-[#FF9100]" />
-                <span className="font-black text-sm">{playerAName}</span>
-                <span className="text-[11px] opacity-75 font-mono">({stageA.slice(2, 9)})</span>
-              </div>
-
-              <div className="w-full flex-1 flex items-center justify-center py-2">
-                <svg viewBox="0 0 400 400" className="w-full max-w-[380px] h-auto select-none">
-                  {[0.25, 0.5, 0.75, 1.0].map((scale) => {
-                    const points = radarDims
-                      .map((_, i) => {
-                        const angle = (Math.PI / 3) * i - Math.PI / 2;
-                        const r = radius * scale;
-                        return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
-                      })
-                      .join(' ');
-                    return (
-                      <polygon
-                        key={scale}
-                        points={points}
-                        fill="none"
-                        stroke="#30363D"
-                        strokeWidth="1"
-                        strokeDasharray={scale === 1 ? 'none' : '3 3'}
-                      />
-                    );
-                  })}
-
-                  {radarDims.map((_, i) => {
-                    const angle = (Math.PI / 3) * i - Math.PI / 2;
-                    const x = center + radius * Math.cos(angle);
-                    const y = center + radius * Math.sin(angle);
-                    return (
-                      <line
-                        key={i}
-                        x1={center}
-                        y1={center}
-                        x2={x}
-                        y2={y}
-                        stroke="#30363D"
-                        strokeWidth="1"
-                      />
-                    );
-                  })}
-
-                  {polyA && (
-                    <polygon
-                      points={polyA}
-                      fill="#FF9100"
-                      fillOpacity="0.32"
-                      stroke="#FF9100"
-                      strokeWidth="2.5"
-                    />
-                  )}
-
-                  {radarDims.map((d, i) => {
-                    const angle = (Math.PI / 3) * i - Math.PI / 2;
-                    const lx = center + (radius + 25) * Math.cos(angle);
-                    const ly = center + (radius + 18) * Math.sin(angle);
-                    return (
-                      <text
-                        key={d.key}
-                        x={lx}
-                        y={ly + 4}
-                        fill="#94A3B8"
-                        fontSize="12"
-                        fontWeight="bold"
-                        textAnchor="middle"
-                      >
-                        {d.label.split(' ')[0]}
-                      </text>
-                    );
-                  })}
-                </svg>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Tale of the Tape 細項表格 */}
-      <section className="space-y-4">
-        <div className={`${playerB ? 'w-full' : 'max-w-2xl mx-auto'} flex items-center justify-between`}>
-          <h3 className="text-xl font-black text-white flex items-center space-x-2">
-            <Swords className="w-5 h-5 text-[#FF9100]" />
-            <span>
-              {playerB
-                ? 'Tale of the Tape • 雙雄正面對決數據表'
-                : `${playerAName} • 進階攻守數據細項`}
-            </span>
-          </h3>
-          {!playerB && (
-            <span className="text-xs text-gray-400 font-mono">
-              {stageA}
-            </span>
           )}
         </div>
+      ) : (
+        /* ========== Tab 2 & 3: 得分情境 (Scoring) 或 末節抗壓 (Q4) ========== */
+        <div className="w-full">
+          {playerB ? (
+            /* 雙人並列對抗展示 */
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2 border-b border-[#FF9100]/30 pb-2">
+                  <span className="w-3 h-3 rounded-full bg-[#FF9100]" />
+                  <span className="font-black text-white text-base">{playerAName}</span>
+                  <span className="text-xs text-amber-400 font-mono">({stageA})</span>
+                </div>
+                <PlayerSituationsTab activeTab={cardTab} data={sitPlayerA} />
+              </div>
 
-        {playerB ? (
-          <div className="overflow-x-auto rounded-3xl border border-[#30363D] bg-[#161B22] shadow-xl">
-            <table className="w-full text-center text-xs sm:text-sm whitespace-nowrap">
-              <thead className="bg-[#0E1117] text-gray-400 uppercase font-mono tracking-wider border-b border-[#30363D]">
-                <tr>
-                  <th className="py-3.5 px-6 font-bold text-[#FF9100] text-base w-2/5">
-                    {playerAName} ({stageA.slice(2, 9)})
-                  </th>
-                  <th className="py-3.5 px-4 font-bold text-white text-xs w-1/5">指標項目</th>
-                  <th className="py-3.5 px-6 font-bold text-[#00E676] text-base w-2/5">
-                    {playerBName} ({stageB.slice(2, 9)})
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#21262D] font-mono">
-                {compareList.map((item, idx) => {
-                  const a = item.valA ?? 0;
-                  const b = item.valB ?? 0;
-                  const aWins = item.lowerIsBetter ? a < b : a > b;
-                  const bWins = item.lowerIsBetter ? b < a : b > a;
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2 border-b border-[#00E676]/30 pb-2">
+                  <span className="w-3 h-3 rounded-full bg-[#00E676]" />
+                  <span className="font-black text-white text-base">{playerBName}</span>
+                  <span className="text-xs text-emerald-400 font-mono">({stageB})</span>
+                </div>
+                <PlayerSituationsTab activeTab={cardTab} data={sitPlayerB} />
+              </div>
+            </div>
+          ) : (
+            /* 單人居中展示 */
+            <div className="max-w-4xl mx-auto space-y-3">
+              <div className="flex items-center justify-between border-b border-[#30363D] pb-3">
+                <div className="flex items-center space-x-2">
+                  <span className="w-3 h-3 rounded-full bg-[#FF9100]" />
+                  <span className="font-black text-white text-lg">{playerAName}</span>
+                  <span className="text-xs text-gray-400 font-mono">#{cardA?.player_info.jersey_number || '0'} • {cardA?.player_info.team_name}</span>
+                </div>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 font-mono border border-amber-500/20">
+                  {stageA}
+                </span>
+              </div>
+              <PlayerSituationsTab activeTab={cardTab} data={sitPlayerA} />
+            </div>
+          )}
+        </div>
+      )}
 
-                  return (
-                    <tr key={idx} className="hover:bg-[#21262D]/60 transition-colors">
-                      <td
-                        className={`py-3.5 px-6 text-right font-black ${
-                          aWins ? 'text-[#FF9100] bg-[#FF9100]/10 text-base' : 'text-gray-300'
-                        }`}
-                      >
-                        <span className="inline-flex items-center">
-                          {item.valA !== undefined ? item.format(item.valA) : '-'}
-                          <PRTag pr={item.prA} />
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-gray-400 font-sans font-bold text-xs">
+      {/* Tale of the Tape 細項表格 (僅在 Overview Tab 下顯示，避免畫面過度冗長) */}
+      {cardTab === 'overview' && (
+        <section className="space-y-4">
+          <div className={`${playerB ? 'w-full' : 'max-w-2xl mx-auto'} flex items-center justify-between`}>
+            <h3 className="text-xl font-black text-white flex items-center space-x-2">
+              <Swords className="w-5 h-5 text-[#FF9100]" />
+              <span>
+                {playerB
+                  ? 'Tale of the Tape • 雙雄正面對決數據表'
+                  : `${playerAName} • 進階攻守數據細項`}
+              </span>
+            </h3>
+            {!playerB && (
+              <span className="text-xs text-gray-400 font-mono">
+                {stageA}
+              </span>
+            )}
+          </div>
+
+          {playerB ? (
+            <div className="overflow-x-auto rounded-3xl border border-[#30363D] bg-[#161B22] shadow-xl">
+              <table className="w-full text-center text-xs sm:text-sm whitespace-nowrap">
+                <thead className="bg-[#0E1117] text-gray-400 uppercase font-mono tracking-wider border-b border-[#30363D]">
+                  <tr>
+                    <th className="py-3.5 px-6 font-bold text-[#FF9100] text-base w-2/5">
+                      {playerAName} ({stageA.slice(2, 9)})
+                    </th>
+                    <th className="py-3.5 px-4 font-bold text-white text-xs w-1/5">指標項目</th>
+                    <th className="py-3.5 px-6 font-bold text-[#00E676] text-base w-2/5">
+                      {playerBName} ({stageB.slice(2, 9)})
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#21262D] font-mono">
+                  {compareList.map((item, idx) => {
+                    const a = item.valA ?? 0;
+                    const b = item.valB ?? 0;
+                    const aWins = item.lowerIsBetter ? a < b : a > b;
+                    const bWins = item.lowerIsBetter ? b < a : b > a;
+
+                    return (
+                      <tr key={idx} className="hover:bg-[#21262D]/60 transition-colors">
+                        <td
+                          className={`py-3.5 px-6 text-right font-black ${
+                            aWins ? 'text-[#FF9100] bg-[#FF9100]/10 text-base' : 'text-gray-300'
+                          }`}
+                        >
+                          <span className="inline-flex items-center">
+                            {item.valA !== undefined ? item.format(item.valA) : '-'}
+                            <PRTag pr={item.prA} />
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-gray-400 font-sans font-bold text-xs">
+                          {item.label}
+                        </td>
+                        <td
+                          className={`py-3.5 px-6 text-left font-black ${
+                            bWins ? 'text-[#00E676] bg-[#00E676]/10 text-base' : 'text-gray-300'
+                          }`}
+                        >
+                          <span className="inline-flex items-center">
+                            {item.valB !== undefined ? item.format(item.valB) : '-'}
+                            <PRTag pr={item.prB} />
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="max-w-2xl mx-auto rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl overflow-hidden">
+              <div className="bg-[#0E1117] py-3.5 px-6 border-b border-[#30363D] flex justify-between items-center">
+                <span className="text-sm font-black text-white">指標項目</span>
+                <span className="text-sm font-black text-[#FF9100] font-mono">
+                  {playerAName} 數據表現
+                </span>
+              </div>
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <tbody className="divide-y divide-[#21262D]">
+                  {compareList.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-[#21262D]/40 transition-colors">
+                      <td className="py-3 px-6 text-gray-300 font-medium">
                         {item.label}
                       </td>
-                      <td
-                        className={`py-3.5 px-6 text-left font-black ${
-                          bWins ? 'text-[#00E676] bg-[#00E676]/10 text-base' : 'text-gray-300'
-                        }`}
-                      >
-                        <span className="inline-flex items-center">
-                          {item.valB !== undefined ? item.format(item.valB) : '-'}
-                          <PRTag pr={item.prB} />
-                        </span>
+                      <td className="py-3 px-6 text-right font-mono font-black text-white text-base">
+                        <div className="inline-flex items-center justify-end">
+                          {item.valA !== undefined ? item.format(item.valA) : '-'}
+                          <PRTag pr={item.prA} />
+                        </div>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="max-w-2xl mx-auto rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl overflow-hidden">
-            <div className="bg-[#0E1117] py-3.5 px-6 border-b border-[#30363D] flex justify-between items-center">
-              <span className="text-sm font-black text-white">指標項目</span>
-              <span className="text-sm font-black text-[#FF9100] font-mono">
-                {playerAName} 數據表現
-              </span>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <tbody className="divide-y divide-[#21262D]">
-                {compareList.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-[#21262D]/40 transition-colors">
-                    <td className="py-3 px-6 text-gray-300 font-medium">
-                      {item.label}
-                    </td>
-                    <td className="py-3 px-6 text-right font-mono font-black text-white text-base">
-                      <div className="inline-flex items-center justify-end">
-                        {item.valA !== undefined ? item.format(item.valA) : '-'}
-                        <PRTag pr={item.prA} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      )}
 
       {/* 質化短評對比 */}
       <section className={`grid grid-cols-1 ${playerB ? 'md:grid-cols-2' : 'md:grid-cols-2 max-w-4xl mx-auto'} gap-6 pt-2`}>
@@ -994,7 +1101,6 @@ function PlayerCardsContent() {
       {/* ========== 最底部：全聯盟球員 PR 排行榜 (預設收合 + 凍結表頭) ========== */}
       <section className="pt-8">
         <div className="rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl overflow-hidden transition-all">
-          {/* 折疊切換條 */}
           <button
             onClick={() => setIsRankingsOpen(!isRankingsOpen)}
             className="w-full px-6 py-5 flex items-center justify-between bg-[#0E1117] hover:bg-[#12161F] transition-colors border-b border-[#30363D]"
@@ -1014,7 +1120,6 @@ function PlayerCardsContent() {
             </div>
           </button>
 
-          {/* 總表本體：內部可滑動，表頭凍結 (sticky top-0) */}
           {isRankingsOpen && (
             <div className="p-4 sm:p-6 overflow-x-auto max-h-[600px] overflow-y-auto relative">
               <div className="text-xs text-gray-400 pb-3 font-mono flex items-center justify-between">
@@ -1022,7 +1127,6 @@ function PlayerCardsContent() {
                 <span className="text-amber-400/80">依綜合戰力 GmSc 降序排列 • 點擊任一行可切換為球員 A</span>
               </div>
               <table className="w-full text-left text-xs font-mono border-collapse whitespace-nowrap">
-                {/* 凍結欄位列 (Sticky Header) - 採用實心深底 #0E1117，避免透底，高對比亮白與金黃色 */}
                 <thead className="sticky top-0 z-30 bg-[#0E1117] border-b-2 border-[#30363D] shadow-lg">
                   <tr className="text-xs font-black tracking-wider uppercase">
                     <th className="py-3.5 px-3 text-slate-400">#</th>
@@ -1069,31 +1173,26 @@ function PlayerCardsContent() {
                         <td className="py-3 px-3 text-center text-gray-300">{p.games_played}</td>
                         <td className="py-3 px-3 text-center text-gray-300">{p.mpg} 分</td>
 
-                        {/* 得分 */}
                         <td className="py-3 px-3 text-right">
                           <span className="text-white font-bold">{p.badges?.PTS?.val ?? '-'}</span>
                           <PRTag pr={p.badges?.PTS?.pr} />
                         </td>
 
-                        {/* 籃板 */}
                         <td className="py-3 px-3 text-right">
                           <span className="text-white font-bold">{p.badges?.REB?.val ?? '-'}</span>
                           <PRTag pr={p.badges?.REB?.pr} />
                         </td>
 
-                        {/* 助攻 */}
                         <td className="py-3 px-3 text-right">
                           <span className="text-white font-bold">{p.badges?.AST?.val ?? '-'}</span>
                           <PRTag pr={p.badges?.AST?.pr} />
                         </td>
 
-                        {/* TS% */}
                         <td className="py-3 px-3 text-right">
                           <span className="text-amber-300 font-bold">{p.badges?.['TS%']?.val ?? '-'}%</span>
                           <PRTag pr={p.badges?.['TS%']?.pr} />
                         </td>
 
-                        {/* GmSc */}
                         <td className="py-3 px-3 text-right">
                           <span className="text-[#FF9100] font-black text-sm">{p.badges?.GmSC?.val ?? '-'}</span>
                           <PRTag pr={p.badges?.GmSC?.pr} />
