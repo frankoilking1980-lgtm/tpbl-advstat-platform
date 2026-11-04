@@ -7,6 +7,9 @@ import { Analytics } from '@vercel/analytics/next';
 export const metadata: Metadata = {
   title: 'TPBL 進階數據平台・AdvStats Pro',
   description: '臺灣職業籃球大聯盟 (TPBL) 7隊戰力評級、進階四要素、On/Off 陣容與主力效率象限分析系統',
+  verification: {
+    google: 'Av2GvObWa85K-jKwCLdf-4QQ-79j3hA_w0SbXSew6oI',
+  },
 };
 
 export default function RootLayout({
