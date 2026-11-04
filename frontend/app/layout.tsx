@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import { StageProvider } from '@/context/StageContext';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'TPBL 進階數據平台・AdvStats Pro',
@@ -36,6 +37,7 @@ export default function RootLayout({
             </footer>
           </div>
         </StageProvider>
+        <Analytics />
       </body>
     </html>
   );
