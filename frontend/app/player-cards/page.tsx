@@ -258,6 +258,57 @@ function PRTag({ pr }: { pr?: number }) {
   );
 }
 
+// 情境六維雷達演算法
+function calculateSituationalRadar(playerInfo?: PlayerInfo, situations?: PlayerSituationsData) {
+  if (!playerInfo) {
+    return { iso: 50, transition: 50, clutch: 50, paint: 50, ftr: 50, tov_ctrl: 50 };
+  }
+
+  const ppg = Number(playerInfo.ppg || 0);
+  const usg = Number(playerInfo.usg_pct || 0);
+  const ts = Number(playerInfo.ts_pct || 0);
+  const rpg = Number(playerInfo.rpg || 0);
+  const spg = Number(playerInfo.spg || 0);
+  const tpg = Number(playerInfo.tpg || 1.5);
+
+  const q4Data = (situations as any)?.q4;
+  const q4Ppg = Number(q4Data?.ppg || (situations as any)?.q4_ppg || ppg * 0.25);
+  const q4Ts = Number(q4Data?.ts_pct || (situations as any)?.q4_ts_pct || ts);
+
+  const fbData = (situations as any)?.fast_break;
+  const fbPpg = Number(fbData?.ppg || (situations as any)?.fast_break_ppg || spg * 2.0);
+
+  const paintData = (situations as any)?.paint;
+  const paintPpg = Number(paintData?.ppg || (situations as any)?.paint_ppg || (playerInfo.position?.includes('C') ? 10.0 : 6.0));
+
+  // 1. 單打終結 (USG% 與 TS% 綜合評分，基準 USG 28% 與 TS 58% 為 90分)
+  const isoScore = Math.min(99, Math.max(30, Math.round((usg / 28.0) * 50 + (ts / 58.0) * 45)));
+
+  // 2. 快攻反擊推動 (快攻得分 5 分為 90 分)
+  const transScore = Math.min(99, Math.max(30, Math.round((fbPpg / 5.0) * 85 + (spg / 2.0) * 15)));
+
+  // 3. 末節決勝抗壓 (第四節得分 6 分 + TS 58% 為 90分)
+  const clutchScore = Math.min(99, Math.max(30, Math.round((q4Ppg / 6.0) * 60 + (q4Ts / 58.0) * 35)));
+
+  // 4. 禁區殺傷衝擊 (禁區得分 10 分 + 籃板為 90分)
+  const paintScore = Math.min(99, Math.max(30, Math.round((paintPpg / 10.0) * 65 + (rpg / 10.0) * 30)));
+
+  // 5. 造犯規殺傷 (場均得分與出手比例估計)
+  const ftrScore = Math.min(99, Math.max(30, Math.round((ppg / 22.0) * 60 + (usg / 25.0) * 35)));
+
+  // 6. 球權保護度 (逆向計算，失誤越低評分越高，場均失誤 1.0 為 95分，3.5 為 40分)
+  const tovCtrlScore = Math.min(99, Math.max(25, Math.round(100 - (tpg / 3.5) * 55)));
+
+  return {
+    iso: isoScore,
+    transition: transScore,
+    clutch: clutchScore,
+    paint: paintScore,
+    ftr: ftrScore,
+    tov_ctrl: tovCtrlScore,
+  };
+}
+
 function PlayerCardsContent() {
   const { stage: globalStage } = useStage();
   const searchParams = useSearchParams();
@@ -274,6 +325,9 @@ function PlayerCardsContent() {
 
   // Tab 狀態：'overview' (綜合) | 'scoring' (得分情境與終結) | 'q4' (末節抗壓)
   const [cardTab, setCardTab] = useState<'overview' | 'scoring' | 'q4'>('overview');
+
+  // 雷達圖模式切換：'traditional' (傳統六維) | 'situational' (情境高階六維)
+  const [radarMode, setRadarMode] = useState<'traditional' | 'situational'>('traditional');
 
   // PR 排名總表狀態
   const [isRankingsOpen, setIsRankingsOpen] = useState(false);
@@ -425,6 +479,15 @@ function PlayerCardsContent() {
     return determinePlayerArchetypes(cardB?.player_info, sitPlayerB);
   }, [cardB, sitPlayerB]);
 
+  // 情境六維雷達指標數值
+  const sitRadarA = useMemo(() => {
+    return calculateSituationalRadar(cardA?.player_info, sitPlayerA);
+  }, [cardA, sitPlayerA]);
+
+  const sitRadarB = useMemo(() => {
+    return calculateSituationalRadar(cardB?.player_info, sitPlayerB);
+  }, [cardB, sitPlayerB]);
+
   // 滾動至 PR 排名總表
   const scrollToPlayerInRankings = (name: string) => {
     if (!name) return;
@@ -481,7 +544,8 @@ function PlayerCardsContent() {
     window.scrollTo({ top: 120, behavior: 'smooth' });
   };
 
-  const radarDims = [
+  // 傳統 vs 情境 六維頂點配置
+  const traditionalDims = [
     { key: 'scoring', label: '得分 (Scoring)' },
     { key: 'shooting', label: '投射 (Shooting)' },
     { key: 'playmaking', label: '組織 (Playmaking)' },
@@ -489,6 +553,17 @@ function PlayerCardsContent() {
     { key: 'defense', label: '防守 (Defense)' },
     { key: 'efficiency', label: '效率 (Efficiency)' },
   ];
+
+  const situationalDims = [
+    { key: 'iso', label: '單打 (Iso Score)' },
+    { key: 'transition', label: '快攻 (Transition)' },
+    { key: 'clutch', label: '末節 (Q4 Clutch)' },
+    { key: 'paint', label: '禁區 (Paint Attack)' },
+    { key: 'ftr', label: '造犯 (Foul Draw)' },
+    { key: 'tov_ctrl', label: '護球 (Ball Security)' },
+  ];
+
+  const currentDims = radarMode === 'traditional' ? traditionalDims : situationalDims;
 
   const center = 200;
   const radius = 145;
@@ -502,26 +577,47 @@ function PlayerCardsContent() {
   };
 
   const polyA = useMemo(() => {
-    if (!cardA?.radar) return '';
-    return radarDims
-      .map((d, i) => {
-        const val = cardA.radar[d.key as keyof typeof cardA.radar] || 50;
-        const { x, y } = getCoordinates(val, i);
-        return `${x},${y}`;
-      })
-      .join(' ');
-  }, [cardA]);
+    if (radarMode === 'traditional') {
+      if (!cardA?.radar) return '';
+      return traditionalDims
+        .map((d, i) => {
+          const val = cardA.radar[d.key as keyof typeof cardA.radar] || 50;
+          const { x, y } = getCoordinates(val, i);
+          return `${x},${y}`;
+        })
+        .join(' ');
+    } else {
+      return situationalDims
+        .map((d, i) => {
+          const val = sitRadarA[d.key as keyof typeof sitRadarA] || 50;
+          const { x, y } = getCoordinates(val, i);
+          return `${x},${y}`;
+        })
+        .join(' ');
+    }
+  }, [cardA, radarMode, sitRadarA]);
 
   const polyB = useMemo(() => {
-    if (!cardB?.radar || !playerB) return '';
-    return radarDims
-      .map((d, i) => {
-        const val = cardB.radar[d.key as keyof typeof cardB.radar] || 50;
-        const { x, y } = getCoordinates(val, i);
-        return `${x},${y}`;
-      })
-      .join(' ');
-  }, [cardB, playerB]);
+    if (!playerB) return '';
+    if (radarMode === 'traditional') {
+      if (!cardB?.radar) return '';
+      return traditionalDims
+        .map((d, i) => {
+          const val = cardB.radar[d.key as keyof typeof cardB.radar] || 50;
+          const { x, y } = getCoordinates(val, i);
+          return `${x},${y}`;
+        })
+        .join(' ');
+    } else {
+      return situationalDims
+        .map((d, i) => {
+          const val = sitRadarB[d.key as keyof typeof sitRadarB] || 50;
+          const { x, y } = getCoordinates(val, i);
+          return `${x},${y}`;
+        })
+        .join(' ');
+    }
+  }, [cardB, playerB, radarMode, sitRadarB]);
 
   const compareList = [
     { label: '場均得分', valA: cardA?.player_info.ppg, valB: cardB?.player_info.ppg, prA: prPlayerA?.badges?.PTS?.pr, prB: prPlayerB?.badges?.PTS?.pr, format: (v: number) => v.toFixed(1) },
@@ -769,7 +865,9 @@ function PlayerCardsContent() {
                     <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
                     <div className="flex items-center">
                       <span className="text-amber-300 font-bold whitespace-nowrap">
-                        {cardA?.player_info.ts_pct !== undefined ? `${cardA.player_info.ts_pct}%` : '-'}
+                        {cardA?.player_info.ts_pct !== undefined 
+						  ? `${(cardA.player_info.ts_pct <= 1 ? cardA.player_info.ts_pct * 100 : cardA.player_info.ts_pct).toFixed(1)}%` 
+						  : '-'}
                       </span>
                       <PRTag pr={prPlayerA?.badges?.['TS%']?.pr} />
                     </div>
@@ -784,9 +882,38 @@ function PlayerCardsContent() {
                 </div>
               </div>
 
-              {/* 中間六維雷達圖 (精準定寬置中) */}
-              <div className="w-full sm:w-[360px] 2xl:w-[400px] p-5 2xl:p-6 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center shrink-0 min-h-[420px]">
-                <div className="w-full flex items-center justify-center space-x-4 text-xs font-bold pb-2">
+              {/* 中間六維雷達圖 (含傳統/情境維度動態切換) */}
+              <div className="w-full sm:w-[380px] 2xl:w-[420px] p-5 2xl:p-6 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center shrink-0 min-h-[460px]">
+                {/* 頂部維度切換開關 */}
+                <div className="w-full flex items-center justify-between pb-2 border-b border-[#21262D]">
+                  <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-[#FF9100]" /> 雷達維度模型
+                  </span>
+                  <div className="inline-flex p-0.5 rounded-lg bg-[#0E1117] border border-[#30363D]">
+                    <button
+                      onClick={() => setRadarMode('traditional')}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                        radarMode === 'traditional'
+                          ? 'bg-[#FF9100] text-black shadow-sm'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      傳統基礎
+                    </button>
+                    <button
+                      onClick={() => setRadarMode('situational')}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
+                        radarMode === 'situational'
+                          ? 'bg-purple-500 text-white shadow-sm'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      情境高階
+                    </button>
+                  </div>
+                </div>
+
+                <div className="w-full flex items-center justify-center space-x-4 text-xs font-bold pt-2 pb-1">
                   <div className="flex items-center space-x-1.5 text-[#FF9100] whitespace-nowrap">
                     <span className="w-2.5 h-2.5 rounded-full bg-[#FF9100] flex-shrink-0" />
                     <span className="font-black text-sm">{playerAName}</span>
@@ -805,7 +932,7 @@ function PlayerCardsContent() {
                 <div className="w-full flex-1 flex items-center justify-center py-2">
                   <svg viewBox="0 0 400 400" className="w-full max-w-[320px] sm:max-w-[350px] h-auto select-none">
                     {[0.25, 0.5, 0.75, 1.0].map((scale) => {
-                      const points = radarDims
+                      const points = currentDims
                         .map((_, i) => {
                           const angle = (Math.PI / 3) * i - Math.PI / 2;
                           const r = radius * scale;
@@ -824,7 +951,7 @@ function PlayerCardsContent() {
                       );
                     })}
 
-                    {radarDims.map((_, i) => {
+                    {currentDims.map((_, i) => {
                       const angle = (Math.PI / 3) * i - Math.PI / 2;
                       const x = center + radius * Math.cos(angle);
                       const y = center + radius * Math.sin(angle);
@@ -861,17 +988,17 @@ function PlayerCardsContent() {
                       />
                     )}
 
-                    {radarDims.map((d, i) => {
+                    {currentDims.map((d, i) => {
                       const angle = (Math.PI / 3) * i - Math.PI / 2;
-                      const lx = center + (radius + 25) * Math.cos(angle);
+                      const lx = center + (radius + 26) * Math.cos(angle);
                       const ly = center + (radius + 18) * Math.sin(angle);
                       return (
                         <text
                           key={d.key}
                           x={lx}
                           y={ly + 4}
-                          fill="#94A3B8"
-                          fontSize="12"
+                          fill={radarMode === 'situational' ? '#C084FC' : '#94A3B8'}
+                          fontSize="11"
                           fontWeight="bold"
                           textAnchor="middle"
                         >
@@ -1046,8 +1173,37 @@ function PlayerCardsContent() {
                 </div>
               </div>
 
-              <div className="flex-1 w-full max-w-xl p-6 sm:p-7 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center min-h-[420px]">
-                <div className="flex items-center space-x-2 text-xs sm:text-sm font-bold pb-2 text-[#FF9100] whitespace-nowrap">
+              <div className="flex-1 w-full max-w-xl p-6 sm:p-7 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center min-h-[460px]">
+                {/* 頂部維度切換開關 */}
+                <div className="w-full flex items-center justify-between pb-2 border-b border-[#21262D]">
+                  <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-[#FF9100]" /> 雷達維度模型
+                  </span>
+                  <div className="inline-flex p-0.5 rounded-lg bg-[#0E1117] border border-[#30363D]">
+                    <button
+                      onClick={() => setRadarMode('traditional')}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                        radarMode === 'traditional'
+                          ? 'bg-[#FF9100] text-black shadow-sm'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      傳統基礎六維
+                    </button>
+                    <button
+                      onClick={() => setRadarMode('situational')}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                        radarMode === 'situational'
+                          ? 'bg-purple-500 text-white shadow-sm'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      情境高階六維
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 text-xs sm:text-sm font-bold pt-2 pb-1 text-[#FF9100] whitespace-nowrap">
                   <span className="w-3 h-3 rounded-full bg-[#FF9100]" />
                   <span className="font-black text-sm">{playerAName}</span>
                   <span className="text-[11px] opacity-75 font-mono">({stageA.slice(2, 9)})</span>
@@ -1056,7 +1212,7 @@ function PlayerCardsContent() {
                 <div className="w-full flex-1 flex items-center justify-center py-2">
                   <svg viewBox="0 0 400 400" className="w-full max-w-[380px] h-auto select-none">
                     {[0.25, 0.5, 0.75, 1.0].map((scale) => {
-                      const points = radarDims
+                      const points = currentDims
                         .map((_, i) => {
                           const angle = (Math.PI / 3) * i - Math.PI / 2;
                           const r = radius * scale;
@@ -1075,7 +1231,7 @@ function PlayerCardsContent() {
                       );
                     })}
 
-                    {radarDims.map((_, i) => {
+                    {currentDims.map((_, i) => {
                       const angle = (Math.PI / 3) * i - Math.PI / 2;
                       const x = center + radius * Math.cos(angle);
                       const y = center + radius * Math.sin(angle);
@@ -1102,17 +1258,17 @@ function PlayerCardsContent() {
                       />
                     )}
 
-                    {radarDims.map((d, i) => {
+                    {currentDims.map((d, i) => {
                       const angle = (Math.PI / 3) * i - Math.PI / 2;
-                      const lx = center + (radius + 25) * Math.cos(angle);
+                      const lx = center + (radius + 26) * Math.cos(angle);
                       const ly = center + (radius + 18) * Math.sin(angle);
                       return (
                         <text
                           key={d.key}
                           x={lx}
                           y={ly + 4}
-                          fill="#94A3B8"
-                          fontSize="12"
+                          fill={radarMode === 'situational' ? '#C084FC' : '#94A3B8'}
+                          fontSize="11"
                           fontWeight="bold"
                           textAnchor="middle"
                         >
