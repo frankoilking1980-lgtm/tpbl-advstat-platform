@@ -27,7 +27,6 @@ interface MascotSetting {
 }
 
 const MASCOTS_MAP: Record<string, MascotSetting> = {
-  // 1. 新北國王 -> Hiro (頭部皇冠與權杖向上破格，立體站立於右側)
   '新北國王': {
     id: 'Hiro',
     name: 'Hiro',
@@ -36,8 +35,6 @@ const MASCOTS_MAP: Record<string, MascotSetting> = {
     imgClass: 'scale-110 object-contain',
     glowColor: 'rgba(255, 193, 7, 0.45)',
   },
-
-  // 2. 新竹御頂攻城獅 -> Ready (雷迪比 YA 大頭，正面展示)
   '新竹御頂攻城獅': {
     id: 'Ready',
     name: 'Ready',
@@ -46,8 +43,6 @@ const MASCOTS_MAP: Record<string, MascotSetting> = {
     imgClass: 'scale-105 object-contain',
     glowColor: 'rgba(168, 85, 247, 0.45)',
   },
-
-  // 3. 高雄全家海神 -> Brownie (海浪側身向前俯衝動作)
   '高雄全家海神': {
     id: 'Brownie',
     name: 'Brownie',
@@ -56,8 +51,6 @@ const MASCOTS_MAP: Record<string, MascotSetting> = {
     imgClass: 'scale-105 object-contain',
     glowColor: 'rgba(14, 165, 233, 0.45)',
   },
-
-  // 4. 桃園台啤永豐雲豹 -> LeopardBro (修長站姿展現長腿)
   '桃園台啤永豐雲豹': {
     id: 'LeopardBro',
     name: 'LeopardBro',
@@ -66,8 +59,6 @@ const MASCOTS_MAP: Record<string, MascotSetting> = {
     imgClass: 'scale-115 object-contain',
     glowColor: 'rgba(132, 204, 22, 0.45)',
   },
-
-  // 5. 臺北台新戰神 -> Richart (紅帽披風站姿)
   '臺北台新戰神': {
     id: 'Richart',
     name: 'Richart',
@@ -76,8 +67,6 @@ const MASCOTS_MAP: Record<string, MascotSetting> = {
     imgClass: 'scale-110 object-contain',
     glowColor: 'rgba(239, 68, 68, 0.45)',
   },
-
-  // 6. 新北中信特攻 -> Thunder (金黃戰甲特警，立體站姿)
   '新北中信特攻': {
     id: 'Thunder',
     name: 'Thunder',
@@ -86,8 +75,6 @@ const MASCOTS_MAP: Record<string, MascotSetting> = {
     imgClass: 'scale-115 object-contain',
     glowColor: 'rgba(234, 179, 8, 0.45)',
   },
-
-  // 7. 福爾摩沙夢想家 -> Unicorn (綠色獨角獸正面站姿)
   '福爾摩沙夢想家': {
     id: 'Unicorn',
     name: 'Unicorn',
@@ -194,14 +181,15 @@ const fx = (v: unknown, d = 1): string => {
   if (!isNum(v)) return '-';
   return v.toFixed(d);
 };
-const pctStr = (v: unknown, d = 1): string => {
-  if (!isNum(v)) return '-';
-  return `${v.toFixed(d)}%`;
+
+const smartPctStr = (v: unknown, d = 1): string => {
+  if (v === undefined || v === null || v === '' || v === '-') return '-';
+  const num = typeof v === 'number' ? v : Number(v);
+  if (!Number.isFinite(num)) return '-';
+  const finalVal = Math.abs(num) > 2 ? num : num * 100;
+  return `${finalVal.toFixed(d)}%`;
 };
-const fracPctStr = (v: unknown, d = 1): string => {
-  if (!isNum(v)) return '-';
-  return `${(v * 100).toFixed(d)}%`;
-};
+
 const signed = (n: number | null | undefined, d = 1): string => {
   if (!isNum(n)) return '-';
   return `${n > 0 ? '+' : ''}${n.toFixed(d)}`;
@@ -209,6 +197,21 @@ const signed = (n: number | null | undefined, d = 1): string => {
 const signColor = (n: number | null | undefined): string => {
   if (!isNum(n) || n === 0) return 'text-gray-400';
   return n > 0 ? 'text-[#00E676]' : 'text-red-400';
+};
+
+const parseSeconds = (seconds?: number, minutesStr?: string): number => {
+  if (isNum(seconds) && seconds > 0) return seconds;
+  if (typeof minutesStr === 'string' && minutesStr.includes(':')) {
+    const [m, s] = minutesStr.split(':').map(Number);
+    if (!isNaN(m) && !isNaN(s)) return m * 60 + s;
+  }
+  return 0;
+};
+
+const staticJsonFetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  return res.json();
 };
 
 /* ------------------------------------------------------------------ */
@@ -227,7 +230,7 @@ export default function PBPPage() {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
 
-  // 獨立球員完整進階數據來源
+  // 獨立球員完整進階數據來源 (球隊專屬)
   const { data: teamPlayersData, isLoading: playersLoading } = useSWR<TeamBoxPlayer[]>(
     activeSubTab === 'boxscore'
       ? `/api/teams/${encodeURIComponent(selectedTeam)}/players?stage=${encodeURIComponent(stage)}`
@@ -236,6 +239,51 @@ export default function PBPPage() {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
 
+  // 與球員戰力卡 (PlayerCardsPage) 完全相同的權威進階數據 API
+  const { data: advPlayers } = useSWR< any[] >(
+    activeSubTab === 'boxscore'
+      ? `/api/players/advanced?stage=${encodeURIComponent(stage)}`
+      : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  );
+
+  // 備援權威靜態 PR 數據表
+  const { data: prStatsData } = useSWR<any>(
+    activeSubTab === 'boxscore' ? '/player_pr_stats.json' : null,
+    staticJsonFetcher,
+    { revalidateOnFocus: false }
+  );
+
+  // 建立與球員卡 100% 同步的 USG% 權威對照表
+  const authoritativeUsgMap = useMemo(() => {
+    const map = new Map<string, number>();
+
+    // 1. 先從 PR 靜態表提取 (當賽季相符時)
+    const prStage = prStatsData?.meta?.stage || '2026-2027 例行賽';
+    if (prStatsData?.players && stage === prStage) {
+      Object.entries(prStatsData.players).forEach(([name, pData]: [string, any]) => {
+        const val = pData?.badges?.['USG%']?.val;
+        if (isNum(val) && val > 0 && val !== 20) {
+          map.set(name.trim(), val);
+        }
+      });
+    }
+
+    // 2. 再從 /api/players/advanced 權威列表覆蓋 (球員戰力卡主資料源)
+    if (Array.isArray(advPlayers)) {
+      advPlayers.forEach((p) => {
+        const name = (p.player_name || p.name || '').trim();
+        const usg = Number(p.usg_pct ?? p.usg ?? 0);
+        if (name && Number.isFinite(usg) && usg > 0 && usg !== 20) {
+          map.set(name, usg);
+        }
+      });
+    }
+
+    return map;
+  }, [advPlayers, prStatsData, stage]);
+
   // 聚合球員列表
   const playerList = useMemo(() => {
     if (Array.isArray(teamPlayersData) && teamPlayersData.length > 0) return teamPlayersData;
@@ -243,6 +291,22 @@ export default function PBPPage() {
     if (Array.isArray(data?.player_stats) && data.player_stats.length > 0) return data.player_stats;
     return [];
   }, [teamPlayersData, data]);
+
+  // 全隊進攻總量統計 (僅供未出現在進階名單的邊緣替補球員做保底計算)
+  const teamTotals = useMemo(() => {
+    return playerList.reduce(
+      (acc, p) => {
+        const gp = p.games_played && p.games_played > 0 ? p.games_played : 1;
+        const pSec = parseSeconds(p.seconds, p.minutes);
+        acc.total_fga += (p.fga || 0) * gp;
+        acc.total_fta += (p.fta || 0) * gp;
+        acc.total_tov += (p.tov || 0) * gp;
+        acc.total_seconds += pSec * gp;
+        return acc;
+      },
+      { total_fga: 0, total_fta: 0, total_tov: 0, total_seconds: 0 }
+    );
+  }, [playerList]);
 
   const teams = [
     '新北國王',
@@ -259,13 +323,10 @@ export default function PBPPage() {
 
   return (
     <div className="space-y-10">
-      {/* 頂部預留 pt-10，讓吉祥物上方皇冠/耳朵穿透卡片邊界 */}
       <div className="pt-10">
         <div className="relative rounded-3xl border border-[#30363D] bg-gradient-to-r from-[#161B22] via-[#161B22] to-[#0E1117] p-6 sm:p-8 shadow-2xl">
-          {/* 背景氛圍光效 */}
           <div className="absolute top-0 right-1/4 w-80 h-80 bg-[#FF9100]/10 rounded-full blur-3xl pointer-events-none" />
 
-          {/* 前景文字與球隊切換按鈕區 */}
           <div className="relative z-20 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pr-0 lg:pr-72">
             <div className="space-y-2 max-w-xl">
               <div className="flex items-center space-x-2">
@@ -282,7 +343,6 @@ export default function PBPPage() {
               </p>
             </div>
 
-            {/* 球隊切換按鈕 */}
             <div className="inline-flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-[#0E1117]/90 border border-[#30363D] shadow-xl backdrop-blur-md max-w-sm shrink-0">
               {teams.map((t) => (
                 <button
@@ -300,7 +360,6 @@ export default function PBPPage() {
             </div>
           </div>
 
-          {/* 吉祥物立體去背展示層 */}
           {currentMascot && (
             <div
               key={currentMascot.id}
@@ -371,7 +430,6 @@ export default function PBPPage() {
         </button>
       </div>
 
-      {/* 內容區塊 */}
       {isLoading ? (
         <div className="p-16 text-center text-gray-500 font-medium">正在載入 {selectedTeam} PBP 數據...</div>
       ) : (
@@ -631,6 +689,30 @@ export default function PBPPage() {
                           const tpStr = isNum(p.tpm) && isNum(p.tpa) ? `${p.tpm}/${p.tpa}` : '-';
                           const ftStr = isNum(p.ftm) && isNum(p.fta) ? `${p.ftm}/${p.fta}` : '-';
 
+                          // 1. 優先從與球員戰力卡相同的權威來源 (/api/players/advanced) 同步 USG%
+                          const cleanName = (p.player_name || '').trim();
+                          let finalUsg: number | string | undefined = authoritativeUsgMap.get(cleanName);
+
+                          // 2. 若該球員本身已有非 20.0 的有效數值則採用
+                          if (finalUsg === undefined && isNum(p.usg_pct) && p.usg_pct > 0 && p.usg_pct !== 20) {
+                            finalUsg = p.usg_pct;
+                          }
+
+                          // 3. 保底機制：若未出現在權威清單中，使用加權公式動態推算
+                          if (finalUsg === undefined) {
+                            const pSec = parseSeconds(p.seconds, p.minutes);
+                            const gp = p.games_played && p.games_played > 0 ? p.games_played : 1;
+                            if (pSec > 0) {
+                              const teamPoss = teamTotals.total_fga + 0.44 * teamTotals.total_fta + teamTotals.total_tov;
+                              const playerTotalItems = ((p.fga || 0) + 0.44 * (p.fta || 0) + (p.tov || 0)) * gp;
+                              const playerTotalSec = pSec * gp;
+                              if (teamPoss > 0 && teamTotals.total_seconds > 0 && playerTotalSec > 0) {
+                                finalUsg =
+                                  ((playerTotalItems * (teamTotals.total_seconds / 5)) / (playerTotalSec * teamPoss)) * 100;
+                              }
+                            }
+                          }
+
                           return (
                             <tr key={p.id ?? idx} className="hover:bg-[#21262D]/60 transition-colors group">
                               <td className="py-3 px-4 sticky left-0 bg-[#161B22] group-hover:bg-[#1C2128] font-sans font-bold text-white z-10 border-r border-[#21262D]/40">
@@ -672,9 +754,9 @@ export default function PBPPage() {
                               <td className={`py-3 px-3 text-right font-bold ${signColor(p.plus_minus)}`}>
                                 {signed(p.plus_minus, 0)}
                               </td>
-                              <td className="py-3 px-3 text-right text-[#FF9100]">{fracPctStr(p.efg_pct)}</td>
-                              <td className="py-3 px-3 text-right text-[#FF9100]">{fracPctStr(p.ts_pct)}</td>
-                              <td className="py-3 px-3 text-right text-[#00E676] font-bold">{pctStr(p.usg_pct)}</td>
+                              <td className="py-3 px-3 text-right text-[#FF9100]">{smartPctStr(p.efg_pct)}</td>
+                              <td className="py-3 px-3 text-right text-[#FF9100]">{smartPctStr(p.ts_pct)}</td>
+                              <td className="py-3 px-3 text-right text-[#00E676] font-bold">{smartPctStr(finalUsg)}</td>
                               <td className="py-3 px-3 text-right text-[#00E676] font-bold">{fx(p.gmsc)}</td>
                               <td className="py-3 px-3 text-right text-sky-400">{fx(p.ortg)}</td>
                               <td className="py-3 px-3 text-right text-sky-400">{fx(p.drtg)}</td>
