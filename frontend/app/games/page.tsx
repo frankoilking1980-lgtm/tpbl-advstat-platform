@@ -6,7 +6,21 @@ import { useStage } from '@/context/StageContext';
 import { fetcher } from '@/lib/api';
 import ScoreBanner from '@/components/ScoreBanner';
 import { PlayerLink } from '@/components/PlayerLink';
-import { Calendar, Swords, Users, Zap, Crosshair, Table2, RefreshCw, Filter } from 'lucide-react';
+import {
+  Calendar,
+  Swords,
+  Users,
+  Zap,
+  Crosshair,
+  Table2,
+  RefreshCw,
+  Filter,
+  BarChart3,
+  SlidersHorizontal,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react';
 import type {
   GameListItem,
   DetailedGameData,
@@ -24,8 +38,16 @@ import type {
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const toNum = (v: unknown): number => (isNum(v) ? v : 0);
 const fx = (v: unknown, d = 1): string => (isNum(v) ? v.toFixed(d) : '-');
+
+const smartPctStr = (v: unknown, d = 1): string => {
+  if (v === undefined || v === null || v === '' || v === '-') return '-';
+  const num = typeof v === 'number' ? v : Number(v);
+  if (!Number.isFinite(num)) return '-';
+  const finalVal = Math.abs(num) > 2 ? num : num * 100;
+  return `${finalVal.toFixed(d)}%`;
+};
+
 const pctStr = (v: unknown, d = 1): string => (isNum(v) ? `${v.toFixed(d)}%` : '-');
-const fracPctStr = (v: unknown, d = 1): string => (isNum(v) ? `${(v * 100).toFixed(d)}%` : '-');
 const pct1 = (v: number) => pctStr(v, 1);
 const num1 = (v: number) => fx(v, 1);
 
@@ -206,10 +228,10 @@ function MetricsPanel({ items, away, home }: { items: MetricComparisonItem[]; aw
 }
 
 /* ------------------------------------------------------------------ */
-/* 結構化對稱表格（五人名單自適應寬度不截斷）                             */
+/* 結構化對稱表格                                                     */
 /* ------------------------------------------------------------------ */
 
-/** 表格 1：單場最佳陣容與核心搭檔效益 (五人名單維持純文字展示) */
+/** 表格 1：單場最佳陣容與核心搭檔效益 */
 function LineupPairTable({
   team,
   lineups,
@@ -429,7 +451,7 @@ function TacticsWowyTable({
   );
 }
 
-/** 表格 4：單場進階 Box Score */
+/** 表格 4：單場 Box Score (支援雙 Tab 切換、欄位排序與底部球隊加總 TOTALS) */
 function BoxScoreTable({
   team,
   players,
@@ -441,77 +463,429 @@ function BoxScoreTable({
   accent: 'amber' | 'emerald';
   stage?: string;
 }) {
+  const [viewMode, setViewMode] = useState<'traditional' | 'advanced'>('traditional');
+  const [sortField, setSortField] = useState<string>('pts');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // 全隊進攻總合 (計算 USG% 與球隊 TOTALS)
+  const teamTotals = useMemo(() => {
+    return players.reduce(
+      (acc, p) => {
+        acc.pts += p.pts || 0;
+        acc.fgm += p.fgm || 0;
+        acc.fga += p.fga || 0;
+        acc.tpm += p.tpm || 0;
+        acc.tpa += p.tpa || 0;
+        acc.ftm += p.ftm || 0;
+        acc.fta += p.fta || 0;
+        acc.orb += p.orb || 0;
+        acc.drb += p.drb || 0;
+        acc.reb += p.reb || 0;
+        acc.ast += p.ast || 0;
+        acc.stl += p.stl || 0;
+        acc.blk += p.blk || 0;
+        acc.tov += p.tov || 0;
+        acc.pf += p.pf || 0;
+        acc.plus_minus += p.plus_minus || 0;
+        acc.gmsc += p.gmsc || 0;
+        acc.seconds += p.seconds || 0;
+        return acc;
+      },
+      {
+        pts: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0,
+        orb: 0, drb: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0,
+        pf: 0, plus_minus: 0, gmsc: 0, seconds: 0,
+      }
+    );
+  }, [players]);
+
+  // 全隊高階效率總合指標
+  const teamAdvMetrics = useMemo(() => {
+    const { fgm, fga, tpm, tpa, ftm, fta, pts, orb, tov } = teamTotals;
+    const poss = fga + 0.44 * fta - orb + tov;
+    const efg = fga > 0 ? ((fgm + 0.5 * tpm) / fga) * 100 : 0;
+    const ts = (2 * (fga + 0.44 * fta)) > 0 ? (pts / (2 * (fga + 0.44 * fta))) * 100 : 0;
+    const threepar = fga > 0 ? (tpa / fga) * 100 : 0;
+    const ftr = fga > 0 ? (fta / fga) * 100 : 0;
+    const ortg = poss > 0 ? (pts / poss) * 100 : 0;
+
+    return { efg, ts, threepar, ftr, ortg };
+  }, [teamTotals]);
+
+  // 球員附加動態 USG% 與排序衍生資料
+  const processedPlayers = useMemo(() => {
+    const teamPossItems = teamTotals.fga + 0.44 * teamTotals.fta + teamTotals.tov;
+
+    return players.map((p) => {
+      const played = (p.seconds || 0) > 0;
+      let dynamicUsg = p.usg_pct;
+      if (
+        played &&
+        (dynamicUsg === undefined || dynamicUsg === null || dynamicUsg === 20 || dynamicUsg === 0)
+      ) {
+        const playerPossItems = (p.fga || 0) + 0.44 * (p.fta || 0) + (p.tov || 0);
+        if (teamPossItems > 0 && p.seconds > 0 && teamTotals.seconds > 0) {
+          dynamicUsg =
+            ((playerPossItems * (teamTotals.seconds / 5)) / (p.seconds * teamPossItems)) * 100;
+        }
+      }
+
+      const fgPct = (p.fga || 0) > 0 ? ((p.fgm || 0) / p.fga) * 100 : null;
+      const tpPct = (p.tpa || 0) > 0 ? ((p.tpm || 0) / p.tpa) * 100 : null;
+      const ftPct = (p.fta || 0) > 0 ? ((p.ftm || 0) / p.fta) * 100 : null;
+      const threepar = (p.fga || 0) > 0 ? ((p.tpa || 0) / p.fga) * 100 : null;
+      const ftr = (p.fga || 0) > 0 ? ((p.fta || 0) / p.fga) * 100 : null;
+
+      return {
+        ...p,
+        dynamicUsg,
+        fgPct,
+        tpPct,
+        ftPct,
+        threepar,
+        ftr,
+      };
+    });
+  }, [players, teamTotals]);
+
+  // 排序清單
+  const sortedPlayers = useMemo(() => {
+    return [...processedPlayers].sort((a, b) => {
+      // 0 分鐘球員永遠排在最後
+      if (a.seconds === 0 && b.seconds > 0) return 1;
+      if (b.seconds === 0 && a.seconds > 0) return -1;
+
+      let valA: number = 0;
+      let valB: number = 0;
+
+      switch (sortField) {
+        case 'player_name':
+          return sortDirection === 'asc'
+            ? a.player_name.localeCompare(b.player_name)
+            : b.player_name.localeCompare(a.player_name);
+        case 'seconds':
+          valA = a.seconds || 0;
+          valB = b.seconds || 0;
+          break;
+        case 'pts':
+          valA = a.pts || 0;
+          valB = b.pts || 0;
+          break;
+        case 'fgm':
+          valA = a.fgm || 0;
+          valB = b.fgm || 0;
+          break;
+        case 'fgPct':
+          valA = a.fgPct || 0;
+          valB = b.fgPct || 0;
+          break;
+        case 'tpm':
+          valA = a.tpm || 0;
+          valB = b.tpm || 0;
+          break;
+        case 'tpPct':
+          valA = a.tpPct || 0;
+          valB = b.tpPct || 0;
+          break;
+        case 'ftm':
+          valA = a.ftm || 0;
+          valB = b.ftm || 0;
+          break;
+        case 'ftPct':
+          valA = a.ftPct || 0;
+          valB = b.ftPct || 0;
+          break;
+        case 'orb':
+          valA = a.orb || 0;
+          valB = b.orb || 0;
+          break;
+        case 'drb':
+          valA = a.drb || 0;
+          valB = b.drb || 0;
+          break;
+        case 'reb':
+          valA = a.reb || 0;
+          valB = b.reb || 0;
+          break;
+        case 'ast':
+          valA = a.ast || 0;
+          valB = b.ast || 0;
+          break;
+        case 'stl':
+          valA = a.stl || 0;
+          valB = b.stl || 0;
+          break;
+        case 'blk':
+          valA = a.blk || 0;
+          valB = b.blk || 0;
+          break;
+        case 'tov':
+          valA = a.tov || 0;
+          valB = b.tov || 0;
+          break;
+        case 'pf':
+          valA = a.pf || 0;
+          valB = b.pf || 0;
+          break;
+        case 'plus_minus':
+          valA = a.plus_minus || 0;
+          valB = b.plus_minus || 0;
+          break;
+        case 'efg_pct':
+          valA = a.efg_pct || 0;
+          valB = b.efg_pct || 0;
+          break;
+        case 'ts_pct':
+          valA = a.ts_pct || 0;
+          valB = b.ts_pct || 0;
+          break;
+        case 'threepar':
+          valA = a.threepar || 0;
+          valB = b.threepar || 0;
+          break;
+        case 'ftr':
+          valA = a.ftr || 0;
+          valB = b.ftr || 0;
+          break;
+        case 'dynamicUsg':
+          valA = a.dynamicUsg || 0;
+          valB = b.dynamicUsg || 0;
+          break;
+        case 'gmsc':
+          valA = a.gmsc || 0;
+          valB = b.gmsc || 0;
+          break;
+        default:
+          valA = a.pts || 0;
+          valB = b.pts || 0;
+      }
+
+      return sortDirection === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [processedPlayers, sortField, sortDirection]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const renderSortableHeader = (
+    field: string,
+    label: string,
+    className: string = 'text-right',
+    alignRight: boolean = true
+  ) => {
+    const isCurrent = sortField === field;
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        className={`py-3 px-2.5 font-semibold select-none cursor-pointer transition-colors hover:text-white ${className} ${
+          isCurrent ? 'text-[#FF9100]' : 'text-gray-400'
+        }`}
+      >
+        <div className={`inline-flex items-center space-x-1 ${alignRight ? 'justify-end' : 'justify-start'}`}>
+          <span>{label}</span>
+          {isCurrent ? (
+            sortDirection === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-[#FF9100]" />
+            ) : (
+              <ArrowUp className="w-3.5 h-3.5 text-[#FF9100]" />
+            )
+          ) : (
+            <ArrowUpDown className="w-3 h-3 opacity-30 hover:opacity-100" />
+          )}
+        </div>
+      </th>
+    );
+  };
+
   const head = 'py-3 px-2.5 font-semibold text-right';
+
   return (
     <div className="space-y-3">
-      <div className={`flex items-center justify-between p-3 rounded-xl border ${accent === 'amber' ? 'bg-amber-500/10 border-amber-500/20 text-amber-300' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'}`}>
-        <span className="font-bold text-sm">{accent === 'amber' ? '客隊' : '主隊'}：{team}</span>
-        <span className="text-xs font-mono opacity-80">{players.length} 人</span>
+      {/* 標題與 Traditional / Advanced 雙 Tab 切換 */}
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border gap-3 ${
+        accent === 'amber' ? 'bg-amber-500/10 border-amber-500/20 text-amber-300' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+      }`}>
+        <div className="flex items-center space-x-2">
+          <span className="font-bold text-sm">{accent === 'amber' ? '客隊' : '主隊'}：{team}</span>
+          <span className="text-xs font-mono opacity-80">({players.length} 人)</span>
+        </div>
+
+        <div className="inline-flex p-0.5 rounded-xl bg-[#0E1117] border border-[#30363D] shadow-sm shrink-0">
+          <button
+            onClick={() => setViewMode('traditional')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'traditional'
+                ? 'bg-amber-500 text-black shadow-sm font-black'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <BarChart3 className="w-3 h-3" />
+            <span>基礎數據</span>
+          </button>
+          <button
+            onClick={() => setViewMode('advanced')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'advanced'
+                ? 'bg-[#00E676] text-black shadow-sm font-black'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <SlidersHorizontal className="w-3 h-3" />
+            <span>進階數據</span>
+          </button>
+        </div>
       </div>
+
       <div className="overflow-x-auto rounded-2xl border border-cardBorder bg-card shadow-lg relative">
         <table className="w-full text-left text-xs whitespace-nowrap">
           <thead className="bg-gray-900/90 text-gray-400 uppercase font-mono border-b border-cardBorder sticky top-0 z-20">
-            <tr>
-              <th className="py-3 px-3 font-semibold text-white sticky left-0 z-30 bg-gray-900/95">球員</th>
-              <th className={head}>時間</th>
-              <th className={head}>PTS</th>
-              <th className={head}>FG</th>
-              <th className={head}>3P</th>
-              <th className={head}>FT</th>
-              <th className={head}>ORB</th>
-              <th className={head}>DRB</th>
-              <th className={head}>REB</th>
-              <th className={head}>AST</th>
-              <th className={head}>STL</th>
-              <th className={head}>BLK</th>
-              <th className={head}>TOV</th>
-              <th className={head}>PF</th>
-              <th className={head}>+/-</th>
-              <th className={`${head} text-amber-400`}>eFG%</th>
-              <th className={`${head} text-amber-400`}>TS%</th>
-              <th className={`${head} text-emerald-400`}>USG%</th>
-              <th className={`${head} text-emerald-400`}>GmSc</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-cardBorder/60 font-mono">
-            {players.length === 0 && (
-              <tr><td colSpan={19} className="py-6 text-center text-gray-500 font-sans">無球員數據</td></tr>
+            {viewMode === 'traditional' ? (
+              <tr>
+                {renderSortableHeader('player_name', '球員', 'sticky left-0 z-30 bg-gray-900/95', false)}
+                {renderSortableHeader('seconds', '時間')}
+                {renderSortableHeader('pts', 'PTS', 'text-right font-bold text-white')}
+                {renderSortableHeader('fgm', 'FG')}
+                {renderSortableHeader('fgPct', 'FG%')}
+                {renderSortableHeader('tpm', '3P')}
+                {renderSortableHeader('tpPct', '3P%')}
+                {renderSortableHeader('ftm', 'FT')}
+                {renderSortableHeader('ftPct', 'FT%')}
+                {renderSortableHeader('orb', 'ORB')}
+                {renderSortableHeader('drb', 'DRB')}
+                {renderSortableHeader('reb', 'REB', 'text-right font-bold text-white')}
+                {renderSortableHeader('ast', 'AST', 'text-right font-bold text-sky-400')}
+                {renderSortableHeader('stl', 'STL')}
+                {renderSortableHeader('blk', 'BLK')}
+                {renderSortableHeader('tov', 'TOV')}
+                {renderSortableHeader('pf', 'PF')}
+                {renderSortableHeader('plus_minus', '+/-')}
+              </tr>
+            ) : (
+              <tr>
+                {renderSortableHeader('player_name', '球員', 'sticky left-0 z-30 bg-gray-900/95', false)}
+                {renderSortableHeader('seconds', '時間')}
+                {renderSortableHeader('pts', 'PTS', 'text-right font-bold text-white')}
+                {renderSortableHeader('efg_pct', 'eFG%', 'text-right text-[#FF9100]')}
+                {renderSortableHeader('ts_pct', 'TS%', 'text-right text-[#FF9100]')}
+                {renderSortableHeader('threepar', '3PAr')}
+                {renderSortableHeader('ftr', 'FTr')}
+                {renderSortableHeader('dynamicUsg', 'USG%', 'text-right text-[#00E676] font-black')}
+                {renderSortableHeader('gmsc', 'GmSc', 'text-right text-[#00E676]')}
+                {renderSortableHeader('plus_minus', '+/-')}
+              </tr>
             )}
-            {players.map((p) => {
-              const played = p.seconds > 0;
-              const c = (v: React.ReactNode) => (played ? v : '-');
-              return (
-                <tr key={p.id} className="hover:bg-gray-800/50 transition-colors group">
-                  <td className="py-3 px-3 sticky left-0 z-10 bg-card group-hover:bg-gray-800/90 font-sans font-bold text-white shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-500 text-xs font-mono w-6">{p.jersey_number ? `#${p.jersey_number}` : '-'}</span>
-                      <PlayerLink name={p.player_name} stage={stage} className="font-bold text-white group-hover:text-amber-400" />
-                      {p.is_starter && <span className="text-[10px] px-1 rounded bg-amber-500/20 text-amber-300">先</span>}
-                      {p.identity?.includes('洋將') && <span className="text-[10px] px-1 rounded bg-blue-500/20 text-blue-300">洋</span>}
-                    </div>
-                  </td>
-                  <td className="py-3 px-2.5 text-right text-gray-400">{p.minutes || '00:00'}</td>
-                  <td className="py-3 px-2.5 text-right font-bold text-white">{c(p.pts)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(`${p.fgm}/${p.fga}`)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(`${p.tpm}/${p.tpa}`)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(`${p.ftm}/${p.fta}`)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(p.orb)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(p.drb)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(p.reb)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(p.ast)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(p.stl)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(p.blk)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(p.tov)}</td>
-                  <td className="py-3 px-2.5 text-right text-gray-300">{c(p.pf)}</td>
-                  <td className={`py-3 px-2.5 text-right font-bold ${signColor(p.plus_minus)}`}>{c(signed(p.plus_minus, 0))}</td>
-                  <td className="py-3 px-2.5 text-right text-amber-300">{c(fracPctStr(p.efg_pct))}</td>
-                  <td className="py-3 px-2.5 text-right text-amber-300">{c(fracPctStr(p.ts_pct))}</td>
-                  <td className="py-3 px-2.5 text-right text-emerald-300 font-bold">{c(pctStr(p.usg_pct))}</td>
-                  <td className="py-3 px-2.5 text-right text-emerald-300 font-bold">{c(fx(p.gmsc))}</td>
-                </tr>
-              );
-            })}
+          </thead>
+
+          <tbody className="divide-y divide-cardBorder/60 font-mono">
+            {sortedPlayers.length === 0 ? (
+              <tr><td colSpan={18} className="py-6 text-center text-gray-500 font-sans">無球員數據</td></tr>
+            ) : (
+              sortedPlayers.map((p) => {
+                const played = (p.seconds || 0) > 0;
+                const c = (v: React.ReactNode) => (played ? v : '-');
+
+                return (
+                  <tr key={p.id} className="hover:bg-gray-800/50 transition-colors group">
+                    <td className="py-3 px-3 sticky left-0 z-10 bg-card group-hover:bg-gray-800/90 font-sans font-bold text-white shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-500 text-xs font-mono w-6">{p.jersey_number ? `#${p.jersey_number}` : '-'}</span>
+                        <PlayerLink name={p.player_name} stage={stage} className="font-bold text-white group-hover:text-amber-400" />
+                        {p.is_starter && <span className="text-[10px] px-1 rounded bg-amber-500/20 text-amber-300">先</span>}
+                        {p.identity?.includes('洋將') && <span className="text-[10px] px-1 rounded bg-blue-500/20 text-blue-300">洋</span>}
+                      </div>
+                    </td>
+                    <td className="py-3 px-2.5 text-right text-gray-400">{p.minutes || '00:00'}</td>
+                    <td className="py-3 px-2.5 text-right font-bold text-white">{c(p.pts)}</td>
+
+                    {viewMode === 'traditional' ? (
+                      <>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(`${p.fgm}/${p.fga}`)}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(smartPctStr(p.fgPct))}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(`${p.tpm}/${p.tpa}`)}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(smartPctStr(p.tpPct))}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(`${p.ftm}/${p.fta}`)}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(smartPctStr(p.ftPct))}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(p.orb)}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(p.drb)}</td>
+                        <td className="py-3 px-2.5 text-right font-bold text-white">{c(p.reb)}</td>
+                        <td className="py-3 px-2.5 text-right font-bold text-sky-400">{c(p.ast)}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(p.stl)}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(p.blk)}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(p.tov)}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(p.pf)}</td>
+                        <td className={`py-3 px-2.5 text-right font-bold ${signColor(p.plus_minus)}`}>{c(signed(p.plus_minus, 0))}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="py-3 px-2.5 text-right text-amber-300 font-bold">{c(smartPctStr(p.efg_pct))}</td>
+                        <td className="py-3 px-2.5 text-right text-amber-300 font-bold">{c(smartPctStr(p.ts_pct))}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(smartPctStr(p.threepar))}</td>
+                        <td className="py-3 px-2.5 text-right text-gray-300">{c(smartPctStr(p.ftr))}</td>
+                        <td className="py-3 px-2.5 text-right text-emerald-300 font-bold">{c(smartPctStr(p.dynamicUsg))}</td>
+                        <td className="py-3 px-2.5 text-right text-emerald-300 font-bold">{c(fx(p.gmsc))}</td>
+                        <td className={`py-3 px-2.5 text-right font-bold ${signColor(p.plus_minus)}`}>{c(signed(p.plus_minus, 0))}</td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })
+            )}
           </tbody>
+
+          {/* 球隊數據加總列 (TOTALS) */}
+          <tfoot className="bg-[#0E1117] font-mono border-t-2 border-[#30363D] font-bold text-white">
+            {viewMode === 'traditional' ? (
+              <tr>
+                <td className="py-3 px-3 sticky left-0 bg-[#0E1117] font-sans font-black tracking-wider text-amber-400 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
+                  TOTALS (合計)
+                </td>
+                <td className="py-3 px-2.5 text-right text-gray-400">240:00</td>
+                <td className="py-3 px-2.5 text-right font-black text-amber-400 text-sm">{teamTotals.pts}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{teamTotals.fgm}/{teamTotals.fga}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">
+                  {smartPctStr(teamTotals.fga > 0 ? (teamTotals.fgm / teamTotals.fga) * 100 : 0)}
+                </td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{teamTotals.tpm}/{teamTotals.tpa}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">
+                  {smartPctStr(teamTotals.tpa > 0 ? (teamTotals.tpm / teamTotals.tpa) * 100 : 0)}
+                </td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{teamTotals.ftm}/{teamTotals.fta}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">
+                  {smartPctStr(teamTotals.fta > 0 ? (teamTotals.ftm / teamTotals.fta) * 100 : 0)}
+                </td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{teamTotals.orb}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{teamTotals.drb}</td>
+                <td className="py-3 px-2.5 text-right font-black text-amber-300">{teamTotals.reb}</td>
+                <td className="py-3 px-2.5 text-right font-black text-sky-400">{teamTotals.ast}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{teamTotals.stl}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{teamTotals.blk}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{teamTotals.tov}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{teamTotals.pf}</td>
+                <td className="py-3 px-2.5 text-right text-gray-400">-</td>
+              </tr>
+            ) : (
+              <tr>
+                <td className="py-3 px-3 sticky left-0 bg-[#0E1117] font-sans font-black tracking-wider text-[#00E676] z-10 shadow-[2px_0_5px_rgba(0,0,0,0.3)]">
+                  TOTALS (團隊指標)
+                </td>
+                <td className="py-3 px-2.5 text-right text-gray-400">240:00</td>
+                <td className="py-3 px-2.5 text-right font-black text-[#00E676] text-sm">{teamTotals.pts}</td>
+                <td className="py-3 px-2.5 text-right text-[#FF9100] font-black">{smartPctStr(teamAdvMetrics.efg)}</td>
+                <td className="py-3 px-2.5 text-right text-[#FF9100] font-black">{smartPctStr(teamAdvMetrics.ts)}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{smartPctStr(teamAdvMetrics.threepar)}</td>
+                <td className="py-3 px-2.5 text-right text-gray-200">{smartPctStr(teamAdvMetrics.ftr)}</td>
+                <td className="py-3 px-2.5 text-right text-[#00E676] font-black">100.0%</td>
+                <td className="py-3 px-2.5 text-right text-[#00E676] font-black">{fx(teamTotals.gmsc)}</td>
+                <td className="py-3 px-2.5 text-right text-gray-400">-</td>
+              </tr>
+            )}
+          </tfoot>
         </table>
       </div>
     </div>
@@ -625,7 +999,7 @@ export default function GamesReviewPage() {
         <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">📅 逐場賽事覆盤</h1>
       </div>
 
-      {/* 1. 賽程清單 (含球隊/對戰組合篩選與最新場次預設選中) */}
+      {/* 1. 賽程清單 */}
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
@@ -746,7 +1120,7 @@ export default function GamesReviewPage() {
             <EmptyBox text="本場尚無攻防指標數據" />
           )}
 
-          {/* 3a. 單場最佳陣容與搭檔效益 (五人名單維持純文字) */}
+          {/* 3a. 單場最佳陣容與搭檔效益 */}
           <section className="space-y-4">
             <SectionTitle icon={<Users className="w-5 h-5" />} title="單場最佳陣容與核心搭檔效益" hint="含最佳五人與 Key Pairs 雙人搭檔" />
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
@@ -755,7 +1129,7 @@ export default function GamesReviewPage() {
             </div>
           </section>
 
-          {/* 3b. 單場主力 On/Off 淨勝分 (對稱雙表格) */}
+          {/* 3b. 單場主力 On/Off 淨勝分 */}
           <section className="space-y-4">
             <SectionTitle icon={<Crosshair className="w-5 h-5" />} title="單場主力 On/Off 淨勝分 (≥ 8分鐘)" hint="依淨影響力排序" />
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
@@ -764,7 +1138,7 @@ export default function GamesReviewPage() {
             </div>
           </section>
 
-          {/* 3c. 單場焦點對位交鋒與戰術結論 (對稱雙表格) */}
+          {/* 3c. 單場焦點對位交鋒與戰術結論 */}
           <section className="space-y-4">
             <SectionTitle icon={<Swords className="w-5 h-5" />} title="單場焦點對位交鋒與戰術結論" hint="關鍵球員防守壓迫與對位分析" />
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
@@ -775,7 +1149,7 @@ export default function GamesReviewPage() {
 
           {/* 4. 單場進階 Box Score */}
           <section className="space-y-4">
-            <SectionTitle icon={<Table2 className="w-5 h-5" />} title="單場進階 Box Score" hint="含 eFG%、TS%、USG%、GmSc" />
+            <SectionTitle icon={<Table2 className="w-5 h-5" />} title="單場進階 Box Score" hint="支援基礎與進階雙視圖、點擊表頭排序與球隊加總" />
             <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 items-start">
               <BoxScoreTable team={game.away_team} players={awayPlayers} accent="amber" stage={game.stage} />
               <BoxScoreTable team={game.home_team} players={homePlayers} accent="emerald" stage={game.stage} />

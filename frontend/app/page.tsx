@@ -11,6 +11,8 @@ import {
   ShieldAlert,
   Flame,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Sparkles,
   Info,
   Layers,
@@ -51,10 +53,13 @@ export default function TeamRatingsPage() {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
 
-  const [sortField, setSortField] = useState<keyof TeamSummary>('net_rtg');
+  const [sortField, setSortField] = useState<keyof TeamSummary | 'record'>('net_rtg');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
-  const handleSort = (field: keyof TeamSummary) => {
+  // 點擊後高亮發光的球隊狀態
+  const [highlightedTeam, setHighlightedTeam] = useState<string | null>(null);
+
+  const handleSort = (field: keyof TeamSummary | 'record') => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
     } else {
@@ -63,8 +68,39 @@ export default function TeamRatingsPage() {
     }
   };
 
+  // 點擊球隊平滑滾動並觸發邊框發光
+  const scrollToTeamCard = (teamName: string) => {
+    setHighlightedTeam(teamName);
+    const cardEl = document.getElementById(`team-card-${encodeURIComponent(teamName.trim())}`);
+    if (cardEl) {
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // 2.5 秒後自動解除高亮狀態
+    setTimeout(() => {
+      setHighlightedTeam((curr) => (curr === teamName ? null : curr));
+    }, 2500);
+  };
+
+  // 解析戰績字串 (如 "2勝-2敗") 計算勝率數值以供排序
+  const getWinPct = (recordStr: string): number => {
+    if (!recordStr) return 0;
+    const wMatch = recordStr.match(/(\d+)勝/);
+    const lMatch = recordStr.match(/(\d+)敗/);
+    const w = wMatch ? parseInt(wMatch[1], 10) : 0;
+    const l = lMatch ? parseInt(lMatch[1], 10) : 0;
+    const total = w + l;
+    return total > 0 ? (w / total) + (w * 0.001) : 0;
+  };
+
   const sortedTeams = teams
     ? [...teams].sort((a, b) => {
+        if (sortField === 'record') {
+          const pctA = getWinPct(a.record);
+          const pctB = getWinPct(b.record);
+          return sortAsc ? pctA - pctB : pctB - pctA;
+        }
+
         const valA = a[sortField];
         const valB = b[sortField];
         if (typeof valA === 'number' && typeof valB === 'number') {
@@ -76,26 +112,52 @@ export default function TeamRatingsPage() {
       })
     : [];
 
+  const renderSortableTh = (
+    field: keyof TeamSummary | 'record',
+    label: string,
+    alignClass: string = 'text-right',
+    extraClass: string = ''
+  ) => {
+    const isCurrent = sortField === field;
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        className={`py-3.5 px-3 font-semibold select-none cursor-pointer transition-colors hover:text-white ${alignClass} ${extraClass} ${
+          isCurrent ? 'text-[#FF9100]' : 'text-gray-400'
+        }`}
+      >
+        <div className={`inline-flex items-center space-x-1 ${alignClass.includes('right') ? 'justify-end' : alignClass.includes('center') ? 'justify-center' : 'justify-start'}`}>
+          <span>{label}</span>
+          {isCurrent ? (
+            sortAsc ? (
+              <ArrowUp className="w-3.5 h-3.5 text-[#FF9100]" />
+            ) : (
+              <ArrowDown className="w-3.5 h-3.5 text-[#FF9100]" />
+            )
+          ) : (
+            <ArrowUpDown className="w-3 h-3 opacity-30 hover:opacity-100" />
+          )}
+        </div>
+      </th>
+    );
+  };
+
   return (
     <div className="space-y-10">
-      {/* 頂部賽季宣告橫幅 (7隊隊徽全幅背景，文字半透明透出質感) */}
+      {/* 頂部賽季宣告橫幅 */}
       <div className="relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#0E1117] p-6 sm:p-8 shadow-2xl">
-        {/* 背景氛圍光效 */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-[#FF9100]/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#00E676]/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* 7 隊 Logo 大圖：由右至左延伸、滿版高度、延伸至文字下方 */}
         <div className="absolute right-0 top-0 bottom-0 w-full sm:w-4/5 lg:w-3/4 pointer-events-none select-none overflow-hidden z-0 flex justify-end">
           <img
             src="/logos/logo_all.jpg"
             alt="TPBL Teams"
             className="h-full w-full object-cover object-right opacity-70"
           />
-          {/* 左側漸層遮罩：往左自然融入純黑，確保最左側文字清晰 */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#0E1117] via-[#0E1117]/65 to-transparent" />
         </div>
 
-        {/* 前景文字層 (移除按鈕，文字採 65%~75% 半透明高質感) */}
         <div className="relative z-10 max-w-2xl space-y-2.5">
           <div className="flex items-center space-x-2">
             <span className="px-3 py-1 rounded-full bg-[#FF9100]/20 text-[#FF9100] text-xs font-black uppercase tracking-wider border border-[#FF9100]/40 backdrop-blur-sm">
@@ -122,10 +184,10 @@ export default function TeamRatingsPage() {
           <div className="flex items-center space-x-2">
             <Layers className="w-5 h-5 text-[#00E676]" />
             <h2 className="text-xl font-black text-white tracking-tight">
-              【區塊 A】團隊四大要素與進階數據總表
+              團隊四大要素與進階數據總表
             </h2>
           </div>
-          <span className="text-xs text-gray-400">點擊表頭即可自動切換排序</span>
+          <span className="text-xs text-gray-400">點擊表頭排序 • 點擊球隊查看短評</span>
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-[#30363D] bg-[#161B22] shadow-xl">
@@ -133,70 +195,17 @@ export default function TeamRatingsPage() {
             <thead className="bg-[#0E1117] text-gray-400 uppercase font-mono tracking-wider border-b border-[#30363D]">
               <tr>
                 <th className="py-3.5 px-3 font-bold text-gray-300">#</th>
-                <th
-                  onClick={() => handleSort('team_name')}
-                  className="py-3.5 px-3 font-bold text-white cursor-pointer hover:text-[#00E676]"
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>球隊名稱</span>
-                    <ArrowUpDown className="w-3.5 h-3.5" />
-                  </div>
-                </th>
-                <th className="py-3.5 px-3 font-semibold text-center">戰績</th>
-                <th
-                  onClick={() => handleSort('pace')}
-                  className="py-3.5 px-3 font-semibold text-right cursor-pointer hover:text-[#00E676]"
-                >
-                  Pace
-                </th>
-                <th
-                  onClick={() => handleSort('ortg')}
-                  className="py-3.5 px-3 font-bold text-right text-[#FF9100] cursor-pointer hover:text-white"
-                >
-                  ORtg
-                </th>
-                <th
-                  onClick={() => handleSort('drtg')}
-                  className="py-3.5 px-3 font-bold text-right text-sky-400 cursor-pointer hover:text-white"
-                >
-                  DRtg
-                </th>
-                <th
-                  onClick={() => handleSort('net_rtg')}
-                  className="py-3.5 px-3 font-black text-right text-[#00E676] cursor-pointer hover:text-white bg-[#0E1117]"
-                >
-                  NetRtg
-                </th>
-                <th
-                  onClick={() => handleSort('efg_pct')}
-                  className="py-3.5 px-3 font-semibold text-right text-amber-300 cursor-pointer hover:text-white"
-                >
-                  eFG%
-                </th>
-                <th
-                  onClick={() => handleSort('three_par')}
-                  className="py-3.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
-                >
-                  3PAr
-                </th>
-                <th
-                  onClick={() => handleSort('tov_pct')}
-                  className="py-3.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
-                >
-                  TOV%
-                </th>
-                <th
-                  onClick={() => handleSort('orb_pct')}
-                  className="py-3.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
-                >
-                  ORB%
-                </th>
-                <th
-                  onClick={() => handleSort('ftr')}
-                  className="py-3.5 px-3 font-semibold text-right cursor-pointer hover:text-white"
-                >
-                  FTr
-                </th>
+                {renderSortableTh('team_name', '球隊名稱', 'text-left')}
+                {renderSortableTh('record', '戰績', 'text-center')}
+                {renderSortableTh('pace', 'Pace')}
+                {renderSortableTh('ortg', 'ORtg', 'text-right font-bold text-[#FF9100]')}
+                {renderSortableTh('drtg', 'DRtg', 'text-right font-bold text-sky-400')}
+                {renderSortableTh('net_rtg', 'NetRtg', 'text-right font-black text-[#00E676] bg-[#0E1117]')}
+                {renderSortableTh('efg_pct', 'eFG%', 'text-right text-amber-300 font-bold')}
+                {renderSortableTh('three_par', '3PAr')}
+                {renderSortableTh('tov_pct', 'TOV%')}
+                {renderSortableTh('orb_pct', 'ORB%')}
+                {renderSortableTh('ftr', 'FTr')}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#21262D] font-mono">
@@ -216,10 +225,12 @@ export default function TeamRatingsPage() {
                 sortedTeams.map((t, idx) => (
                   <tr
                     key={t.team_name}
-                    className="hover:bg-[#21262D]/60 transition-colors group"
+                    onClick={() => scrollToTeamCard(t.team_name)}
+                    className="hover:bg-[#21262D]/60 transition-colors group cursor-pointer"
+                    title="點擊可直接滾動至下方查看該隊戰力短評"
                   >
                     <td className="py-3.5 px-3 text-gray-500 font-bold">{idx + 1}</td>
-                    <td className="py-3.5 px-3 font-sans font-bold text-white">
+                    <td className="py-3.5 px-3 font-sans font-bold text-white group-hover:text-[#00E676] transition-colors">
                       <div className="flex items-center space-x-2.5">
                         <div className="relative w-6 h-6 rounded-full overflow-hidden bg-[#0E1117] border border-[#30363D] flex-shrink-0">
                           <Image
@@ -273,77 +284,87 @@ export default function TeamRatingsPage() {
         <div className="flex items-center space-x-2">
           <Sparkles className="w-5 h-5 text-[#FF9100]" />
           <h2 className="text-xl font-black text-white tracking-tight">
-            【區塊 B】重點球員洞察與教練體系戰力短評
+            重點球員洞察與教練體系戰力短評
           </h2>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {sortedTeams.map((t) => (
-            <div
-              key={t.team_name}
-              className="p-6 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-xl hover:border-[#FF9100]/40 transition-all duration-200 flex flex-col justify-between space-y-4"
-            >
-              <div>
-                {/* 球隊抬頭與戰績 */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
-                  <div className="flex items-center space-x-3">
-                    <div className="relative w-8 h-8 rounded-full overflow-hidden bg-[#0E1117] border border-[#30363D] flex-shrink-0">
-                      <Image
-                        src={getTeamLogo(t.team_name)}
-                        alt={t.team_name}
-                        fill
-                        className="object-contain p-0.5"
-                      />
+          {sortedTeams.map((t) => {
+            const isHighlighted = highlightedTeam === t.team_name;
+            const cardId = `team-card-${encodeURIComponent(t.team_name.trim())}`;
+
+            return (
+              <div
+                key={t.team_name}
+                id={cardId}
+                className={`p-6 rounded-3xl border bg-[#161B22] shadow-xl transition-all duration-500 flex flex-col justify-between space-y-4 ${
+                  isHighlighted
+                    ? 'border-[#FF9100] ring-2 ring-[#FF9100] shadow-[0_0_25px_rgba(255,145,0,0.35)] scale-[1.01]'
+                    : 'border-[#30363D] hover:border-[#FF9100]/40'
+                }`}
+              >
+                <div>
+                  {/* 球隊抬頭與戰績 */}
+                  <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative w-8 h-8 rounded-full overflow-hidden bg-[#0E1117] border border-[#30363D] flex-shrink-0">
+                        <Image
+                          src={getTeamLogo(t.team_name)}
+                          alt={t.team_name}
+                          fill
+                          className="object-contain p-0.5"
+                        />
+                      </div>
+                      <h3 className="text-lg font-black text-white tracking-tight">
+                        {t.team_name}
+                      </h3>
                     </div>
-                    <h3 className="text-lg font-black text-white tracking-tight">
-                      {t.team_name}
-                    </h3>
+                    <span className="px-2.5 py-1 rounded-lg bg-[#0E1117] text-gray-300 font-mono text-xs font-bold border border-[#30363D]">
+                      {t.record}
+                    </span>
                   </div>
-                  <span className="px-2.5 py-1 rounded-lg bg-[#0E1117] text-gray-300 font-mono text-xs font-bold border border-[#30363D]">
-                    {t.record}
-                  </span>
+
+                  {/* 高球權核心 & 高效終結者標籤 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-3">
+                    <div className="p-3 rounded-xl bg-[#0E1117] border border-[#21262D]">
+                      <span className="text-[11px] font-bold text-[#FF9100] uppercase block mb-1">
+                        🔥 高球權核心 (USG &gt; 25% 且 TS &gt; 55%)
+                      </span>
+                      <p className="text-xs text-gray-200 font-medium">{t.high_usg_core || '無'}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-[#0E1117] border border-[#21262D]">
+                      <span className="text-[11px] font-bold text-[#00E676] uppercase block mb-1">
+                        ⚡ 高效終結者 (GmSc 前二且 eFG &gt; 60%)
+                      </span>
+                      <p className="text-xs text-gray-200 font-medium">{t.high_eff_finisher || '無'}</p>
+                    </div>
+                  </div>
+
+                  {/* 戰力短評長文本 */}
+                  <div className="mt-3">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                      戰力短評與攻防體系洞察
+                    </h4>
+                    <p className="text-xs sm:text-sm text-gray-300 whitespace-normal break-words leading-relaxed select-text">
+                      {t.system_notes}
+                    </p>
+                  </div>
                 </div>
 
-                {/* 高球權核心 & 高效終結者標籤 */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-3">
-                  <div className="p-3 rounded-xl bg-[#0E1117] border border-[#21262D]">
-                    <span className="text-[11px] font-bold text-[#FF9100] uppercase block mb-1">
-                      🔥 高球權核心 (USG &gt; 25% 且 TS &gt; 55%)
-                    </span>
-                    <p className="text-xs text-gray-200 font-medium">{t.high_usg_core || '無'}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#0E1117] border border-[#21262D]">
-                    <span className="text-[11px] font-bold text-[#00E676] uppercase block mb-1">
-                      ⚡ 高效終結者 (GmSc 前二且 eFG &gt; 60%)
-                    </span>
-                    <p className="text-xs text-gray-200 font-medium">{t.high_eff_finisher || '無'}</p>
-                  </div>
-                </div>
-
-                {/* 戰力短評長文本 */}
-                <div className="mt-3">
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                    戰力短評與攻防體系洞察
-                  </h4>
-                  <p className="text-xs sm:text-sm text-gray-300 whitespace-normal break-words leading-relaxed select-text">
-                    {t.system_notes}
-                  </p>
+                {/* 底部功能跳轉 (修正為 /pbp 並帶入 team 參數) */}
+                <div className="pt-3 border-t border-[#21262D] flex items-center justify-between text-xs">
+                  <span className="text-gray-500 font-mono">NetRtg: {t.net_rtg > 0 ? `+${t.net_rtg}` : t.net_rtg}</span>
+                  <Link
+                    href={`/pbp?team=${encodeURIComponent(t.team_name)}`}
+                    className="inline-flex items-center space-x-1 text-[#00E676] hover:text-white font-bold transition-colors"
+                  >
+                    <span>查看 PBP On/Off 陣容</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
               </div>
-
-              {/* 底部功能跳轉 */}
-              <div className="pt-3 border-t border-[#21262D] flex items-center justify-between text-xs">
-                <span className="text-gray-500 font-mono">NetRtg: {t.net_rtg > 0 ? `+${t.net_rtg}` : t.net_rtg}</span>
-                <Link
-                  href={`/pbp`}
-                  className="inline-flex items-center space-x-1 text-[#00E676] hover:text-white font-bold transition-colors"
-                >
-                  <span>查看 PBP On/Off 陣容</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>

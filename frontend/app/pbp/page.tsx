@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import useSWR from 'swr';
+import { useSearchParams } from 'next/navigation';
 import { useStage } from '@/context/StageContext';
 import { fetcher } from '@/lib/api';
 import { PlayerLink } from '@/components/PlayerLink';
@@ -11,10 +12,15 @@ import {
   Clock,
   Sparkles,
   Table2,
+  BarChart3,
+  SlidersHorizontal,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
-/* 吉祥物透明 PNG 對應設定 (純透明勾邊，完全消除方框背景)              */
+/* 吉祥物透明 PNG 對應設定                                             */
 /* ------------------------------------------------------------------ */
 
 interface MascotSetting {
@@ -140,10 +146,13 @@ interface TeamBoxPlayer {
   pts?: number;
   fgm?: number;
   fga?: number;
+  fg_pct?: number;
   tpm?: number;
   tpa?: number;
+  tp_pct?: number;
   ftm?: number;
   fta?: number;
+  ft_pct?: number;
   orb?: number;
   drb?: number;
   reb?: number;
@@ -156,6 +165,8 @@ interface TeamBoxPlayer {
   efg_pct?: number;
   ts_pct?: number;
   usg_pct?: number;
+  threepar?: number;
+  ftr?: number;
   gmsc?: number;
   ortg?: number;
   drtg?: number;
@@ -214,14 +225,45 @@ const staticJsonFetcher = async (url: string) => {
   return res.json();
 };
 
+const TEAMS = [
+  '新北國王',
+  '福爾摩沙夢想家',
+  '高雄全家海神',
+  '新北中信特攻',
+  '桃園台啤永豐雲豹',
+  '新竹御頂攻城獅',
+  '臺北台新戰神',
+];
+
 /* ------------------------------------------------------------------ */
-/* 主頁面                                                              */
+/* 主要內容組件                                                        */
 /* ------------------------------------------------------------------ */
 
-export default function PBPPage() {
+function PBPContent() {
   const { stage } = useStage();
+  const searchParams = useSearchParams();
+  const urlTeam = searchParams.get('team');
+
   const [selectedTeam, setSelectedTeam] = useState<string>('新北國王');
   const [activeSubTab, setActiveSubTab] = useState<'duos' | 'onoff' | 'lineups' | 'boxscore'>('duos');
+  
+  // 網址帶有 ?team= 時自動切換到對應球隊
+  useEffect(() => {
+    if (urlTeam) {
+      const decoded = decodeURIComponent(urlTeam).trim();
+      const matched = TEAMS.find((t) => t.includes(decoded) || decoded.includes(t));
+      if (matched) {
+        setSelectedTeam(matched);
+      }
+    }
+  }, [urlTeam]);
+
+  // Box Score 專屬視圖切換：'traditional' (基礎攻守) | 'advanced' (進階效率)
+  const [boxScoreView, setBoxScoreView] = useState<'traditional' | 'advanced'>('advanced');
+
+  // 排序狀態
+  const [sortField, setSortField] = useState<string>('pts');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // 主要 PBP 數據
   const { data, isLoading } = useSWR<PBPResponse>(
@@ -239,8 +281,8 @@ export default function PBPPage() {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
 
-  // 與球員戰力卡 (PlayerCardsPage) 完全相同的權威進階數據 API
-  const { data: advPlayers } = useSWR< any[] >(
+  // 與球員戰力卡完全相同的權威進階數據 API
+  const { data: advPlayers } = useSWR<any[]>(
     activeSubTab === 'boxscore'
       ? `/api/players/advanced?stage=${encodeURIComponent(stage)}`
       : null,
@@ -259,23 +301,21 @@ export default function PBPPage() {
   const authoritativeUsgMap = useMemo(() => {
     const map = new Map<string, number>();
 
-    // 1. 先從 PR 靜態表提取 (當賽季相符時)
     const prStage = prStatsData?.meta?.stage || '2026-2027 例行賽';
     if (prStatsData?.players && stage === prStage) {
       Object.entries(prStatsData.players).forEach(([name, pData]: [string, any]) => {
         const val = pData?.badges?.['USG%']?.val;
-        if (isNum(val) && val > 0 && val !== 20) {
+        if (isNum(val) && val > 0) {
           map.set(name.trim(), val);
         }
       });
     }
 
-    // 2. 再從 /api/players/advanced 權威列表覆蓋 (球員戰力卡主資料源)
     if (Array.isArray(advPlayers)) {
       advPlayers.forEach((p) => {
         const name = (p.player_name || p.name || '').trim();
         const usg = Number(p.usg_pct ?? p.usg ?? 0);
-        if (name && Number.isFinite(usg) && usg > 0 && usg !== 20) {
+        if (name && Number.isFinite(usg) && usg > 0) {
           map.set(name, usg);
         }
       });
@@ -284,17 +324,17 @@ export default function PBPPage() {
     return map;
   }, [advPlayers, prStatsData, stage]);
 
-  // 聚合球員列表
-  const playerList = useMemo(() => {
+  // 聚合球員原始列表
+  const rawPlayerList = useMemo(() => {
     if (Array.isArray(teamPlayersData) && teamPlayersData.length > 0) return teamPlayersData;
     if (Array.isArray(data?.player_boxscore) && data.player_boxscore.length > 0) return data.player_boxscore;
     if (Array.isArray(data?.player_stats) && data.player_stats.length > 0) return data.player_stats;
     return [];
   }, [teamPlayersData, data]);
 
-  // 全隊進攻總量統計 (僅供未出現在進階名單的邊緣替補球員做保底計算)
+  // 全隊進攻總量統計
   const teamTotals = useMemo(() => {
-    return playerList.reduce(
+    return rawPlayerList.reduce(
       (acc, p) => {
         const gp = p.games_played && p.games_played > 0 ? p.games_played : 1;
         const pSec = parseSeconds(p.seconds, p.minutes);
@@ -306,19 +346,184 @@ export default function PBPPage() {
       },
       { total_fga: 0, total_fta: 0, total_tov: 0, total_seconds: 0 }
     );
-  }, [playerList]);
+  }, [rawPlayerList]);
 
-  const teams = [
-    '新北國王',
-    '福爾摩沙夢想家',
-    '高雄全家海神',
-    '新北中信特攻',
-    '桃園台啤永豐雲豹',
-    '新竹御頂攻城獅',
-    '臺北台新戰神',
-  ];
+  // 排序後的球員列表
+  const sortedPlayerList = useMemo(() => {
+    if (!rawPlayerList || rawPlayerList.length === 0) return [];
 
-  const head = 'py-3.5 px-3 font-semibold text-right';
+    return [...rawPlayerList].sort((a, b) => {
+      let valA: number = 0;
+      let valB: number = 0;
+
+      const getUsg = (p: TeamBoxPlayer) => {
+        const cleanName = (p.player_name || '').trim();
+        let usg = authoritativeUsgMap.get(cleanName);
+        if (usg === undefined && isNum(p.usg_pct) && p.usg_pct > 0) usg = p.usg_pct;
+        return usg ?? 0;
+      };
+
+      switch (sortField) {
+        case 'player_name':
+          return sortDirection === 'asc'
+            ? a.player_name.localeCompare(b.player_name)
+            : b.player_name.localeCompare(a.player_name);
+        case 'games_played':
+          valA = a.games_played ?? 0;
+          valB = b.games_played ?? 0;
+          break;
+        case 'minutes':
+          valA = parseSeconds(a.seconds, a.minutes);
+          valB = parseSeconds(b.seconds, b.minutes);
+          break;
+        case 'pts':
+          valA = a.pts ?? 0;
+          valB = b.pts ?? 0;
+          break;
+        case 'fgm':
+          valA = a.fgm ?? 0;
+          valB = b.fgm ?? 0;
+          break;
+        case 'fg_pct':
+          valA = a.fg_pct ?? (a.fga ? (a.fgm || 0) / a.fga : 0);
+          valB = b.fg_pct ?? (b.fga ? (b.fgm || 0) / b.fga : 0);
+          break;
+        case 'tpm':
+          valA = a.tpm ?? 0;
+          valB = b.tpm ?? 0;
+          break;
+        case 'tp_pct':
+          valA = a.tp_pct ?? (a.tpa ? (a.tpm || 0) / a.tpa : 0);
+          valB = b.tp_pct ?? (b.tpa ? (b.tpm || 0) / b.tpa : 0);
+          break;
+        case 'ftm':
+          valA = a.ftm ?? 0;
+          valB = b.ftm ?? 0;
+          break;
+        case 'ft_pct':
+          valA = a.ft_pct ?? (a.fta ? (a.ftm || 0) / a.fta : 0);
+          valB = b.ft_pct ?? (b.fta ? (b.ftm || 0) / b.fta : 0);
+          break;
+        case 'orb':
+          valA = a.orb ?? 0;
+          valB = b.orb ?? 0;
+          break;
+        case 'drb':
+          valA = a.drb ?? 0;
+          valB = b.drb ?? 0;
+          break;
+        case 'reb':
+          valA = a.reb ?? 0;
+          valB = b.reb ?? 0;
+          break;
+        case 'ast':
+          valA = a.ast ?? 0;
+          valB = b.ast ?? 0;
+          break;
+        case 'stl':
+          valA = a.stl ?? 0;
+          valB = b.stl ?? 0;
+          break;
+        case 'blk':
+          valA = a.blk ?? 0;
+          valB = b.blk ?? 0;
+          break;
+        case 'tov':
+          valA = a.tov ?? 0;
+          valB = b.tov ?? 0;
+          break;
+        case 'pf':
+          valA = a.pf ?? 0;
+          valB = b.pf ?? 0;
+          break;
+        case 'plus_minus':
+          valA = a.plus_minus ?? 0;
+          valB = b.plus_minus ?? 0;
+          break;
+        case 'efg_pct':
+          valA = a.efg_pct ?? 0;
+          valB = b.efg_pct ?? 0;
+          break;
+        case 'ts_pct':
+          valA = a.ts_pct ?? 0;
+          valB = b.ts_pct ?? 0;
+          break;
+        case 'threepar':
+          valA = a.threepar ?? (a.fga ? (a.tpa || 0) / a.fga : 0);
+          valB = b.threepar ?? (b.fga ? (b.tpa || 0) / b.fga : 0);
+          break;
+        case 'ftr':
+          valA = a.ftr ?? (a.fga ? (a.fta || 0) / a.fga : 0);
+          valB = b.ftr ?? (b.fga ? (b.fta || 0) / b.fga : 0);
+          break;
+        case 'usg_pct':
+          valA = getUsg(a);
+          valB = getUsg(b);
+          break;
+        case 'gmsc':
+          valA = a.gmsc ?? 0;
+          valB = b.gmsc ?? 0;
+          break;
+        case 'ortg':
+          valA = a.ortg ?? 0;
+          valB = b.ortg ?? 0;
+          break;
+        case 'drtg':
+          valA = a.drtg ?? 0;
+          valB = b.drtg ?? 0;
+          break;
+        case 'netrtg':
+          valA = a.netrtg ?? 0;
+          valB = b.netrtg ?? 0;
+          break;
+        default:
+          valA = a.pts ?? 0;
+          valB = b.pts ?? 0;
+      }
+
+      return sortDirection === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [rawPlayerList, sortField, sortDirection, authoritativeUsgMap]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const renderSortableHeader = (
+    field: string,
+    label: string,
+    className: string = 'text-right',
+    alignRight: boolean = true
+  ) => {
+    const isCurrent = sortField === field;
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        className={`py-3.5 px-3 font-semibold select-none cursor-pointer transition-colors hover:text-white ${className} ${
+          isCurrent ? 'text-[#FF9100]' : 'text-gray-400'
+        }`}
+      >
+        <div className={`inline-flex items-center space-x-1 ${alignRight ? 'justify-end' : 'justify-start'}`}>
+          <span>{label}</span>
+          {isCurrent ? (
+            sortDirection === 'desc' ? (
+              <ArrowDown className="w-3.5 h-3.5 text-[#FF9100]" />
+            ) : (
+              <ArrowUp className="w-3.5 h-3.5 text-[#FF9100]" />
+            )
+          ) : (
+            <ArrowUpDown className="w-3 h-3 opacity-30 hover:opacity-100" />
+          )}
+        </div>
+      </th>
+    );
+  };
+
   const currentMascot = getMascotByTeam(selectedTeam);
 
   return (
@@ -344,7 +549,7 @@ export default function PBPPage() {
             </div>
 
             <div className="inline-flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-[#0E1117]/90 border border-[#30363D] shadow-xl backdrop-blur-md max-w-sm shrink-0">
-              {teams.map((t) => (
+              {TEAMS.map((t) => (
                 <button
                   key={t}
                   onClick={() => setSelectedTeam(t)}
@@ -426,7 +631,7 @@ export default function PBPPage() {
           }`}
         >
           <Table2 className="w-4 h-4" />
-          <span>完整進階 Box Score ({playerList.length})</span>
+          <span>完整球員數據庫 Box Score ({rawPlayerList.length})</span>
         </button>
       </div>
 
@@ -633,13 +838,43 @@ export default function PBPPage() {
           {/* 4. 完整進階 Box Score */}
           {activeSubTab === 'boxscore' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-black text-white">
-                  {selectedTeam} • 階段完整球員進階 Box Score ({playerList.length} 人)
-                </h3>
-                <span className="text-xs text-gray-400 font-mono">
-                  含 eFG%、TS%、USG%、GmSc 與 NetRtg
-                </span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-white">
+                    {selectedTeam} • 階段完整球員數據庫 ({sortedPlayerList.length} 人)
+                  </h3>
+                  <span className="text-xs text-gray-400 font-mono">
+                    {boxScoreView === 'traditional'
+                      ? '基礎攻守：點擊任意表頭可快速排序，支援投射、籃板與攻守產出'
+                      : '進階效率：點擊任意表頭可快速排序，含 eFG%、TS%、3PAr、FTr、USG% 與 NetRtg'}
+                  </span>
+                </div>
+
+                <div className="inline-flex p-1 rounded-2xl bg-[#0E1117] border border-[#30363D] shadow-md shrink-0">
+                  <button
+                    onClick={() => setBoxScoreView('traditional')}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      boxScoreView === 'traditional'
+                        ? 'bg-amber-500 text-black shadow-sm font-black'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>基礎數據 (Traditional)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setBoxScoreView('advanced')}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      boxScoreView === 'advanced'
+                        ? 'bg-[#00E676] text-black shadow-sm font-black'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>進階數據 (Advanced)</span>
+                  </button>
+                </div>
               </div>
 
               {playersLoading ? (
@@ -650,55 +885,75 @@ export default function PBPPage() {
                 <div className="overflow-x-auto rounded-2xl border border-[#30363D] bg-[#161B22] shadow-2xl">
                   <table className="w-full text-left text-xs whitespace-nowrap">
                     <thead className="bg-[#0E1117] text-gray-400 uppercase font-mono tracking-wider border-b border-[#30363D]">
-                      <tr>
-                        <th className="py-3.5 px-4 font-bold text-white sticky left-0 bg-[#0E1117] z-10">球員</th>
-                        <th className={head}>場次</th>
-                        <th className={head}>時間</th>
-                        <th className={head}>PTS</th>
-                        <th className={head}>FG</th>
-                        <th className={head}>3P</th>
-                        <th className={head}>FT</th>
-                        <th className={head}>ORB</th>
-                        <th className={head}>DRB</th>
-                        <th className={head}>REB</th>
-                        <th className={head}>AST</th>
-                        <th className={head}>STL</th>
-                        <th className={head}>BLK</th>
-                        <th className={head}>TOV</th>
-                        <th className={head}>PF</th>
-                        <th className={head}>+/-</th>
-                        <th className={`${head} text-[#FF9100]`}>eFG%</th>
-                        <th className={`${head} text-[#FF9100]`}>TS%</th>
-                        <th className={`${head} text-[#00E676]`}>USG%</th>
-                        <th className={`${head} text-[#00E676]`}>GmSc</th>
-                        <th className={`${head} text-sky-400`}>ORtg</th>
-                        <th className={`${head} text-sky-400`}>DRtg</th>
-                        <th className={`${head} text-amber-300`}>NetRtg</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#21262D] font-mono">
-                      {playerList.length === 0 ? (
+                      {boxScoreView === 'traditional' ? (
                         <tr>
-                          <td colSpan={23} className="py-12 text-center text-gray-500 font-sans">
+                          {renderSortableHeader('player_name', '球員', 'sticky left-0 bg-[#0E1117] z-10 border-r border-[#21262D]/40', false)}
+                          {renderSortableHeader('games_played', '場次')}
+                          {renderSortableHeader('minutes', '時間')}
+                          {renderSortableHeader('pts', 'PTS', 'text-right font-bold text-white')}
+                          {renderSortableHeader('fgm', 'FG')}
+                          {renderSortableHeader('fg_pct', 'FG%')}
+                          {renderSortableHeader('tpm', '3P')}
+                          {renderSortableHeader('tp_pct', '3P%')}
+                          {renderSortableHeader('ftm', 'FT')}
+                          {renderSortableHeader('ft_pct', 'FT%')}
+                          {renderSortableHeader('orb', 'ORB')}
+                          {renderSortableHeader('drb', 'DRB')}
+                          {renderSortableHeader('reb', 'REB', 'text-right font-bold text-white')}
+                          {renderSortableHeader('ast', 'AST', 'text-right font-bold text-sky-400')}
+                          {renderSortableHeader('stl', 'STL')}
+                          {renderSortableHeader('blk', 'BLK')}
+                          {renderSortableHeader('tov', 'TOV')}
+                          {renderSortableHeader('pf', 'PF')}
+                          {renderSortableHeader('plus_minus', '+/-')}
+                        </tr>
+                      ) : (
+                        <tr>
+                          {renderSortableHeader('player_name', '球員', 'sticky left-0 bg-[#0E1117] z-10 border-r border-[#21262D]/40', false)}
+                          {renderSortableHeader('games_played', '場次')}
+                          {renderSortableHeader('minutes', '時間')}
+                          {renderSortableHeader('pts', 'PTS', 'text-right font-bold text-white')}
+                          {renderSortableHeader('efg_pct', 'eFG%', 'text-right text-[#FF9100]')}
+                          {renderSortableHeader('ts_pct', 'TS%', 'text-right text-[#FF9100]')}
+                          {renderSortableHeader('threepar', '3PAr')}
+                          {renderSortableHeader('ftr', 'FTr')}
+                          {renderSortableHeader('usg_pct', 'USG%', 'text-right text-[#00E676] font-black')}
+                          {renderSortableHeader('gmsc', 'GmSc', 'text-right text-[#00E676]')}
+                          {renderSortableHeader('ortg', 'ORtg', 'text-right text-sky-400')}
+                          {renderSortableHeader('drtg', 'DRtg', 'text-right text-sky-400')}
+                          {renderSortableHeader('netrtg', 'NetRtg', 'text-right text-amber-300 font-bold')}
+                          {renderSortableHeader('plus_minus', '+/-')}
+                        </tr>
+                      )}
+                    </thead>
+
+                    <tbody className="divide-y divide-[#21262D] font-mono">
+                      {sortedPlayerList.length === 0 ? (
+                        <tr>
+                          <td colSpan={20} className="py-12 text-center text-gray-500 font-sans">
                             暫無該球隊完整球員進階數據紀錄
                           </td>
                         </tr>
                       ) : (
-                        playerList.map((p, idx) => {
+                        sortedPlayerList.map((p, idx) => {
                           const fgStr = isNum(p.fgm) && isNum(p.fga) ? `${p.fgm}/${p.fga}` : '-';
                           const tpStr = isNum(p.tpm) && isNum(p.tpa) ? `${p.tpm}/${p.tpa}` : '-';
                           const ftStr = isNum(p.ftm) && isNum(p.fta) ? `${p.ftm}/${p.fta}` : '-';
 
-                          // 1. 優先從與球員戰力卡相同的權威來源 (/api/players/advanced) 同步 USG%
+                          const calcFgPct = p.fg_pct ?? (isNum(p.fgm) && isNum(p.fga) && p.fga > 0 ? (p.fgm / p.fga) * 100 : null);
+                          const calcTpPct = p.tp_pct ?? (isNum(p.tpm) && isNum(p.tpa) && p.tpa > 0 ? (p.tpm / p.tpa) * 100 : null);
+                          const calcFtPct = p.ft_pct ?? (isNum(p.ftm) && isNum(p.fta) && p.fta > 0 ? (p.ftm / p.fta) * 100 : null);
+
+                          const calc3PAr = p.threepar ?? (isNum(p.tpa) && isNum(p.fga) && p.fga > 0 ? (p.tpa / p.fga) * 100 : null);
+                          const calcFTr = p.ftr ?? (isNum(p.fta) && isNum(p.fga) && p.fga > 0 ? (p.fta / p.fga) * 100 : null);
+
                           const cleanName = (p.player_name || '').trim();
                           let finalUsg: number | string | undefined = authoritativeUsgMap.get(cleanName);
 
-                          // 2. 若該球員本身已有非 20.0 的有效數值則採用
                           if (finalUsg === undefined && isNum(p.usg_pct) && p.usg_pct > 0 && p.usg_pct !== 20) {
                             finalUsg = p.usg_pct;
                           }
 
-                          // 3. 保底機制：若未出現在權威清單中，使用加權公式動態推算
                           if (finalUsg === undefined) {
                             const pSec = parseSeconds(p.seconds, p.minutes);
                             const gp = p.games_played && p.games_played > 0 ? p.games_played : 1;
@@ -725,11 +980,6 @@ export default function PBPPage() {
                                     stage={stage}
                                     className="font-bold text-white group-hover:text-amber-400"
                                   />
-                                  {p.is_starter && (
-                                    <span className="text-[10px] px-1 rounded bg-[#FF9100]/20 text-[#FF9100]">
-                                      先
-                                    </span>
-                                  )}
                                   {p.identity?.includes('洋將') && (
                                     <span className="text-[10px] px-1 rounded bg-blue-500/20 text-blue-300">
                                       洋
@@ -737,32 +987,49 @@ export default function PBPPage() {
                                   )}
                                 </div>
                               </td>
+
                               <td className="py-3 px-3 text-right text-gray-300">{p.games_played ?? '-'}</td>
                               <td className="py-3 px-3 text-right text-gray-400">{p.minutes || '00:00'}</td>
                               <td className="py-3 px-3 text-right font-bold text-white">{p.pts ?? '-'}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{fgStr}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{tpStr}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{ftStr}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{p.orb ?? '-'}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{p.drb ?? '-'}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{p.reb ?? '-'}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{p.ast ?? '-'}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{p.stl ?? '-'}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{p.blk ?? '-'}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{p.tov ?? '-'}</td>
-                              <td className="py-3 px-3 text-right text-gray-300">{p.pf ?? '-'}</td>
-                              <td className={`py-3 px-3 text-right font-bold ${signColor(p.plus_minus)}`}>
-                                {signed(p.plus_minus, 0)}
-                              </td>
-                              <td className="py-3 px-3 text-right text-[#FF9100]">{smartPctStr(p.efg_pct)}</td>
-                              <td className="py-3 px-3 text-right text-[#FF9100]">{smartPctStr(p.ts_pct)}</td>
-                              <td className="py-3 px-3 text-right text-[#00E676] font-bold">{smartPctStr(finalUsg)}</td>
-                              <td className="py-3 px-3 text-right text-[#00E676] font-bold">{fx(p.gmsc)}</td>
-                              <td className="py-3 px-3 text-right text-sky-400">{fx(p.ortg)}</td>
-                              <td className="py-3 px-3 text-right text-sky-400">{fx(p.drtg)}</td>
-                              <td className={`py-3 px-3 text-right font-bold ${signColor(p.netrtg)}`}>
-                                {signed(p.netrtg)}
-                              </td>
+
+                              {boxScoreView === 'traditional' ? (
+                                <>
+                                  <td className="py-3 px-3 text-right text-gray-300">{fgStr}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{smartPctStr(calcFgPct)}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{tpStr}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{smartPctStr(calcTpPct)}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{ftStr}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{smartPctStr(calcFtPct)}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{p.orb ?? '-'}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{p.drb ?? '-'}</td>
+                                  <td className="py-3 px-3 text-right font-bold text-white">{p.reb ?? '-'}</td>
+                                  <td className="py-3 px-3 text-right text-sky-400 font-bold">{p.ast ?? '-'}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{p.stl ?? '-'}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{p.blk ?? '-'}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{p.tov ?? '-'}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{p.pf ?? '-'}</td>
+                                  <td className={`py-3 px-3 text-right font-bold ${signColor(p.plus_minus)}`}>
+                                    {signed(p.plus_minus, 0)}
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="py-3 px-3 text-right text-[#FF9100]">{smartPctStr(p.efg_pct)}</td>
+                                  <td className="py-3 px-3 text-right text-[#FF9100]">{smartPctStr(p.ts_pct)}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{smartPctStr(calc3PAr)}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{smartPctStr(calcFTr)}</td>
+                                  <td className="py-3 px-3 text-right text-[#00E676] font-bold">{smartPctStr(finalUsg)}</td>
+                                  <td className="py-3 px-3 text-right text-[#00E676] font-bold">{fx(p.gmsc)}</td>
+                                  <td className="py-3 px-3 text-right text-sky-400">{fx(p.ortg)}</td>
+                                  <td className="py-3 px-3 text-right text-sky-400">{fx(p.drtg)}</td>
+                                  <td className={`py-3 px-3 text-right font-bold ${signColor(p.netrtg)}`}>
+                                    {signed(p.netrtg)}
+                                  </td>
+                                  <td className={`py-3 px-3 text-right font-bold ${signColor(p.plus_minus)}`}>
+                                    {signed(p.plus_minus, 0)}
+                                  </td>
+                                </>
+                              )}
                             </tr>
                           );
                         })
@@ -776,5 +1043,13 @@ export default function PBPPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PBPPage() {
+  return (
+    <Suspense fallback={<div className="p-16 text-center text-gray-500">正在載入 PBP 數據庫...</div>}>
+      <PBPContent />
+    </Suspense>
   );
 }

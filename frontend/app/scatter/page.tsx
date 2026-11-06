@@ -17,6 +17,10 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  BarChart3,
+  SlidersHorizontal,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -65,6 +69,9 @@ export default function ScatterPage() {
   const [identityFilter, setIdentityFilter] = useState<string>('全部');
   const [selectedPlayer, setSelectedPlayer] = useState<AdvancedPlayer | null>(null);
   const [isTableExpanded, setIsTableExpanded] = useState<boolean>(true);
+  
+  // 雙 Tab 視圖：'traditional' (基礎攻守) | 'advanced' (進階效率)
+  const [tableTab, setTableTab] = useState<'traditional' | 'advanced'>('advanced');
   const [sortField, setSortField] = useState<keyof AdvancedPlayer>('gmsc');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
@@ -238,7 +245,6 @@ export default function ScatterPage() {
     }
   };
 
-  // 點擊散點圖圈圈：選中該球員 + 自動展開下方表格 + 平滑滾動定位至該行
   const handleBubbleClick = (player: AdvancedPlayer) => {
     setSelectedPlayer(player);
     setIsTableExpanded(true);
@@ -273,6 +279,37 @@ export default function ScatterPage() {
         : String(valB ?? '').localeCompare(String(valA ?? ''));
     });
   }, [filteredPlayers, sortField, sortAsc]);
+
+  // 排序表頭生成輔助函式
+  const renderSortableTh = (
+    field: keyof AdvancedPlayer,
+    label: string,
+    alignClass: string = 'text-right',
+    extraClass: string = ''
+  ) => {
+    const isCurrent = sortField === field;
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        className={`py-3 px-3 font-semibold select-none cursor-pointer transition-colors hover:text-white ${alignClass} ${extraClass} ${
+          isCurrent ? 'text-[#FF9100]' : 'text-gray-400'
+        }`}
+      >
+        <div className={`inline-flex items-center space-x-1 ${alignClass.includes('right') ? 'justify-end' : alignClass.includes('center') ? 'justify-center' : 'justify-start'}`}>
+          <span>{label}</span>
+          {isCurrent ? (
+            sortAsc ? (
+              <ArrowUp className="w-3.5 h-3.5 text-[#FF9100]" />
+            ) : (
+              <ArrowDown className="w-3.5 h-3.5 text-[#FF9100]" />
+            )
+          ) : (
+            <ArrowUpDown className="w-3 h-3 opacity-30 hover:opacity-100" />
+          )}
+        </div>
+      </th>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -519,7 +556,7 @@ export default function ScatterPage() {
               真實命中率 (TS%) →
             </text>
 
-            {/* 球員氣泡繪製 (點擊連動展開下方表格並滾動定位) */}
+            {/* 球員氣泡繪製 */}
             {filteredPlayers.map((p) => {
               const cx = getX(p.usg_pct);
               const cy = getY(p.ts_pct);
@@ -637,153 +674,126 @@ export default function ScatterPage() {
         </div>
       </div>
 
-      {/* 5. 掛載下方球員詳細數據清單表格 */}
+      {/* 5. 掛載下方球員詳細數據清單表格 (支援雙 Tab、凍結首欄+首列、全欄位點擊排序) */}
       <section className="space-y-4">
-        <div
-          onClick={() => setIsTableExpanded(!isTableExpanded)}
-          className="flex items-center justify-between p-4 rounded-2xl border border-[#30363D] bg-[#161B22] cursor-pointer hover:border-[#00E676]/40 transition-all select-none shadow-md"
-        >
-          <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border border-[#30363D] bg-[#161B22] shadow-md gap-3">
+          <div
+            onClick={() => setIsTableExpanded(!isTableExpanded)}
+            className="flex items-center space-x-3 cursor-pointer select-none"
+          >
             <TableIcon className="w-5 h-5 text-[#00E676]" />
             <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
               📋 查看象限圖球員詳細數據清單
             </h2>
             <span className="px-2.5 py-0.5 rounded-full bg-[#0E1117] border border-[#30363D] text-[#00E676] text-xs font-bold font-mono">
-              共 {filteredPlayers.length} 位球員（即時連動篩選）
+              共 {filteredPlayers.length} 位球員
             </span>
           </div>
 
-          <div className="flex items-center space-x-2 text-xs text-gray-400">
-            <span>{isTableExpanded ? '收合清單' : '展開完整數據表'}</span>
-            {isTableExpanded ? (
-              <ChevronUp className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            )}
+          <div className="flex items-center space-x-3">
+            {/* 雙 Tab 切換控制鈕 */}
+            <div className="inline-flex p-1 rounded-2xl bg-[#0E1117] border border-[#30363D] shadow-sm shrink-0">
+              <button
+                onClick={() => setTableTab('traditional')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  tableTab === 'traditional'
+                    ? 'bg-amber-500 text-black shadow-sm font-black'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>基礎攻守</span>
+              </button>
+
+              <button
+                onClick={() => setTableTab('advanced')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  tableTab === 'advanced'
+                    ? 'bg-[#00E676] text-black shadow-sm font-black'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>進階效率</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setIsTableExpanded(!isTableExpanded)}
+              className="p-1.5 rounded-xl bg-[#0E1117] border border-[#30363D] text-gray-400 hover:text-white transition-colors"
+            >
+              {isTableExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
         {isTableExpanded && (
-          <div className="overflow-x-auto rounded-2xl border border-[#30363D] bg-[#161B22] shadow-xl animate-in fade-in">
-            <table className="w-full text-left text-xs whitespace-nowrap">
-              <thead className="bg-[#0E1117] text-gray-400 uppercase font-mono tracking-wider border-b border-[#30363D]">
-                <tr>
-                  <th className="py-3 px-2 text-center">象限</th>
-                  <th
-                    onClick={() => handleSort('team_name')}
-                    className="py-3 px-2 font-bold text-white cursor-pointer hover:text-[#00E676]"
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>球隊</span>
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
-                  </th>
-                  <th className="py-3 px-2 text-center">背號</th>
-                  <th
-                    onClick={() => handleSort('player_name')}
-                    className="py-3 px-2 font-bold text-white cursor-pointer hover:text-[#00E676]"
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>球員名</span>
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
-                  </th>
-                  <th className="py-3 px-2 text-center">身分</th>
-                  <th className="py-3 px-2 text-center">位置</th>
-                  <th
-                    onClick={() => handleSort('games_played')}
-                    className="py-3 px-2 text-center cursor-pointer hover:text-white"
-                  >
-                    出賽
-                  </th>
-                  <th className="py-3 px-2 text-center">上場時間</th>
-                  <th
-                    onClick={() => handleSort('ppg')}
-                    className="py-3 px-2 text-right font-bold text-white cursor-pointer hover:text-[#FF9100]"
-                  >
-                    場均得分
-                  </th>
-                  <th className="py-3 px-2 text-right">投籃命中/出手</th>
-                  <th
-                    onClick={() => handleSort('fg_pct')}
-                    className="py-3 px-2 text-right cursor-pointer hover:text-white"
-                  >
-                    命中%
-                  </th>
-                  <th className="py-3 px-2 text-right">三分命中/出手</th>
-                  <th
-                    onClick={() => handleSort('p3_pct')}
-                    className="py-3 px-2 text-right cursor-pointer hover:text-white"
-                  >
-                    三分%
-                  </th>
-                  <th className="py-3 px-2 text-right">罰球命中/出手</th>
-                  <th
-                    onClick={() => handleSort('ft_pct')}
-                    className="py-3 px-2 text-right cursor-pointer hover:text-white"
-                  >
-                    罰球%
-                  </th>
-                  <th
-                    onClick={() => handleSort('efg_pct')}
-                    className="py-3 px-2 text-right text-sky-400 cursor-pointer hover:text-white"
-                  >
-                    eFG%
-                  </th>
-                  <th
-                    onClick={() => handleSort('ts_pct')}
-                    className="py-3 px-2 text-right font-bold text-[#00E676] cursor-pointer hover:text-white"
-                  >
-                    TS%
-                  </th>
-                  <th
-                    onClick={() => handleSort('three_par')}
-                    className="py-3 px-2 text-right cursor-pointer hover:text-white"
-                  >
-                    3PAr
-                  </th>
-                  <th
-                    onClick={() => handleSort('ftr')}
-                    className="py-3 px-2 text-right cursor-pointer hover:text-white"
-                  >
-                    FTr
-                  </th>
-                  <th
-                    onClick={() => handleSort('usg_pct')}
-                    className="py-3 px-2 text-right font-bold text-[#FF9100] cursor-pointer hover:text-white"
-                  >
-                    USG%
-                  </th>
-                  <th
-                    onClick={() => handleSort('ast_pct')}
-                    className="py-3 px-2 text-right cursor-pointer hover:text-white"
-                  >
-                    AST%
-                  </th>
-                  <th
-                    onClick={() => handleSort('tov_pct')}
-                    className="py-3 px-2 text-right cursor-pointer hover:text-white"
-                  >
-                    TOV%
-                  </th>
-                  <th
-                    onClick={() => handleSort('gmsc')}
-                    className="py-3 px-2 text-right font-black text-amber-300 cursor-pointer hover:text-white"
-                  >
-                    GmSc
-                  </th>
-                </tr>
+          <div className="overflow-x-auto max-h-[620px] overflow-y-auto rounded-2xl border border-[#30363D] bg-[#161B22] shadow-2xl relative animate-in fade-in">
+            <table className="w-full text-left text-xs whitespace-nowrap border-separate border-spacing-0">
+              {/* 凍結表頭 (Sticky Header: top-0 z-30) */}
+              <thead className="bg-[#0E1117] text-gray-400 uppercase font-mono tracking-wider sticky top-0 z-30 shadow-md">
+                {tableTab === 'traditional' ? (
+                  /* 基礎數據表頭 */
+                  <tr>
+                    {/* 雙重凍結最左欄：球員名稱 (top-0 + left-0 -> z-40) */}
+                    <th className="py-3.5 px-4 font-bold text-white sticky top-0 left-0 z-40 bg-[#0E1117] border-b border-r border-[#30363D] shadow-[2px_0_5px_rgba(0,0,0,0.4)]">
+                      球員
+                    </th>
+                    {renderSortableTh('team_name', '球隊', 'text-left')}
+                    {renderSortableTh('identity', '身分', 'text-center')}
+                    {renderSortableTh('position', '位置', 'text-center')}
+                    {renderSortableTh('games_played', '出賽', 'text-center')}
+                    {renderSortableTh('mpg', '上場時間', 'text-center')}
+                    {renderSortableTh('ppg', '場均得分', 'text-right font-bold text-white')}
+                    <th className="py-3 px-3 text-right">投籃命中/出手</th>
+                    {renderSortableTh('fg_pct', '命中%')}
+                    <th className="py-3 px-3 text-right">三分命中/出手</th>
+                    {renderSortableTh('p3_pct', '三分%')}
+                    <th className="py-3 px-3 text-right">罰球命中/出手</th>
+                    {renderSortableTh('ft_pct', '罰球%')}
+                    {renderSortableTh('rpg', '場均籃板', 'text-right font-bold text-white')}
+                    {renderSortableTh('apg', '場均助攻', 'text-right font-bold text-sky-400')}
+                    {renderSortableTh('spg', '抄截')}
+                    {renderSortableTh('bpg', '阻攻')}
+                    {renderSortableTh('tpg', '失誤')}
+                    {renderSortableTh('plus_minus', '+/-')}
+                  </tr>
+                ) : (
+                  /* 進階數據表頭 */
+                  <tr>
+                    {/* 雙重凍結最左欄：球員名稱 (top-0 + left-0 -> z-40) */}
+                    <th className="py-3.5 px-4 font-bold text-white sticky top-0 left-0 z-40 bg-[#0E1117] border-b border-r border-[#30363D] shadow-[2px_0_5px_rgba(0,0,0,0.4)]">
+                      球員
+                    </th>
+                    {renderSortableTh('team_name', '球隊', 'text-left')}
+                    {renderSortableTh('identity', '身分', 'text-center')}
+                    {renderSortableTh('position', '位置', 'text-center')}
+                    {renderSortableTh('games_played', '出賽', 'text-center')}
+                    {renderSortableTh('mpg', '上場時間', 'text-center')}
+                    {renderSortableTh('ppg', '場均得分', 'text-right font-bold text-white')}
+                    {renderSortableTh('efg_pct', 'eFG%', 'text-right text-[#FF9100]')}
+                    {renderSortableTh('ts_pct', 'TS%', 'text-right font-bold text-[#FF9100]')}
+                    {renderSortableTh('three_par', '3PAr')}
+                    {renderSortableTh('ftr', 'FTr')}
+                    {renderSortableTh('usg_pct', 'USG%', 'text-right font-black text-[#00E676]')}
+                    {renderSortableTh('ast_pct', 'AST%')}
+                    {renderSortableTh('tov_pct', 'TOV%')}
+                    {renderSortableTh('gmsc', 'GmSc', 'text-right font-black text-amber-300')}
+                    {renderSortableTh('plus_minus', '+/-')}
+                  </tr>
+                )}
               </thead>
+
               <tbody className="divide-y divide-[#21262D] font-mono">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={22} className="py-8 text-center text-gray-500 font-sans">
+                    <td colSpan={20} className="py-12 text-center text-gray-500 font-sans">
                       載入球員數據中...
                     </td>
                   </tr>
                 ) : sortedTablePlayers.length === 0 ? (
                   <tr>
-                    <td colSpan={22} className="py-8 text-center text-gray-500 font-sans">
+                    <td colSpan={20} className="py-12 text-center text-gray-500 font-sans">
                       查無符合篩選條件的球員
                     </td>
                   </tr>
@@ -799,38 +809,42 @@ export default function ScatterPage() {
                         key={`${player.team_name}-${player.player_name}`}
                         id={rowId}
                         onClick={() => setSelectedPlayer(player)}
-                        className={`transition-all duration-300 cursor-pointer ${
+                        className={`transition-colors cursor-pointer group ${
                           isSelected
-                            ? 'bg-[#FF9100]/20 ring-1 ring-inset ring-[#FF9100]/50'
-                            : 'hover:bg-[#21262D]/50'
+                            ? 'bg-[#FF9100]/20'
+                            : 'hover:bg-[#21262D]/60'
                         }`}
                       >
-                        <td className="py-2.5 px-2 text-center">
-                          <span
-                            className="px-1.5 py-0.5 rounded text-[10px] font-bold"
-                            style={{
-                              backgroundColor: `${qColor}20`,
-                              color: qColor,
-                              border: `1px solid ${qColor}40`,
-                            }}
-                          >
-                            {q}
-                          </span>
+                        {/* 凍結最左側球員欄 (Sticky Column: left-0 z-20) */}
+                        <td className={`py-3 px-4 sticky left-0 z-20 font-sans font-bold text-white border-r border-[#21262D]/40 shadow-[2px_0_5px_rgba(0,0,0,0.3)] transition-colors ${
+                          isSelected ? 'bg-[#272118]' : 'bg-[#161B22] group-hover:bg-[#1C2128]'
+                        }`}>
+                          <div className="flex items-center space-x-2">
+                            <span
+                              className="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0"
+                              style={{
+                                backgroundColor: `${qColor}20`,
+                                color: qColor,
+                                border: `1px solid ${qColor}40`,
+                              }}
+                            >
+                              {q}
+                            </span>
+                            <span className="text-gray-500 text-xs font-mono w-5 shrink-0">
+                              #{player.jersey_number || '-'}
+                            </span>
+                            <PlayerLink
+                              name={player.player_name}
+                              stage={stage}
+                              className="font-bold text-white group-hover:text-[#00E676] whitespace-nowrap"
+                            />
+                          </div>
                         </td>
-                        <td className="py-2.5 px-2 font-sans font-bold text-gray-200">
+
+                        <td className="py-3 px-3 font-sans font-bold text-gray-300">
                           {player.team_name}
                         </td>
-                        <td className="py-2.5 px-2 text-center text-gray-400">
-                          {player.jersey_number || '-'}
-                        </td>
-                        <td className="py-2.5 px-2 font-sans font-bold text-white">
-                          <PlayerLink
-                            name={player.player_name}
-                            stage={stage}
-                            className="text-white hover:text-[#00E676]"
-                          />
-                        </td>
-                        <td className="py-2.5 px-2 text-center">
+                        <td className="py-3 px-3 text-center">
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                               player.identity.includes('洋將')
@@ -841,60 +855,103 @@ export default function ScatterPage() {
                             {player.identity}
                           </span>
                         </td>
-                        <td className="py-2.5 px-2 text-center text-gray-300">
+                        <td className="py-3 px-3 text-center text-gray-400 font-sans">
                           {player.position || '-'}
                         </td>
-                        <td className="py-2.5 px-2 text-center text-gray-300">
+                        <td className="py-3 px-3 text-center text-gray-300">
                           {player.games_played}
                         </td>
-                        <td className="py-2.5 px-2 text-center text-gray-400">
-                          {player.minutes_str || `${player.mpg}分`}
+                        <td className="py-3 px-3 text-center text-gray-400">
+                          {player.minutes_str || `${player.mpg.toFixed(1)}分`}
                         </td>
-                        <td className="py-2.5 px-2 text-right font-bold text-white">
+                        <td className="py-3 px-3 text-right font-bold text-white">
                           {player.ppg.toFixed(1)}
                         </td>
-                        <td className="py-2.5 px-2 text-right text-gray-400">
-                          {player.fgm ?? 0}/{player.fga ?? 0}
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-gray-300">
-                          {(player.fg_pct ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-gray-400">
-                          {player.p3m ?? 0}/{player.p3a ?? 0}
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-gray-300">
-                          {(player.p3_pct ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-gray-400">
-                          {player.ftm ?? 0}/{player.fta ?? 0}
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-gray-300">
-                          {(player.ft_pct ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-sky-400">
-                          {(player.efg_pct ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right font-bold text-[#00E676]">
-                          {(player.ts_pct ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-gray-400">
-                          {(player.three_par ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-gray-400">
-                          {(player.ftr ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right font-bold text-[#FF9100]">
-                          {(player.usg_pct ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-gray-400">
-                          {(player.ast_pct ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-gray-400">
-                          {(player.tov_pct ?? 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2.5 px-2 text-right font-black text-amber-300">
-                          {(player.gmsc ?? 0).toFixed(1)}
-                        </td>
+
+                        {tableTab === 'traditional' ? (
+                          /* 基礎攻守數據格 */
+                          <>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {player.fgm ?? 0}/{player.fga ?? 0}
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.fg_pct ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {player.p3m ?? 0}/{player.p3a ?? 0}
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.p3_pct ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {player.ftm ?? 0}/{player.fta ?? 0}
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.ft_pct ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right font-bold text-white">
+                              {(player.rpg ?? 0).toFixed(1)}
+                            </td>
+                            <td className="py-3 px-3 text-right font-bold text-sky-400">
+                              {(player.apg ?? 0).toFixed(1)}
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.spg ?? 0).toFixed(1)}
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.bpg ?? 0).toFixed(1)}
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.tpg ?? 0).toFixed(1)}
+                            </td>
+                            <td className={`py-3 px-3 text-right font-bold ${
+                              (player.plus_minus ?? 0) > 0
+                                ? 'text-[#00E676]'
+                                : (player.plus_minus ?? 0) < 0
+                                ? 'text-red-400'
+                                : 'text-gray-400'
+                            }`}>
+                              {player.plus_minus > 0 ? `+${player.plus_minus.toFixed(1)}` : player.plus_minus.toFixed(1)}
+                            </td>
+                          </>
+                        ) : (
+                          /* 進階效率數據格 */
+                          <>
+                            <td className="py-3 px-3 text-right text-[#FF9100] font-bold">
+                              {(player.efg_pct ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right text-[#FF9100] font-bold">
+                              {(player.ts_pct ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.three_par ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.ftr ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right font-bold text-[#00E676]">
+                              {(player.usg_pct ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.ast_pct ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-300">
+                              {(player.tov_pct ?? 0).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right font-black text-amber-300">
+                              {(player.gmsc ?? 0).toFixed(1)}
+                            </td>
+                            <td className={`py-3 px-3 text-right font-bold ${
+                              (player.plus_minus ?? 0) > 0
+                                ? 'text-[#00E676]'
+                                : (player.plus_minus ?? 0) < 0
+                                ? 'text-red-400'
+                                : 'text-gray-400'
+                            }`}>
+                              {player.plus_minus > 0 ? `+${player.plus_minus.toFixed(1)}` : player.plus_minus.toFixed(1)}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     );
                   })
