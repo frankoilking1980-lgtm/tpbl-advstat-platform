@@ -165,7 +165,9 @@ interface PlayerInfo {
   apg: number;
   spg: number;
   bpg: number;
-  tpg: number;
+  tpg?: number;
+  tov?: number;
+  topg?: number;
   plus_minus: number;
   usg_pct: number;
   ts_pct: number;
@@ -259,7 +261,7 @@ function PRTag({ pr }: { pr?: number }) {
 }
 
 // 情境六維雷達演算法
-function calculateSituationalRadar(playerInfo?: PlayerInfo, situations?: PlayerSituationsData) {
+function calculateSituationalRadar(playerInfo?: PlayerInfo, situations?: PlayerSituationsData, realTpg?: number) {
   if (!playerInfo) {
     return { iso: 50, transition: 50, clutch: 50, paint: 50, ftr: 50, tov_ctrl: 50 };
   }
@@ -269,7 +271,7 @@ function calculateSituationalRadar(playerInfo?: PlayerInfo, situations?: PlayerS
   const ts = Number(playerInfo.ts_pct || 0);
   const rpg = Number(playerInfo.rpg || 0);
   const spg = Number(playerInfo.spg || 0);
-  const tpg = Number(playerInfo.tpg || 1.5);
+  const tpg = realTpg !== undefined ? realTpg : Number(playerInfo.tpg || playerInfo.tov || 1.5);
 
   const q4Data = (situations as any)?.q4;
   const q4Ppg = Number(q4Data?.ppg || (situations as any)?.q4_ppg || ppg * 0.25);
@@ -281,22 +283,22 @@ function calculateSituationalRadar(playerInfo?: PlayerInfo, situations?: PlayerS
   const paintData = (situations as any)?.paint;
   const paintPpg = Number(paintData?.ppg || (situations as any)?.paint_ppg || (playerInfo.position?.includes('C') ? 10.0 : 6.0));
 
-  // 1. 單打終結 (USG% 與 TS% 綜合評分，基準 USG 28% 與 TS 58% 為 90分)
+  // 1. 單打終結 (USG% 與 TS% 綜合評分)
   const isoScore = Math.min(99, Math.max(30, Math.round((usg / 28.0) * 50 + (ts / 58.0) * 45)));
 
-  // 2. 快攻反擊推動 (快攻得分 5 分為 90 分)
+  // 2. 快攻反擊推動
   const transScore = Math.min(99, Math.max(30, Math.round((fbPpg / 5.0) * 85 + (spg / 2.0) * 15)));
 
-  // 3. 末節決勝抗壓 (第四節得分 6 分 + TS 58% 為 90分)
+  // 3. 末節決勝抗壓
   const clutchScore = Math.min(99, Math.max(30, Math.round((q4Ppg / 6.0) * 60 + (q4Ts / 58.0) * 35)));
 
-  // 4. 禁區殺傷衝擊 (禁區得分 10 分 + 籃板為 90分)
+  // 4. 禁區殺傷衝擊
   const paintScore = Math.min(99, Math.max(30, Math.round((paintPpg / 10.0) * 65 + (rpg / 10.0) * 30)));
 
-  // 5. 造犯規殺傷 (場均得分與出手比例估計)
+  // 5. 造犯規殺傷
   const ftrScore = Math.min(99, Math.max(30, Math.round((ppg / 22.0) * 60 + (usg / 25.0) * 35)));
 
-  // 6. 球權保護度 (逆向計算，失誤越低評分越高，場均失誤 1.0 為 95分，3.5 為 40分)
+  // 6. 球權保護度 (失誤越低評分越高)
   const tovCtrlScore = Math.min(99, Math.max(25, Math.round(100 - (tpg / 3.5) * 55)));
 
   return {
@@ -479,14 +481,70 @@ function PlayerCardsContent() {
     return determinePlayerArchetypes(cardB?.player_info, sitPlayerB);
   }, [cardB, sitPlayerB]);
 
-  // 情境六維雷達指標數值
+  /* ------------------------------------------------------------------ */
+  /* 精準失誤次數 (TPG) 解析與全聯盟逆向 PR 計算 (越低越好)                 */
+  /* ------------------------------------------------------------------ */
+
+  const getRealTpg = (info?: PlayerInfo, fallbackList?: PlayerInfo[]): number | undefined => {
+    if (!info) return undefined;
+    // 若後端給的數值非 1.5 預設值，優先採用
+    if (info.tpg !== undefined && info.tpg !== null && info.tpg !== 1.5) {
+      return Number(info.tpg);
+    }
+    if (info.tov !== undefined && info.tov !== null && info.tov !== 1.5) {
+      return Number(info.tov);
+    }
+    if (info.topg !== undefined && info.topg !== null && info.topg !== 1.5) {
+      return Number(info.topg);
+    }
+
+    // 若為空或為 1.5，從 /api/players/advanced 的列表比對真實 TPG
+    const targetName = (info.player_name || '').trim();
+    const found = fallbackList?.find((p) => (p.player_name || '').trim() === targetName);
+    if (found) {
+      const val = found.tpg ?? (found as any).tov ?? (found as any).topg;
+      if (val !== undefined && val !== null) {
+        return Number(val);
+      }
+    }
+
+    return info.tpg ?? info.tov ?? 1.5;
+  };
+
+  const realTpgA = useMemo(() => getRealTpg(cardA?.player_info, listA), [cardA, listA]);
+  const realTpgB = useMemo(() => getRealTpg(cardB?.player_info, listB), [cardB, listB]);
+
+  // 動態計算失誤的逆向 PR 值 (失誤越少 PR 越高)
+  const calcReverseTpgPr = (targetTpg?: number, allList?: PlayerInfo[]): number | undefined => {
+    if (targetTpg === undefined || !allList || allList.length === 0) return undefined;
+    const qualified = allList.filter((p) => (p.mpg || 0) >= 8.0 && (p.games_played || 0) >= 1);
+    if (qualified.length === 0) return undefined;
+
+    // 計算有多少球員失誤大於目前球員（表現更差）
+    const worseCount = qualified.filter((p) => {
+      const pTpg = p.tpg ?? (p as any).tov ?? (p as any).topg ?? 0;
+      return pTpg > targetTpg;
+    }).length;
+
+    return Math.min(99, Math.max(1, Math.round((worseCount / qualified.length) * 100)));
+  };
+
+  const prTpgA = useMemo(() => {
+    return prPlayerA?.badges?.TOV?.pr ?? prPlayerA?.badges?.TPG?.pr ?? calcReverseTpgPr(realTpgA, listA);
+  }, [prPlayerA, realTpgA, listA]);
+
+  const prTpgB = useMemo(() => {
+    return prPlayerB?.badges?.TOV?.pr ?? prPlayerB?.badges?.TPG?.pr ?? calcReverseTpgPr(realTpgB, listB);
+  }, [prPlayerB, realTpgB, listB]);
+
+  // 情境六維雷達指標數值 (帶入真實 TPG)
   const sitRadarA = useMemo(() => {
-    return calculateSituationalRadar(cardA?.player_info, sitPlayerA);
-  }, [cardA, sitPlayerA]);
+    return calculateSituationalRadar(cardA?.player_info, sitPlayerA, realTpgA);
+  }, [cardA, sitPlayerA, realTpgA]);
 
   const sitRadarB = useMemo(() => {
-    return calculateSituationalRadar(cardB?.player_info, sitPlayerB);
-  }, [cardB, sitPlayerB]);
+    return calculateSituationalRadar(cardB?.player_info, sitPlayerB, realTpgB);
+  }, [cardB, sitPlayerB, realTpgB]);
 
   // 滾動至 PR 排名總表
   const scrollToPlayerInRankings = (name: string) => {
@@ -501,7 +559,7 @@ function PlayerCardsContent() {
     }, 150);
   };
 
-  // 滾動至進階專題排行榜 (自動展開、切換指標並高亮)
+  // 滾動至進階專題排行榜
   const scrollToPlayerInSituationsLeaderboard = (name: string) => {
     if (!name) return;
     
@@ -525,7 +583,6 @@ function PlayerCardsContent() {
     }, 180);
   };
 
-  // 點擊球員姓名統整分流處理
   const handlePlayerNameClick = (name: string) => {
     if (!name) return;
     if (cardTab === 'overview') {
@@ -544,7 +601,6 @@ function PlayerCardsContent() {
     window.scrollTo({ top: 120, behavior: 'smooth' });
   };
 
-  // 傳統 vs 情境 六維頂點配置
   const traditionalDims = [
     { key: 'scoring', label: '得分 (Scoring)' },
     { key: 'shooting', label: '投射 (Shooting)' },
@@ -628,7 +684,7 @@ function PlayerCardsContent() {
     { label: '場均助攻 (APG)', valA: cardA?.player_info.apg, valB: cardB?.player_info.apg, prA: prPlayerA?.badges?.AST?.pr, prB: prPlayerB?.badges?.AST?.pr, format: (v: number) => v.toFixed(1) },
     { label: '場均抄截 (SPG)', valA: cardA?.player_info.spg, valB: cardB?.player_info.spg, prA: prPlayerA?.badges?.STL?.pr, prB: prPlayerB?.badges?.STL?.pr, format: (v: number) => v.toFixed(1) },
     { label: '場均阻攻 (BPG)', valA: cardA?.player_info.bpg, valB: cardB?.player_info.bpg, prA: prPlayerA?.badges?.BLK?.pr, prB: prPlayerB?.badges?.BLK?.pr, format: (v: number) => v.toFixed(1) },
-    { label: '失誤次數 (TPG)', valA: cardA?.player_info.tpg, valB: cardB?.player_info.tpg, format: (v: number) => v.toFixed(1), lowerIsBetter: true },
+    { label: '失誤次數 (TPG)', valA: realTpgA, valB: realTpgB, prA: prTpgA, prB: prTpgB, format: (v: number) => v.toFixed(1), lowerIsBetter: true },
     { label: '單場表現 (GmSc)', valA: cardA?.player_info.gmsc, valB: cardB?.player_info.gmsc, prA: prPlayerA?.badges?.GmSC?.pr, prB: prPlayerB?.badges?.GmSC?.pr, format: (v: number) => v.toFixed(1) },
   ];
 
@@ -794,10 +850,9 @@ function PlayerCardsContent() {
 
       {/* 戰力卡展示區 */}
       {cardTab === 'overview' ? (
-        /* ========== Tab 1: 既有綜合戰力與雷達圖 ========== */
         <div className="w-full">
           {playerB ? (
-            /* 雙人對決模式 (嚴格對稱居中版) */
+            /* 雙人對決模式 */
             <div className="flex flex-col xl:flex-row items-center justify-center gap-4 xl:gap-6 max-w-7xl mx-auto w-full">
               {/* 球員 A 肖像 */}
               <div
@@ -834,7 +889,6 @@ function PlayerCardsContent() {
                       {cardA?.player_info.team_name} • {cardA?.player_info.identity}
                     </p>
 
-                    {/* 戰術角色標籤 (Player Archetypes) */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
                       {archetypesA.map((b) => (
                         <span
@@ -882,9 +936,8 @@ function PlayerCardsContent() {
                 </div>
               </div>
 
-              {/* 中間六維雷達圖 (含傳統/情境維度動態切換) */}
+              {/* 中間六維雷達圖 */}
               <div className="w-full sm:w-[380px] 2xl:w-[420px] p-5 2xl:p-6 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center shrink-0 min-h-[460px]">
-                {/* 頂部維度切換開關 */}
                 <div className="w-full flex items-center justify-between pb-2 border-b border-[#21262D]">
                   <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
                     <Target className="w-3.5 h-3.5 text-[#FF9100]" /> 雷達維度模型
@@ -1037,7 +1090,6 @@ function PlayerCardsContent() {
                       {cardB?.player_info.team_name} • {cardB?.player_info.identity}
                     </p>
 
-                    {/* 戰術角色標籤 (Player Archetypes) */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
                       {archetypesB.map((b) => (
                         <span
@@ -1127,7 +1179,6 @@ function PlayerCardsContent() {
                       {cardA?.player_info.team_name} • {cardA?.player_info.identity}
                     </p>
 
-                    {/* 單人模式戰術標籤 */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-3">
                       {archetypesA.map((b) => (
                         <span
@@ -1174,7 +1225,6 @@ function PlayerCardsContent() {
               </div>
 
               <div className="flex-1 w-full max-w-xl p-6 sm:p-7 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center min-h-[460px]">
-                {/* 頂部維度切換開關 */}
                 <div className="w-full flex items-center justify-between pb-2 border-b border-[#21262D]">
                   <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
                     <Target className="w-3.5 h-3.5 text-[#FF9100]" /> 雷達維度模型
@@ -1283,10 +1333,9 @@ function PlayerCardsContent() {
           )}
         </div>
       ) : (
-        /* ========== Tab 2 & 3: 得分情境 (Scoring) 或 末節抗壓 (Q4) ========== */
+        /* ========== Tab 2 & 3: 得分情境 或 末節抗壓 ========== */
         <div className="w-full">
           {playerB ? (
-            /* 雙人並列對抗展示 */
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center space-x-2 border-b border-[#FF9100]/30 pb-2">
@@ -1319,7 +1368,6 @@ function PlayerCardsContent() {
               </div>
             </div>
           ) : (
-            /* 單人居中展示 */
             <div className="max-w-4xl mx-auto space-y-3">
               <div className="flex items-center justify-between border-b border-[#30363D] pb-3">
                 <div className="flex items-center space-x-2">
