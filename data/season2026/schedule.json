@@ -97,5 +97,16 @@
     "home_score": 103,
     "sheet_name": "2026-11-07 G11 夢想家 vs 戰神",
     "status": "FINAL"
+  },
+  {
+    "game_id": "G12",
+    "date": "2026-11-08",
+    "time": "17:00",
+    "away_team": "桃園台啤永豐雲豹",
+    "away_score": 91,
+    "home_team": "臺北台新戰神",
+    "home_score": 102,
+    "sheet_name": "2026-11-08 G12 雲豹 vs 戰神",
+    "status": "FINAL"
   }
 ]
