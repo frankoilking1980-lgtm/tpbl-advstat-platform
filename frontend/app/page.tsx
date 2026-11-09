@@ -1,5 +1,6 @@
 'use client';
 
+import TeamSituationsMatrix from '@/components/TeamSituationsMatrix';
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import Image from 'next/image';
@@ -367,6 +368,9 @@ export default function TeamRatingsPage() {
           })}
         </div>
       </section>
+	  
+	  {/* 團隊四大要素戰力區塊下方 */}
+      <TeamSituationsMatrix />
     </div>
   );
 }

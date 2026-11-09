@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from datetime import timedelta, time
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -71,7 +72,6 @@ def parse_time_to_seconds(val, default_sec: int = 0) -> int:
     if val is None:
         return default_sec
     if isinstance(val, (int, float)):
-        # 若為數值且介於 1 到 60 之間，通常是分鐘數，轉為秒數
         if 0 < val <= 60:
             return int(val * 60)
         return int(val)
@@ -150,6 +150,81 @@ def _find_team_excel_file(season_folder: str, team_name: str) -> Optional[Path]:
         if core_kw in f.name and "summary" not in f.name.lower() and "總表" not in f.name:
             return f
     return None
+
+
+def _get_official_starting_players(game_id: str, home_team: str = "", away_team: str = "") -> dict:
+    """從 raw_game_stats/game_{gid}_stats.json 精確讀取官方標記之先發名單 (is_starting: true)"""
+    raw_dirs = [
+        BACKEND_DIR / "data" / "raw_game_stats",
+        PROJECT_ROOT / "data" / "raw_game_stats",
+        DATA_DIR / "raw_game_stats",
+    ]
+    raw_dir = next((d for d in raw_dirs if d.exists()), None)
+    if not raw_dir:
+        return {"home_starters": set(), "away_starters": set()}
+
+    gid_match = re.search(r"(\d+)", str(game_id))
+    num_id = gid_match.group(1) if gid_match else ""
+
+    candidates = []
+    # 1. 直接用數字 ID 命中
+    if num_id:
+        cand = raw_dir / f"game_{num_id}_stats.json"
+        if cand.exists():
+            candidates.append(cand)
+
+    # 2. 若為 G09 等代碼，透過 OFFICIAL_ID_MAP 反查
+    if not candidates:
+        gid_upper = str(game_id).upper()
+        for off_id, g_code in OFFICIAL_ID_MAP.items():
+            if g_code in gid_upper or gid_upper.endswith(g_code):
+                cand = raw_dir / f"game_{off_id}_stats.json"
+                if cand.exists():
+                    candidates.append(cand)
+                    break
+
+    # 3. 雙向對稱遍歷檢查對戰球隊
+    if not candidates and home_team and away_team:
+        for f in raw_dir.glob("game_*_stats.json"):
+            try:
+                with open(f, "r", encoding="utf-8") as fp:
+                    d = json.load(fp)
+                    h_name = normalize_team_name(d.get("home_team", {}).get("name", ""))
+                    a_name = normalize_team_name(d.get("away_team", {}).get("name", ""))
+                    if (h_name == home_team and a_name == away_team) or (h_name == away_team and a_name == home_team):
+                        candidates.append(f)
+                        break
+            except Exception:
+                continue
+
+    if not candidates:
+        return {"home_starters": set(), "away_starters": set()}
+
+    try:
+        with open(candidates[0], "r", encoding="utf-8") as fp:
+            data = json.load(fp)
+
+        home_starters = set()
+        away_starters = set()
+
+        # 讀取主隊 is_starting: true
+        for p in data.get("home_team", {}).get("players", {}).get("total", {}).values():
+            if isinstance(p, dict) and p.get("is_starting"):
+                p_name = str(p.get("name") or "").split(" ")[0].split("(")[0].strip()
+                if p_name:
+                    home_starters.add(p_name)
+
+        # 讀取客隊 is_starting: true
+        for p in data.get("away_team", {}).get("players", {}).get("total", {}).values():
+            if isinstance(p, dict) and p.get("is_starting"):
+                p_name = str(p.get("name") or "").split(" ")[0].split("(")[0].strip()
+                if p_name:
+                    away_starters.add(p_name)
+
+        return {"home_starters": home_starters, "away_starters": away_starters}
+    except Exception as e:
+        print(f"讀取官方先發名單失敗 ({candidates[0].name}): {e}")
+        return {"home_starters": set(), "away_starters": set()}
 
 
 # =====================================================================
@@ -362,7 +437,6 @@ def _parse_season_pbp_from_excel(excel_path: Path):
     five_man_lineups = []
     foreign_duos = []
 
-    # 1. 尋找「【賽季最佳五人陣容】」(預設位於第 45 欄附近)
     col_5m = None
     row_5m = None
     for r in range(1, 10):
@@ -407,7 +481,6 @@ def _parse_season_pbp_from_excel(excel_path: Path):
                 "lineup_netrtg": netrtg,
             })
 
-    # 2. 尋找「【賽季雙洋將化學效應矩陣】」(預設位於第 52 欄附近)
     col_duo = None
     row_duo = None
     for r in range(1, 10):
@@ -972,14 +1045,20 @@ def get_game_detail(game_id: str):
         if not home_box: home_box = fb_home
         if not away_box: away_box = fb_away
 
-    # 標記先發
+    # 智慧比對官方真實先發名單 (以 raw_game_stats 的 JSON is_starting 為準)
+    official_starters = _get_official_starting_players(real_db_id, home_team, away_team)
+    h_starters = official_starters["home_starters"]
+    a_starters = official_starters["away_starters"]
+
     for idx, p in enumerate(home_box):
-        p["is_starter"] = idx < 5
+        clean_pname = p["player_name"].split(" ")[0].split("(")[0].strip()
+        p["is_starter"] = (clean_pname in h_starters) if h_starters else (idx < 5)
         p["id"] = idx + 1
         p["team_name"] = home_team
 
     for idx, p in enumerate(away_box):
-        p["is_starter"] = idx < 5
+        clean_pname = p["player_name"].split(" ")[0].split("(")[0].strip()
+        p["is_starter"] = (clean_pname in a_starters) if a_starters else (idx < 5)
         p["id"] = idx + 101
         p["team_name"] = away_team
 
@@ -1141,7 +1220,6 @@ def get_glossary():
 # 7. 各隊 PBP 陣容與進階 Boxscore (直讀 Excel 賽季五人與雙洋將矩陣)
 # =====================================================================
 def _fetch_team_players(team_name: str, stage: str):
-    # 先從 SQLite 查詢該隊該賽季球員的保底場次與出場時間字典
     db_player_meta = {}
     try:
         conn = get_db_connection()
@@ -1168,7 +1246,6 @@ def _fetch_team_players(team_name: str, stage: str):
     except Exception:
         pass
 
-    # 1. 優先從各隊賽季 Excel「平均數據」工作表直讀官方真實投籃與攻守數據
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
     team_excel = _find_team_excel_file(season_folder, team_name)
 
@@ -1192,10 +1269,8 @@ def _fetch_team_players(team_name: str, stage: str):
                             continue
                         clean_name = p_name.split(" ")[0].split("(")[0].strip()
 
-                        # 取得資料庫保底備查
                         db_meta = db_player_meta.get(clean_name, {})
 
-                        # 智慧解析出賽場次 (GP) 與場均時間 (Minutes)
                         v_col5 = ws.cell(row=r, column=5).value
                         v_col6 = ws.cell(row=r, column=6).value
                         v_col7 = ws.cell(row=r, column=7).value
@@ -1203,7 +1278,6 @@ def _fetch_team_players(team_name: str, stage: str):
                         gp = 0
                         raw_time = None
 
-                        # 1. 先檢驗是否有標準字串/格式時間
                         time_candidate = None
                         for val in [v_col7, v_col6, v_col5]:
                             if val is not None and isinstance(val, (time, timedelta)):
@@ -1215,19 +1289,16 @@ def _fetch_team_players(team_name: str, stage: str):
 
                         if time_candidate is not None:
                             raw_time = time_candidate
-                            # 剩下的數值中取整數場次
                             num_cands = [clean_val_num(x, 0.0) for x in [v_col5, v_col6] if x != time_candidate and x is not None]
                             for n in num_cands:
                                 if 0 < n <= 82 and n.is_integer():
                                     gp = int(n)
                                     break
                         else:
-                            # 2. 若純數值，大值 (>=10.0) 必定是出場分鐘，小值整數 (<=82) 必定是場次
                             n5 = clean_val_num(v_col5, 0.0)
                             n6 = clean_val_num(v_col6, 0.0)
                             n7 = clean_val_num(v_col7, 0.0)
 
-                            # 尋找分鐘數 (通常介於 5 到 48 分鐘)
                             min_cand = None
                             for n in [n7, n6, n5]:
                                 if 5.0 <= n <= 48.0:
@@ -1244,7 +1315,6 @@ def _fetch_team_players(team_name: str, stage: str):
                                 raw_time = v_col6 or v_col7 or "00:00"
                                 gp = int(clean_val_num(v_col5, 0))
 
-                        # 保底機制：若場次未讀到，採用資料庫記錄
                         if gp <= 0:
                             gp = db_meta.get("games_played", 0)
 
@@ -1333,7 +1403,6 @@ def _fetch_team_players(team_name: str, stage: str):
         except Exception as e:
             print(f"直讀 Excel 球隊平均數據失敗: {e}")
 
-    # 2. 保底：若無 Excel 則讀取 SQLite 資料庫
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -1424,7 +1493,6 @@ def get_team_players(team_name: str, stage: str = Query("2026-2027 例行賽")):
 def get_team_pbp(team_name: str, stage: str = Query("2026-2027 例行賽")):
     players = _fetch_team_players(team_name, stage)
 
-    # 1. 球員個人 On/Off
     on_off_players = []
     for p in players[:10]:
         diff = round(p["plus_minus"] * 1.2, 1)
@@ -1438,12 +1506,10 @@ def get_team_pbp(team_name: str, stage: str = Query("2026-2027 例行賽")):
             "diff_netrtg": diff,
         })
 
-    # 2. 優先直讀 Excel 真實五人陣容與雙洋將矩陣
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
     team_excel = _find_team_excel_file(season_folder, team_name)
     five_man_lineups, foreign_duos = _parse_season_pbp_from_excel(team_excel)
 
-    # 3. 保底機制
     if not five_man_lineups:
         top5 = players[:5]
         if top5:
