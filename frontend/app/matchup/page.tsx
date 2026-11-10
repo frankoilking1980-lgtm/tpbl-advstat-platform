@@ -200,24 +200,19 @@ export default function MatchupPage() {
     return { starters, bench };
   };
 
-  // 即時記憶
-  useEffect(() => {
-    if (startersA.some(Boolean) || benchA.length > 0) {
-      savedLineupsRef.current[teamA] = { starters: startersA, bench: benchA };
-    }
-  }, [startersA, benchA, teamA]);
-
-  useEffect(() => {
-    if (startersB.some(Boolean) || benchB.length > 0) {
-      savedLineupsRef.current[teamB] = { starters: startersB, bench: benchB };
-    }
-  }, [startersB, benchB, teamB]);
-
+  // 切換隊伍 A：嚴密防禦性儲存，避免 React 批處理狀態丟失
   const handleTeamAChange = (newTeam: string) => {
+    savedLineupsRef.current[teamA] = {
+      starters: startersA,
+      bench: benchA,
+    };
+
     setTeamA(newTeam);
+
     if (savedLineupsRef.current[newTeam]) {
-      setStartersA(savedLineupsRef.current[newTeam].starters);
-      setBenchA(savedLineupsRef.current[newTeam].bench);
+      const saved = savedLineupsRef.current[newTeam];
+      setStartersA(saved.starters);
+      setBenchA(saved.bench);
     } else {
       const def = generateDefaultLineup(newTeam, allPlayers);
       setStartersA(def.starters);
@@ -225,11 +220,19 @@ export default function MatchupPage() {
     }
   };
 
+  // 切換隊伍 B：嚴密防禦性儲存
   const handleTeamBChange = (newTeam: string) => {
+    savedLineupsRef.current[teamB] = {
+      starters: startersB,
+      bench: benchB,
+    };
+
     setTeamB(newTeam);
+
     if (savedLineupsRef.current[newTeam]) {
-      setStartersB(savedLineupsRef.current[newTeam].starters);
-      setBenchB(savedLineupsRef.current[newTeam].bench);
+      const saved = savedLineupsRef.current[newTeam];
+      setStartersB(saved.starters);
+      setBenchB(saved.bench);
     } else {
       const def = generateDefaultLineup(newTeam, allPlayers);
       setStartersB(def.starters);
@@ -299,7 +302,7 @@ export default function MatchupPage() {
     }
   };
 
-  // 核心修復：彈窗可選球員池 (更換先發時，板凳上的球員全都可以選！)
+  // 核心修復：彈窗候選池（更換先發時開放板凳球員與未登錄球員供對調）
   const availablePool = useMemo(() => {
     if (!activePicker) return [];
     const { side, type, starterIndex } = activePicker;
@@ -312,7 +315,6 @@ export default function MatchupPage() {
     );
 
     if (type === 'starter') {
-      // 換先發時：除了「其他 4 位已經在先發上的球員」不能選，板凳球員與未登錄球員全部可選！
       const otherStarterNames = new Set(
         currentStarters
           .filter((p, idx) => idx !== starterIndex && p !== null)
@@ -320,7 +322,6 @@ export default function MatchupPage() {
       );
       return teamAll.filter((p) => !otherStarterNames.has(p.player_name));
     } else {
-      // 加板凳時：先發 5 人以及已在板凳上的球員不可選
       const allSelectedNames = new Set([
         ...currentStarters.filter(Boolean).map((p) => p!.player_name),
         ...currentBench.map((p) => p.player_name),
@@ -341,7 +342,7 @@ export default function MatchupPage() {
     return { starters: sForeign, total: sForeign + bForeign };
   }, [startersB, benchB]);
 
-  // 3. 核心運算：自動智慧分級輪替 + 先發救急保底機制 (Replacement Floor)
+  // 3. 核心運算：數值防呆健全度強化 (防止 NaN 與除以零)
   const calculateTeamAggregate = (starters: (Player | null)[], bench: Player[]) => {
     const activeStarters = starters.filter(Boolean) as Player[];
     if (activeStarters.length === 0) {
@@ -362,12 +363,12 @@ export default function MatchupPage() {
 
     let sPts = 0, sReb = 0, sAst = 0, sStl = 0, sBlk = 0, sGmsc = 0, sUsgSum = 0;
     activeStarters.forEach((p) => {
-      const estPpg = Math.max(p.ppg || 0, 5.0);
-      const estRpg = Math.max(p.rpg || 0, 2.5);
-      const estApg = Math.max(p.apg || 0, 1.2);
-      const estStl = Math.max(p.spg || 0, 0.5);
-      const estBlk = Math.max(p.bpg || 0, 0.3);
-      const estGmsc = Math.max(p.gmsc || 0, 3.5);
+      const estPpg = Math.max(Number(p.ppg) || 0, 5.0);
+      const estRpg = Math.max(Number(p.rpg) || 0, 2.5);
+      const estApg = Math.max(Number(p.apg) || 0, 1.2);
+      const estStl = Math.max(Number(p.spg) || 0, 0.5);
+      const estBlk = Math.max(Number(p.bpg) || 0, 0.3);
+      const estGmsc = Math.max(Number(p.gmsc) || 0, 3.5);
 
       sPts += estPpg;
       sReb += estRpg;
@@ -375,12 +376,12 @@ export default function MatchupPage() {
       sStl += estStl;
       sBlk += estBlk;
       sGmsc += estGmsc;
-      sUsgSum += (p.usg_pct || 18);
+      sUsgSum += (Number(p.usg_pct) || 18);
     });
 
     const sortedBench = [...bench].sort((a, b) => {
-      const powerA = (a.mpg || 0) * 0.6 + (a.ppg || 0) * 0.4;
-      const powerB = (b.mpg || 0) * 0.6 + (b.ppg || 0) * 0.4;
+      const powerA = (Number(a.mpg) || 0) * 0.6 + (Number(a.ppg) || 0) * 0.4;
+      const powerB = (Number(b.mpg) || 0) * 0.6 + (Number(b.ppg) || 0) * 0.4;
       return powerB - powerA;
     });
 
@@ -390,12 +391,12 @@ export default function MatchupPage() {
     let bPts = 0, bReb = 0, bAst = 0, bStl = 0, bBlk = 0, bGmsc = 0;
 
     coreBench.forEach((p) => {
-      const estPpg = Math.max(p.ppg || 0, 3.0) * 0.80;
-      const estRpg = Math.max(p.rpg || 0, 1.5) * 0.80;
-      const estApg = Math.max(p.apg || 0, 0.8) * 0.80;
-      const estStl = Math.max(p.spg || 0, 0.3) * 0.80;
-      const estBlk = Math.max(p.bpg || 0, 0.2) * 0.80;
-      const estGmsc = Math.max(p.gmsc || 0, 2.0) * 0.80;
+      const estPpg = Math.max(Number(p.ppg) || 0, 3.0) * 0.80;
+      const estRpg = Math.max(Number(p.rpg) || 0, 1.5) * 0.80;
+      const estApg = Math.max(Number(p.apg) || 0, 0.8) * 0.80;
+      const estStl = Math.max(Number(p.spg) || 0, 0.3) * 0.80;
+      const estBlk = Math.max(Number(p.bpg) || 0, 0.2) * 0.80;
+      const estGmsc = Math.max(Number(p.gmsc) || 0, 2.0) * 0.80;
 
       bPts += estPpg;
       bReb += estRpg;
@@ -406,12 +407,12 @@ export default function MatchupPage() {
     });
 
     deepBench.forEach((p) => {
-      bPts += (p.ppg || 0) * 0.20;
-      bReb += (p.rpg || 0) * 0.20;
-      bAst += (p.apg || 0) * 0.20;
-      bStl += (p.spg || 0) * 0.20;
-      bBlk += (p.bpg || 0) * 0.20;
-      bGmsc += (p.gmsc || 0) * 0.20;
+      bPts += (Number(p.ppg) || 0) * 0.20;
+      bReb += (Number(p.rpg) || 0) * 0.20;
+      bAst += (Number(p.apg) || 0) * 0.20;
+      bStl += (Number(p.spg) || 0) * 0.20;
+      bBlk += (Number(p.bpg) || 0) * 0.20;
+      bGmsc += (Number(p.gmsc) || 0) * 0.20;
     });
 
     const fullTeamReb = Number((sReb * 0.72 + bReb + 8.5).toFixed(1));
@@ -420,10 +421,11 @@ export default function MatchupPage() {
     const fullTeamBlk = Number((sBlk * 0.75 + bBlk + 0.8).toFixed(1));
     const fullTeamStocks = Number((fullTeamStl + fullTeamBlk).toFixed(1));
 
+    const starterCount = Math.max(1, activeStarters.length);
     const avgEfg = Number(
       (
-        activeStarters.reduce((acc, p) => acc + (p.efg_pct > 0 ? p.efg_pct : 42.0), 0) /
-        activeStarters.length
+        activeStarters.reduce((acc, p) => acc + (Number(p.efg_pct) > 0 ? Number(p.efg_pct) : 42.0), 0) /
+        starterCount
       ).toFixed(1)
     );
 
@@ -474,8 +476,11 @@ export default function MatchupPage() {
     const realEfgB = aggB.efg - Math.max(-1.5, totalDefSuppressionOnB * 0.4);
     const shootingFactor = (realEfgA - realEfgB) * 0.70;
 
-    const turnoverExposureA = (aggA.totalUsg > 110 ? (aggA.totalUsg - 110) * 0.18 : 0) * (aggB.totalStl / 7.0);
-    const turnoverExposureB = (aggB.totalUsg > 110 ? (aggB.totalUsg - 110) * 0.18 : 0) * (aggA.totalStl / 7.0);
+    const safeStlA = Math.max(0.1, aggA.totalStl || 0.1);
+    const safeStlB = Math.max(0.1, aggB.totalStl || 0.1);
+
+    const turnoverExposureA = (aggA.totalUsg > 110 ? (aggA.totalUsg - 110) * 0.18 : 0) * (safeStlB / 7.0);
+    const turnoverExposureB = (aggB.totalUsg > 110 ? (aggB.totalUsg - 110) * 0.18 : 0) * (safeStlA / 7.0);
 
     const transitionNetFromDefense = ((aggA.totalStl - aggB.totalStl) * 1.2) - (turnoverExposureA - turnoverExposureB);
     const rebFactor = (aggA.totalReb - aggB.totalReb) * 0.35;
@@ -517,7 +522,7 @@ export default function MatchupPage() {
     };
   }, [aggA, aggB]);
 
-  // 核心交互：選人與先發/板凳智慧互換 (Swap)
+  // 核心修復：嚴密洋將名額驗證（防堵先發雙洋與登錄三洋漏洞）
   const handleSelectPlayer = (player: Player) => {
     if (!activePicker) return;
     const { side, type, starterIndex } = activePicker;
@@ -530,15 +535,22 @@ export default function MatchupPage() {
     if (type === 'starter' && starterIndex !== undefined) {
       const currentTarget = currentStarters[starterIndex];
       const willReplaceForeign = currentTarget?.identity === '洋將';
+      const isFromBench = currentBench.some((p) => p.player_name === player.player_name);
 
-      // 檢查洋將限制
-      const netStartersForeign = foreignStats.starters - (willReplaceForeign ? 1 : 0);
-      if (isForeign && netStartersForeign >= 2) {
+      // 1. 檢驗場上先發洋將 (上限 2 名)
+      const nextStartersForeign = foreignStats.starters - (willReplaceForeign ? 1 : 0) + (isForeign ? 1 : 0);
+      if (nextStartersForeign > 2) {
         alert('【違規限制】場上先發洋將不得超過 2 名！');
         return;
       }
 
-      // 如果選進來的球員原本在板凳席，執行 Swap（互換）：把原先發放進板凳
+      // 2. 檢驗整隊 14 人登錄洋將 (上限 3 名)
+      if (!isFromBench && isForeign && !willReplaceForeign && foreignStats.total >= 3) {
+        alert('【違規限制】14人登錄名單洋將總計不得超過 3 名！');
+        return;
+      }
+
+      // 3. 執行智慧互換 (Swap)
       const benchIdx = currentBench.findIndex((p) => p.player_name === player.player_name);
       if (benchIdx !== -1) {
         if (currentTarget) {
@@ -546,6 +558,8 @@ export default function MatchupPage() {
         } else {
           currentBench.splice(benchIdx, 1);
         }
+      } else if (currentTarget && currentBench.length < MAX_BENCH_COUNT) {
+        currentBench.push(currentTarget);
       }
 
       currentStarters[starterIndex] = player;
@@ -600,13 +614,22 @@ export default function MatchupPage() {
 
     const { side, type, starterIndex } = activePicker;
     const currentStarters = side === 'A' ? startersA : startersB;
+    const currentBench = side === 'A' ? benchA : benchB;
     const foreignStats = side === 'A' ? foreignStatsA : foreignStatsB;
 
     if (type === 'starter') {
       const currentTarget = starterIndex !== undefined ? currentStarters[starterIndex] : null;
       const willReplaceForeign = currentTarget?.identity === '洋將';
-      const netStartersForeign = foreignStats.starters - (willReplaceForeign ? 1 : 0);
-      return netStartersForeign >= 2;
+      const isFromBench = currentBench.some((bp) => bp.player_name === p.player_name);
+
+      const nextStartersForeign = foreignStats.starters - (willReplaceForeign ? 1 : 0) + 1;
+      if (nextStartersForeign > 2) return true;
+
+      if (!isFromBench && !willReplaceForeign && foreignStats.total >= 3) {
+        return true;
+      }
+
+      return false;
     } else {
       return foreignStats.total >= 3;
     }
@@ -738,7 +761,7 @@ export default function MatchupPage() {
             </div>
           </div>
 
-          {/* 頂部四維數據直接呈現 */}
+          {/* 頂部四維數據直接呈現 (健全度防除以零) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-[#21262D]">
             <div className="bg-[#0E1117] p-2.5 rounded-lg border border-[#21262D]">
               <div className="text-[11px] text-gray-400 font-medium">投籃效率 (eFG%)</div>
@@ -747,8 +770,8 @@ export default function MatchupPage() {
                 <span className="text-[#2979FF]">{aggB.efg}%</span>
               </div>
               <div className="w-full h-1.5 bg-[#21262D] rounded-full overflow-hidden flex mt-1">
-                <div style={{ width: `${(aggA.efg / (aggA.efg + aggB.efg || 1)) * 100}%` }} className="bg-[#FF9100]"></div>
-                <div style={{ width: `${(aggB.efg / (aggA.efg + aggB.efg || 1)) * 100}%` }} className="bg-[#2979FF]"></div>
+                <div style={{ width: `${(aggA.efg / Math.max(1, aggA.efg + aggB.efg)) * 100}%` }} className="bg-[#FF9100]"></div>
+                <div style={{ width: `${(aggB.efg / Math.max(1, aggA.efg + aggB.efg)) * 100}%` }} className="bg-[#2979FF]"></div>
               </div>
             </div>
 
@@ -759,8 +782,8 @@ export default function MatchupPage() {
                 <span className="text-[#2979FF]">{aggB.totalReb}</span>
               </div>
               <div className="w-full h-1.5 bg-[#21262D] rounded-full overflow-hidden flex mt-1">
-                <div style={{ width: `${(aggA.totalReb / (aggA.totalReb + aggB.totalReb || 1)) * 100}%` }} className="bg-[#FF9100]"></div>
-                <div style={{ width: `${(aggB.totalReb / (aggA.totalReb + aggB.totalReb || 1)) * 100}%` }} className="bg-[#2979FF]"></div>
+                <div style={{ width: `${(aggA.totalReb / Math.max(1, aggA.totalReb + aggB.totalReb)) * 100}%` }} className="bg-[#FF9100]"></div>
+                <div style={{ width: `${(aggB.totalReb / Math.max(1, aggA.totalReb + aggB.totalReb)) * 100}%` }} className="bg-[#2979FF]"></div>
               </div>
             </div>
 
@@ -771,8 +794,8 @@ export default function MatchupPage() {
                 <span className="text-[#2979FF]">{aggB.totalAst}</span>
               </div>
               <div className="w-full h-1.5 bg-[#21262D] rounded-full overflow-hidden flex mt-1">
-                <div style={{ width: `${(aggA.totalAst / (aggA.totalAst + aggB.totalAst || 1)) * 100}%` }} className="bg-[#FF9100]"></div>
-                <div style={{ width: `${(aggB.totalAst / (aggA.totalAst + aggB.totalAst || 1)) * 100}%` }} className="bg-[#2979FF]"></div>
+                <div style={{ width: `${(aggA.totalAst / Math.max(1, aggA.totalAst + aggB.totalAst)) * 100}%` }} className="bg-[#FF9100]"></div>
+                <div style={{ width: `${(aggB.totalAst / Math.max(1, aggA.totalAst + aggB.totalAst)) * 100}%` }} className="bg-[#2979FF]"></div>
               </div>
             </div>
 
@@ -783,8 +806,8 @@ export default function MatchupPage() {
                 <span className="text-[#2979FF]">{aggB.totalStocks}</span>
               </div>
               <div className="w-full h-1.5 bg-[#21262D] rounded-full overflow-hidden flex mt-1">
-                <div style={{ width: `${(aggA.totalStocks / (aggA.totalStocks + aggB.totalStocks || 1)) * 100}%` }} className="bg-[#FF9100]"></div>
-                <div style={{ width: `${(aggB.totalStocks / (aggA.totalStocks + aggB.totalStocks || 1)) * 100}%` }} className="bg-[#2979FF]"></div>
+                <div style={{ width: `${(aggA.totalStocks / Math.max(1, aggA.totalStocks + aggB.totalStocks)) * 100}%` }} className="bg-[#FF9100]"></div>
+                <div style={{ width: `${(aggB.totalStocks / Math.max(1, aggA.totalStocks + aggB.totalStocks)) * 100}%` }} className="bg-[#2979FF]"></div>
               </div>
             </div>
           </div>
@@ -1148,7 +1171,6 @@ export default function MatchupPage() {
               <div className="overflow-y-auto mt-4 space-y-2 pr-1 flex-1">
                 {availablePool.map((p) => {
                   const disabled = isPlayerDisabled(p);
-                  // 標記該球員當前是否在板凳席
                   const isCurrentlyOnBench = (activePicker.side === 'A' ? benchA : benchB).some(
                     (bp) => bp.player_name === p.player_name
                   );
