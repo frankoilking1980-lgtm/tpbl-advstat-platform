@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/api';
 import {
@@ -16,6 +16,10 @@ import {
   Crosshair,
   BarChart3,
   Layers,
+  Swords,
+  Shield,
+  Users,
+  Activity,
 } from 'lucide-react';
 
 interface GlossaryData {
@@ -39,8 +43,22 @@ interface GlossaryData {
 }
 
 export default function GlossaryPage() {
-  const [activeTab, setActiveTab] = useState<'factors' | 'metrics' | 'pbp' | 'tabs' | 'scout'>('factors');
+  const [activeTab, setActiveTab] = useState<'factors' | 'metrics' | 'tabs' | 'matchup' | 'pbp' | 'scout'>('factors');
   const { data, isLoading } = useSWR<GlossaryData>('/api/glossary', fetcher);
+
+  // 監聽網址 Hash 錨點 (例如從對決模擬器點擊「模型依據」直達 #matchup-model)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash === '#matchup-model' || hash === '#matchup') {
+        setActiveTab('matchup');
+        setTimeout(() => {
+          const el = document.getElementById('matchup-model');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 150);
+      }
+    }
+  }, []);
 
   return (
     <div className="space-y-10">
@@ -55,7 +73,7 @@ export default function GlossaryPage() {
             📚 進階籃球數據辭典 (Analytics Glossary)
           </h1>
           <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-            現代籃球數據分析不再僅停留在傳統得分與命中率。本辭典詳解 Dean Oliver 四大要素、PBP With-Or-Without-You (WOWY) 淨影響力、球員卡三大進階分頁（得分情境/終結手段/末節抗壓）之運算邏輯與球探基準標準。
+            現代籃球數據分析不再僅停留在傳統得分與命中率。本辭典詳解 Dean Oliver 四大要素、球隊對決模擬推演引擎、PBP With-Or-Without-You (WOWY) 淨影響力、球員卡三大進階分頁之運算邏輯與球探基準標準。
           </p>
         </div>
       </div>
@@ -75,10 +93,22 @@ export default function GlossaryPage() {
         </button>
 
         <button
+          onClick={() => setActiveTab('matchup')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === 'matchup'
+              ? 'bg-[#161B22] text-[#FF9100] border border-[#FF9100]/40 shadow'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Swords className="w-4 h-4" />
+          <span>⚔️ 球隊對決模擬模型 (Matchup Engine)</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('metrics')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === 'metrics'
-              ? 'bg-[#161B22] text-[#FF9100] border border-[#FF9100]/40 shadow'
+              ? 'bg-[#161B22] text-amber-400 border border-amber-400/40 shadow'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -114,7 +144,7 @@ export default function GlossaryPage() {
           onClick={() => setActiveTab('scout')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
             activeTab === 'scout'
-              ? 'bg-[#161B22] text-amber-300 border border-amber-300/40 shadow'
+              ? 'bg-[#161B22] text-emerald-400 border border-emerald-400/40 shadow'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -153,7 +183,143 @@ export default function GlossaryPage() {
         </div>
       )}
 
-      {/* 2. 核心進階指標 */}
+      {/* 2. 專屬新增：球隊深度對決模擬器 (Matchup Simulator) 核心演算法 */}
+      {activeTab === 'matchup' && (
+        <div id="matchup-model" className="space-y-8 scroll-mt-24">
+          <div className="p-6 sm:p-8 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-2xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#21262D]">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-[#FF9100]/15 border border-[#FF9100]/30 text-[#FF9100]">
+                  <Swords className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white">
+                    球隊深度對決模擬器 (Head-to-Head Lineup Matchup) 核心演算法
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    基於真實攻防交互對衝、Dean Oliver 四要素加權與主力輪替分級之預測模型
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs px-3 py-1 rounded-full bg-[#FF9100]/10 text-[#FF9100] font-mono font-bold self-start sm:self-auto border border-[#FF9100]/30">
+                TPBL 2026-2027 專用模型
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-300 leading-relaxed">
+              傳統陣容模擬最常見的致命錯誤是「將 5 名先發球員的場均得分簡單相加」，這會完全忽略球權排擠、輪替出場時間折算，以及最關鍵的<strong className="text-white">「對手防守壓迫（Opponent Defense）」</strong>。本平台對決模擬器採用自底向上的交叉對抗架構，確保所有數據指標前後邏輯一致，絕不憑空臆測。
+            </p>
+
+            {/* 六大核心維度卡牌 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              {/* 1. 交叉防守壓制 */}
+              <div className="bg-[#0E1117] p-5 sm:p-6 rounded-2xl border border-[#21262D] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-[#FF9100] flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    <span>1. 雙向防守對衝與命中率壓制 (Defensive Disruption)</span>
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#FF9100]/10 text-[#FF9100] font-mono">
+                    消除虛胖
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  若只看進攻數據，帳面得分高的球隊往往會產生大勝 10+ 分的數值通膨。本模型加入<strong className="text-gray-200">防守對位折算</strong>：隊 A 之實質投籃效率（Real eFG%），將受到隊 B 之抄截與阻攻壓迫（Stocks = STL + BLK）實時扣減；若隊 A 之先發球權集中度（USG%）過高且缺乏專職組織者，面對外圍大鎖時將被加計失誤懲罰，避免攻強守弱球隊失真獲勝。
+                </p>
+              </div>
+
+              {/* 2. 8~9人核心輪替分級 */}
+              <div className="bg-[#0E1117] p-5 sm:p-6 rounded-2xl border border-[#21262D] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-[#00E676] flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>2. 8~9 人智慧分級輪替 (Core Rotation Model)</span>
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#00E676]/10 text-[#00E676] font-mono">
+                    防止腰斬
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  現代職業籃球勝負約 90% 取決於先發 5 人加 3~4 名主力替補。系統自動依據球員歷史出場時間（MPG）與表現（GmSC）分級：
+                  <strong className="text-white">先發 5 人享有 1.0 滿額權重</strong>；
+                  <strong className="text-white">板凳前 4 位核心替補（第 6~9 人）享有 0.80 實質發揮權重</strong>；
+                  深層替補（第 10~14 人）僅佔 0.20 應急權重。如此可防止板凳名單人數變動而惡意稀釋核心主力（如第六人溫布許）的出場時間。
+                </p>
+              </div>
+
+              {/* 3. 先發救急保底機制 */}
+              <div className="bg-[#0E1117] p-5 sm:p-6 rounded-2xl border border-[#21262D] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-[#2979FF] flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    <span>3. 傷兵殘陣先發保底 (Replacement Level Floor)</span>
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#2979FF]/10 text-[#2979FF] font-mono">
+                    極端情境抗壓
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  針對季初樣本不足、或主力受傷導致「0 分 / 邊緣綠葉球員被頂上先發」之極端情境（如遭遇傷兵潮），模型引入替補救急底限（Floor Adjustment）。凡被指派為先發者，保底賦予基礎出賽時間與職籃先發最低貢獻（5.0 分、2.5 籃板、1.2 助攻），精準反映出陣容深度受損，同時避免系統判定為「少打一人」之離譜低分。
+                </p>
+              </div>
+
+              {/* 4. 團隊籃板與戰術傳導常態化 */}
+              <div className="bg-[#0E1117] p-5 sm:p-6 rounded-2xl border border-[#21262D] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-cyan-400 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    <span>4. 團隊籃板與戰術傳導常態化 (Team Boxscore Baseline)</span>
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-400/10 text-cyan-400 font-mono">
+                    全場 48 分鐘校準
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  官方 Boxscore 中每場固定存在 8~10 個未歸屬於任何個人之「團隊籃板（Team Rebounds：投籃未碰出界、罰球進攻違例等）」。本模型在計算全隊 14 人數據時，自動納入團隊籃板基準（+8.5 個）與戰術體系流動助攻補償（+5.5 次），使整場數據客觀回歸至全隊約 44~48 顆籃板、20~24 次助攻之真實職籃比賽常態。
+                </p>
+              </div>
+
+              {/* 5. 四要素加權矩陣 */}
+              <div className="bg-[#0E1117] p-5 sm:p-6 rounded-2xl border border-[#21262D] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-amber-300 flex items-center gap-2">
+                    <Target className="w-4 h-4" />
+                    <span>5. Dean Oliver 四要素加權淨勝分權重</span>
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-400/10 text-amber-300 font-mono">
+                    標準權重
+                  </span>
+                </div>
+                <div className="space-y-1.5 text-xs font-mono text-gray-300">
+                  <div className="flex justify-between"><span>• 投籃真實效率差 (Shooting / eFG%)</span><strong className="text-[#00E676]">權重 40%</strong></div>
+                  <div className="flex justify-between"><span>• 傳導組織與失誤控制 (Playmaking / AST)</span><strong className="text-sky-400">權重 25%</strong></div>
+                  <div className="flex justify-between"><span>• 禁區制空與籃板衝搶 (Rebounding / REB)</span><strong className="text-amber-400">權重 20%</strong></div>
+                  <div className="flex justify-between"><span>• 防守干擾與壓迫破壞 (Stocks / STL+BLK)</span><strong className="text-purple-400">權重 15%</strong></div>
+                </div>
+              </div>
+
+              {/* 6. TPBL 規則硬限制與勝率推算 */}
+              <div className="bg-[#0E1117] p-5 sm:p-6 rounded-2xl border border-[#21262D] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-purple-400 flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4" />
+                    <span>6. TPBL 規則檢驗與勝率推算公式</span>
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-purple-400/10 text-purple-400 font-mono">
+                    聯盟官方標準
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  <strong className="text-white">洋將鐵律防呆：</strong>先發 5 人洋將上限 2 名；14 人登錄名單洋將總計上限 3 名，超額直接反灰鎖定。<br />
+                  <strong className="text-white">勝率推導（Pythagorean Expectation）：</strong>將四要素綜合淨效率差（NetDiff）以阻尼函數壓縮（杜絕 10+ 分暴衝），並帶入常規職籃轉換公式：<code className="text-amber-300">Win% = 50% + NetDiff × 3.8%</code>（限制在 18%～82% 競爭區間）。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. 核心進階指標 */}
       {activeTab === 'metrics' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {data?.advanced_metrics.map((item, idx) => (
@@ -183,7 +349,7 @@ export default function GlossaryPage() {
         </div>
       )}
 
-      {/* 3. 專屬新增：球員卡三大分頁解析 (Tabs Guide) */}
+      {/* 4. 球員卡三大分頁解析 (Tabs Guide) */}
       {activeTab === 'tabs' && (
         <div className="space-y-8">
           {/* 總覽說明 */}
@@ -264,14 +430,14 @@ export default function GlossaryPage() {
               </span>
             </div>
 
-            {/* 1. 得分分佈比例 (加總 100%) */}
+            {/* 1. 得分分佈比例 */}
             <div className="space-y-3">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
                 <span>1. 得分分佈比例 (Scoring Distribution) — 幾何互斥加總 100%</span>
               </h4>
               <p className="text-xs text-gray-300 leading-relaxed">
-                將球員的全季總得分，按照球場上的「幾何空間與取分方式」嚴格劃分成四種<strong className="text-white">互不重疊</strong>的板塊。長條圖總和剛好 100%，清楚回答「這名球員每場得的分數到底從哪裡來」：
+                將球員的全季總得分，按照球場上的「幾何空間與取分方式」嚴格劃分成四種<strong className="text-white">互不重疊</strong>的板塊。長條圖總和剛好 100%：
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
@@ -279,7 +445,7 @@ export default function GlossaryPage() {
                   <span className="text-amber-400 font-bold block">禁區 (Paint PTS %)</span>
                   <div className="font-mono text-gray-400 text-[11px]">公式: 禁區得分 ÷ 總得分</div>
                   <p className="text-gray-300 text-[11px] leading-relaxed pt-1">
-                    油漆區內之上籃、低位單打、勾射與灌籃所得分數。佔比高代表球員以衝擊籃框、空手走位或身材碾壓為主。
+                    油漆區內之上籃、低位單打、勾射與灌籃所得分數。佔比高代表以衝擊籃框、空手走位或身材碾壓為主。
                   </p>
                 </div>
 
@@ -287,7 +453,7 @@ export default function GlossaryPage() {
                   <span className="text-sky-400 font-bold block">三分外線 (3-Point PTS %)</span>
                   <div className="font-mono text-gray-400 text-[11px]">公式: (三分命中 × 3) ÷ 總得分</div>
                   <p className="text-gray-300 text-[11px] leading-relaxed pt-1">
-                    三分球進球折算得分。佔比高代表其進攻重力偏向外線拉開空間，若命中率高則是致命的空間型重砲。
+                    三分球進球折算得分。佔比高代表其進攻偏向外線拉開空間，若命中率高則是空間型重砲。
                   </p>
                 </div>
 
@@ -295,7 +461,7 @@ export default function GlossaryPage() {
                   <span className="text-purple-400 font-bold block">中距離 (Mid-Range PTS %)</span>
                   <div className="font-mono text-gray-400 text-[11px]">公式: 中距跳投得分 ÷ 總得分</div>
                   <p className="text-gray-300 text-[11px] leading-relaxed pt-1">
-                    三分線內、禁區外之長兩分或急停跳投。在季後賽防守緊縮禁區與三分線時，為頂級王牌單打的硬解指標。
+                    三分線內、禁區外之長兩分或急停跳投。在防守緊縮禁區與三分線時，為王牌單打的硬解指標。
                   </p>
                 </div>
 
@@ -303,7 +469,7 @@ export default function GlossaryPage() {
                   <span className="text-emerald-400 font-bold block">罰球 (Free Throw PTS %)</span>
                   <div className="font-mono text-gray-400 text-[11px]">公式: (罰球命中 × 1) ÷ 總得分</div>
                   <p className="text-gray-300 text-[11px] leading-relaxed pt-1">
-                    站上罰球線之取分。反映切入撕裂防線、身體碰撞造犯規之能力，亦是進攻陷入冰河期時的重要止血手段。
+                    站上罰球線之取分。反映切入撕裂防線、身體碰撞造犯規之能力，亦是陷入得分荒時的止血手段。
                   </p>
                 </div>
               </div>
@@ -316,7 +482,7 @@ export default function GlossaryPage() {
                 <span>2. 戰術推進與反擊情境 (Tactical Play Types) — 具重疊特性之情境產出</span>
               </h4>
               <p className="text-xs text-gray-300 leading-relaxed">
-                這是官方記錄員在比賽現場標註的「戰術情境」。<strong className="text-white">請注意：這三項可能同時重疊發生</strong>（例如快攻上籃同時算「快攻」也算「抓失誤」），因此各自獨立統計，不應拼成 100%：
+                這是官方記錄員在比賽現場標註的「戰術情境」。<strong className="text-white">請注意：這三項可能同時重疊發生</strong>（例如快攻上籃同時算「快攻」也算「抓失誤」）：
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
@@ -349,7 +515,7 @@ export default function GlossaryPage() {
                     <div>• <strong className="text-white">佔比 %</strong>：抓失誤得分 ÷ 個人全季總得分</div>
                   </div>
                   <p className="text-gray-400 text-[11px] leading-relaxed pt-1">
-                    <strong className="text-purple-300">戰術意涵：</strong>佔比代表球員有多高比例的得分仰賴對手失誤轉守為攻（抄截反擊型前鋒/後衛之典型指標）。
+                    <strong className="text-purple-300">戰術意涵：</strong>佔比代表球員有多高比例的得分仰賴對手失誤轉守為攻。
                   </p>
                 </div>
               </div>
@@ -361,10 +527,6 @@ export default function GlossaryPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
                 <span>3. 終結手段與把握度 (Finishing Breakdown) — 動作命中率 (FG%)</span>
               </h4>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                本區塊呈現球員各類出手動作的<strong className="text-white">「進球數 / 出手數」與「真實投籃命中率 (FG%)」</strong>。我們將跳投完整拆解為兩分與三分，同時保留總和，避免遺漏：
-              </p>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                 <div className="bg-[#0E1117] p-3.5 rounded-2xl border border-purple-500/30">
                   <span className="text-purple-400 font-bold block mb-1">兩分中距跳投</span>
@@ -376,7 +538,7 @@ export default function GlossaryPage() {
                 <div className="bg-[#0E1117] p-3.5 rounded-2xl border border-sky-500/30">
                   <span className="text-sky-400 font-bold block mb-1">三分外線 (全部)</span>
                   <p className="text-gray-400 text-[11px] leading-relaxed">
-                    包含定點接球三分、持球急停三分及後撤步三分之全量命中與出手，與官方 Box Score 完全吻合。
+                    包含定點接球三分、持球急停三分及後撤步三分之全量命中與出手。
                   </p>
                 </div>
 
@@ -390,21 +552,21 @@ export default function GlossaryPage() {
                 <div className="bg-[#0E1117] p-3.5 rounded-2xl border border-emerald-500/30">
                   <span className="text-emerald-400 font-bold block mb-1">突破 / 上籃 (Layup)</span>
                   <p className="text-gray-400 text-[11px] leading-relaxed">
-                    包含行進間上籃（Layup）與切入突破對抗放籃（Driving Layup）之籃框終結率。
+                    包含行進間上籃（Layup）與切入突破對抗放籃之籃框終結率。
                   </p>
                 </div>
 
                 <div className="bg-[#0E1117] p-3.5 rounded-2xl border border-amber-500/30">
                   <span className="text-amber-400 font-bold block mb-1">禁區灌籃 (Dunk)</span>
                   <p className="text-gray-400 text-[11px] leading-relaxed">
-                    快攻單手/雙手暴扣、空中接力 (Alley-oop) 與二波補灌之絕對高成功率終結。
+                    快攻單手/雙手暴扣、空中接力與二波補灌之絕對高成功率終結。
                   </p>
                 </div>
 
                 <div className="bg-[#0E1117] p-3.5 rounded-2xl border border-rose-500/30">
                   <span className="text-rose-400 font-bold block mb-1">單打自創 (Pull-up / Step-back / Fade)</span>
                   <p className="text-gray-400 text-[11px] leading-relaxed">
-                    自主持球急停（Pull-up）、後撤步（Step-back）與後仰跳投（Fadeaway）等不經戰術受助攻之硬解命中率。
+                    自主持球急停、後撤步與後仰跳投等不經戰術受助攻之硬解命中率。
                   </p>
                 </div>
               </div>
@@ -424,25 +586,25 @@ export default function GlossaryPage() {
             </div>
 
             <p className="text-xs text-gray-300 leading-relaxed">
-              籃球比賽在第四節面臨防守加壓、戰術預讀與體力下滑，數據往往產生劇烈質變。本分頁直接過濾 Round 4 節次數據，並排除垃圾時間未登板者：
+              籃球比賽在第四節面臨防守加壓、戰術預讀與體力下滑，數據往往產生劇烈質變。本分頁直接過濾 Round 4 節次數據：
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
               <div className="bg-[#0E1117] p-4 rounded-2xl border border-gray-800 space-y-1">
                 <span className="text-amber-400 font-bold text-sm block">Q4 場均得分 (Q4 PPG)</span>
                 <p className="text-gray-300 text-[11px] leading-relaxed">
-                  第四節總得分 ÷ 實際出戰第四節場次。搭配 Q4 MPG 可評估球員在膠著末節是否具備教練團最高優先級之開火權。
+                  第四節總得分 ÷ 實際出戰第四節場次。評估球員在膠著末節是否具備教練團最高優先級之開火權。
                 </p>
               </div>
 
               <div className="bg-[#0E1117] p-4 rounded-2xl border border-gray-800 space-y-1">
                 <span className="text-emerald-400 font-bold text-sm block">Q4 真實命中率 (Q4 TS%)</span>
                 <p className="text-gray-300 text-[11px] leading-relaxed">
-                  公式: Q4 得分 ÷ [2 × (Q4 出手 + 0.44 × Q4 罰球)]。若 Q4 TS% 高於全場平均，代表該球員具備「抗壓越打越準」的大心臟特質。
+                  公式: Q4 得分 ÷ [2 × (Q4 出手 + 0.44 × Q4 罰球)]。若高於全場平均，代表具備「抗壓越打越準」大心臟特質。
                 </p>
               </div>
 
-              <div className="bg-[#0E1117] p-4 rounded-2xl border border-gray-800 space-y-1">
+              <div className="bg-[#0E1117] p-4 rounded-2xl border border-cyan-400 font-bold text-sm block">
                 <span className="text-cyan-400 font-bold text-sm block">Q4 場均正負值 (Q4 +/-)</span>
                 <p className="text-gray-300 text-[11px] leading-relaxed">
                   第四節在場時球隊的淨勝分傾向。正值代表末節攻防兩端能實質帶領球隊拉開或守住領先分差。
@@ -460,7 +622,7 @@ export default function GlossaryPage() {
         </div>
       )}
 
-      {/* 4. PBP 原理與 WOWY */}
+      {/* 5. PBP 原理與 WOWY */}
       {activeTab === 'pbp' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -488,7 +650,7 @@ export default function GlossaryPage() {
         </div>
       )}
 
-      {/* 5. 球探判讀指引與實戰基準 */}
+      {/* 6. 球探判讀指引與實戰基準 */}
       {activeTab === 'scout' && (
         <div className="space-y-6">
           <div className="p-8 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-xl space-y-6">
@@ -508,7 +670,7 @@ export default function GlossaryPage() {
               <div className="p-5 rounded-2xl bg-[#0E1117] border border-[#21262D] space-y-2">
                 <span className="text-[#FF9100] font-black text-sm block">2. 隱形影響力 (Diff NetRtg)</span>
                 <p className="text-gray-300 leading-relaxed">
-                  許多頂級防守球員（如第一線纏鬥大鎖、協防護框者）在個人傳統攻守表格上數據平平，但其在場與下場時團隊淨評分差 (Diff NetRtg) 可高達 +10 以上，反映出無可替代的體系支柱價值。
+                  許多頂級防守球員在個人傳統攻守表格上數據平平，但其在場與下場時團隊淨評分差 (Diff NetRtg) 可高達 +10 以上，反映出無可替代的體系支柱價值。
                 </p>
               </div>
 

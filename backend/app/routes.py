@@ -167,13 +167,11 @@ def _get_official_starting_players(game_id: str, home_team: str = "", away_team:
     num_id = gid_match.group(1) if gid_match else ""
 
     candidates = []
-    # 1. 直接用數字 ID 命中
     if num_id:
         cand = raw_dir / f"game_{num_id}_stats.json"
         if cand.exists():
             candidates.append(cand)
 
-    # 2. 若為 G09 等代碼，透過 OFFICIAL_ID_MAP 反查
     if not candidates:
         gid_upper = str(game_id).upper()
         for off_id, g_code in OFFICIAL_ID_MAP.items():
@@ -183,7 +181,6 @@ def _get_official_starting_players(game_id: str, home_team: str = "", away_team:
                     candidates.append(cand)
                     break
 
-    # 3. 雙向對稱遍歷檢查對戰球隊
     if not candidates and home_team and away_team:
         for f in raw_dir.glob("game_*_stats.json"):
             try:
@@ -207,14 +204,12 @@ def _get_official_starting_players(game_id: str, home_team: str = "", away_team:
         home_starters = set()
         away_starters = set()
 
-        # 讀取主隊 is_starting: true
         for p in data.get("home_team", {}).get("players", {}).get("total", {}).values():
             if isinstance(p, dict) and p.get("is_starting"):
                 p_name = str(p.get("name") or "").split(" ")[0].split("(")[0].strip()
                 if p_name:
                     home_starters.add(p_name)
 
-        # 讀取客隊 is_starting: true
         for p in data.get("away_team", {}).get("players", {}).get("total", {}).values():
             if isinstance(p, dict) and p.get("is_starting"):
                 p_name = str(p.get("name") or "").split(" ")[0].split("(")[0].strip()
@@ -253,7 +248,6 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
     if not target_ws:
         return [], [], [], []
 
-    # 1. 抓取球員個人 Box Score
     h_row = None
     for r in range(1, 8):
         c2 = str(target_ws.cell(row=r, column=2).value or "").strip()
@@ -338,7 +332,6 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
                 "netrtg": p_netrtg,
             })
 
-    # 2. 抓取個人 On/Off (37~43 欄)
     on_off_players = []
     for r in range(5, 25):
         name = str(target_ws.cell(row=r, column=37).value or "").strip()
@@ -360,7 +353,6 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
             "diff_netrtg": clean_val_num(target_ws.cell(row=r, column=43).value, 0.0),
         })
 
-    # 3. 直讀 Excel 真實【單場最佳陣容與搭檔效益】區塊
     real_lineups = []
     real_pairs = []
 
@@ -997,7 +989,7 @@ def get_game_detail(game_id: str):
             is_h = any(h in t_name or t_name in h for h in home_aliases)
             mpg = round(float(p["mpg"] or 0.0), 1)
             ppg = round(float(p["ppg"] or 0.0), 1)
-            rpg = round(float(p["rpg"] or 0.0), 1)
+            rpg = round(float(p["rpg"] or 0.0), 1) if "rpg" in p else 0.0
             apg = round(float(p["apg"] or 0.0), 1)
             spg = round(float(p["spg"] or 0.0), 1)
             bpg = round(float(p["bpg"] or 0.0), 1)
@@ -1020,9 +1012,9 @@ def get_game_detail(game_id: str):
                 "ftm": int(ppg * 0.12),
                 "fta": max(1, int(ppg * 0.16)),
                 "ft_pct": 75.0,
-                "orb": int(rpg * 0.3),
-                "drb": int(rpg * 0.7),
-                "reb": int(rpg),
+                "orb": int((p.get("rpg") or 0) * 0.3),
+                "drb": int((p.get("rpg") or 0) * 0.7),
+                "reb": int(p.get("rpg") or 0),
                 "ast": int(apg),
                 "stl": int(spg),
                 "blk": int(bpg),
@@ -1045,7 +1037,6 @@ def get_game_detail(game_id: str):
         if not home_box: home_box = fb_home
         if not away_box: away_box = fb_away
 
-    # 智慧比對官方真實先發名單 (以 raw_game_stats 的 JSON is_starting 為準)
     official_starters = _get_official_starting_players(real_db_id, home_team, away_team)
     h_starters = official_starters["home_starters"]
     a_starters = official_starters["away_starters"]
@@ -1627,3 +1618,79 @@ def admin_reset_stage(req: ResetStageRequest):
         "stage": req.stage,
         "clear_games": req.clear_games,
     }
+
+
+# =====================================================================
+# 9. 球隊對決模擬專用：取得上一場真實先發與登錄名單 API
+# =====================================================================
+@router.get("/teams/last-lineup", summary="取得球隊上一場真實出賽先發與登錄名單")
+def get_team_last_lineup(
+    team: str = Query(..., description="球隊名稱，例如：新北國王"),
+    stage: str = Query("2026-2027 例行賽")
+):
+    """
+    從資料庫中檢索該球隊最近一場出賽紀錄，
+    精確比對 raw_game_stats 與 Excel Boxscore，
+    提取出帶有【先】發標籤之 5 人 (is_starting: true) 與其餘登錄板凳。
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 搜尋該球隊最新一場比賽 (支援隊名簡稱如 "國王")
+    search_kw = team[-2:]
+    cur.execute("""
+        SELECT id, home_team, away_team, stage 
+        FROM games 
+        WHERE (home_team LIKE ? OR away_team LIKE ?) AND stage = ?
+        ORDER BY date DESC, id DESC 
+        LIMIT 1
+    """, (f"%{search_kw}%", f"%{search_kw}%", stage))
+    g = cur.fetchone()
+    conn.close()
+    
+    if not g:
+        return {"starters": [], "bench": []}
+        
+    game_id = g["id"]
+    h_team = normalize_team_name(g["home_team"])
+    a_team = normalize_team_name(g["away_team"])
+    is_home = (search_kw in h_team)
+    
+    # 1. 取得帶有 is_starting: true 的官方先發球員集合
+    off_starters = _get_official_starting_players(game_id, h_team, a_team)
+    target_starters_set = off_starters["home_starters"] if is_home else off_starters["away_starters"]
+    
+    # 2. 取得該場比賽 Excel Boxscore 的完整登錄球員
+    season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
+    team_excel = _find_team_excel_file(season_folder, team)
+    gid_match = re.search(r"(G\d+)", str(game_id), re.IGNORECASE)
+    game_code = gid_match.group(1).upper() if gid_match else str(game_id)
+    
+    box, _, _, _ = _parse_real_excel_game(team_excel, game_code)
+    
+    starters = []
+    bench = []
+    
+    if box:
+        for p in box:
+            pname = p["player_name"].split(" ")[0].split("(")[0].strip()
+            if pname in target_starters_set:
+                starters.append(pname)
+            else:
+                bench.append(pname)
+                
+    # 若成功萃取出剛好 5 位先發，直接精準回傳
+    if len(starters) == 5:
+        return {"starters": starters, "bench": bench[:9]}
+        
+    # 保底推導：補齊先發與板凳
+    all_pnames = [p["player_name"].split(" ")[0].split("(")[0].strip() for p in box] if box else []
+    for s in target_starters_set:
+        if s in all_pnames and s not in starters:
+            starters.append(s)
+            
+    for p in all_pnames:
+        if p not in starters and p not in bench:
+            bench.append(p)
+            
+    return {"starters": starters[:5], "bench": bench[:9]}

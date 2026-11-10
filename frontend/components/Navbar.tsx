@@ -10,6 +10,7 @@ import {
   CalendarDays,
   Zap,
   Users,
+  Swords,
   BookOpen,
   ChevronDown,
 } from 'lucide-react';
@@ -47,6 +48,12 @@ export default function Navbar() {
       label: '球員戰力卡與對決',
       href: '/player-cards',
       icon: Users,
+      exact: false,
+    },
+    {
+      label: '球隊對決模擬',
+      href: '/matchup',
+      icon: Swords,
       exact: false,
     },
     {
