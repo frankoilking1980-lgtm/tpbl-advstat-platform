@@ -81,7 +81,7 @@ export default function ScatterPage() {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
 
-  // 1. 座標百分比歸一化
+  // 1. 座標百分比歸一化 (徹底修正小數點 0.548 -> 54.8)
   const normalizedPlayers = useMemo(() => {
     if (!rawPlayers) return [];
 
@@ -93,25 +93,38 @@ export default function ScatterPage() {
       return Number(val.toFixed(1));
     };
 
-    return rawPlayers.map((p) => ({
-      ...p,
-      usg_pct: fixPct(p.usg_pct),
-      ts_pct: fixPct(p.ts_pct),
-      efg_pct: fixPct(p.efg_pct),
-      fg_pct: fixPct(p.fg_pct),
-      p3_pct: fixPct(p.p3_pct),
-      ft_pct: fixPct(p.ft_pct),
-      three_par: fixPct(p.three_par),
-      ftr: fixPct(p.ftr),
-      ast_pct: fixPct(p.ast_pct),
-      tov_pct: fixPct(p.tov_pct),
-      fgm: Number((p.fgm ?? 0).toFixed(1)),
-      fga: Number((p.fga ?? 0).toFixed(1)),
-      p3m: Number((p.p3m ?? 0).toFixed(1)),
-      p3a: Number((p.p3a ?? 0).toFixed(1)),
-      ftm: Number((p.ftm ?? 0).toFixed(1)),
-      fta: Number((p.fta ?? 0).toFixed(1)),
-    }));
+    return rawPlayers.map((p) => {
+      const ts = fixPct(p.ts_pct);
+      const usg = fixPct(p.usg_pct);
+
+      // 嚴密對齊後端標準：USG >= 20.0, TS >= 52.0
+      let syncedQ: 'Q1' | 'Q2' | 'Q3' | 'Q4' = 'Q4';
+      if (usg >= 20.0 && ts >= 52.0) syncedQ = 'Q1';
+      else if (usg < 20.0 && ts >= 52.0) syncedQ = 'Q2';
+      else if (usg < 20.0 && ts < 52.0) syncedQ = 'Q3';
+      else syncedQ = 'Q4';
+
+      return {
+        ...p,
+        usg_pct: usg,
+        ts_pct: ts,
+        efg_pct: fixPct(p.efg_pct),
+        fg_pct: fixPct(p.fg_pct),
+        p3_pct: fixPct(p.p3_pct),
+        ft_pct: fixPct(p.ft_pct),
+        three_par: fixPct(p.three_par),
+        ftr: fixPct(p.ftr),
+        ast_pct: fixPct(p.ast_pct),
+        tov_pct: fixPct(p.tov_pct),
+        fgm: Number((p.fgm ?? 0).toFixed(1)),
+        fga: Number((p.fga ?? 0).toFixed(1)),
+        p3m: Number((p.p3m ?? 0).toFixed(1)),
+        p3a: Number((p.p3a ?? 0).toFixed(1)),
+        ftm: Number((p.ftm ?? 0).toFixed(1)),
+        fta: Number((p.fta ?? 0).toFixed(1)),
+        quadrant: p.quadrant || syncedQ,
+      };
+    });
   }, [rawPlayers]);
 
   // 2. 身分篩選器邏輯校正與過濾得分為 0 的未出賽球員
@@ -139,28 +152,18 @@ export default function ScatterPage() {
     });
   }, [normalizedPlayers, minPpg, identityFilter]);
 
-  // 3. 象限動態十字基準線
-  const { avgUsg, avgTs } = useMemo(() => {
-    if (filteredPlayers.length === 0) {
-      return { avgUsg: 20.0, avgTs: 52.0 };
-    }
-    const sumUsg = filteredPlayers.reduce((acc, p) => acc + (p.usg_pct || 0), 0);
-    const sumTs = filteredPlayers.reduce((acc, p) => acc + (p.ts_pct || 0), 0);
-    return {
-      avgUsg: sumUsg / filteredPlayers.length,
-      avgTs: sumTs / filteredPlayers.length,
-    };
-  }, [filteredPlayers]);
-
-  const baselineUsg = avgUsg;
-  const baselineTs = avgTs;
-
+  // 3. 象限判定核心：全站統一標準（杜絕浮動平均值帶來的判定錯亂）
   const getPlayerQuadrant = (p: AdvancedPlayer): 'Q1' | 'Q2' | 'Q3' | 'Q4' => {
-    if (p.usg_pct >= baselineUsg && p.ts_pct >= baselineTs) return 'Q1';
-    if (p.usg_pct < baselineUsg && p.ts_pct >= baselineTs) return 'Q2';
-    if (p.usg_pct < baselineUsg && p.ts_pct < baselineTs) return 'Q3';
+    if (p.quadrant) return p.quadrant;
+    if (p.usg_pct >= 20.0 && p.ts_pct >= 52.0) return 'Q1';
+    if (p.usg_pct < 20.0 && p.ts_pct >= 52.0) return 'Q2';
+    if (p.usg_pct < 20.0 && p.ts_pct < 52.0) return 'Q3';
     return 'Q4';
   };
+
+  // 象限分割基準線：以聯盟進階數據公認基準 (20% / 52%) 為基準十字線
+  const baselineUsg = 20.0;
+  const baselineTs = 52.0;
 
   // 4. 動態自適應座標軸邊界與刻度
   const { minUsg, maxUsg, minTs, maxTs, xTicks, yTicks } = useMemo(() => {
@@ -205,21 +208,14 @@ export default function ScatterPage() {
 
   const getX = (usg: number) => {
     const clamped = Math.max(minUsg, Math.min(maxUsg, usg));
-    return (
-      padding.left +
-      ((clamped - minUsg) / (maxUsg - minUsg)) *
-        (width - padding.left - padding.right)
-    );
+    const range = Math.max(1, maxUsg - minUsg);
+    return padding.left + ((clamped - minUsg) / range) * (width - padding.left - padding.right);
   };
 
   const getY = (ts: number) => {
     const clamped = Math.max(minTs, Math.min(maxTs, ts));
-    return (
-      height -
-      padding.bottom -
-      ((clamped - minTs) / (maxTs - minTs)) *
-        (height - padding.top - padding.bottom)
-    );
+    const range = Math.max(1, maxTs - minTs);
+    return height - padding.bottom - ((clamped - minTs) / range) * (height - padding.top - padding.bottom);
   };
 
   const splitX = getX(baselineUsg);
@@ -280,7 +276,6 @@ export default function ScatterPage() {
     });
   }, [filteredPlayers, sortField, sortAsc]);
 
-  // 排序表頭生成輔助函式
   const renderSortableTh = (
     field: keyof AdvancedPlayer,
     label: string,
@@ -327,7 +322,7 @@ export default function ScatterPage() {
               🎯 主力球員效率象限圖 (USG% vs TS%)
             </h1>
             <p className="text-gray-300 text-sm max-w-2xl leading-relaxed">
-              橫軸為球權使用率 (USG%)，縱軸為真實命中率 (TS%)，氣泡大小依單場綜合表現評分 (GmSc) 等比縮放。點擊圓圈可直接展開下方數據表並自動定位。
+              橫軸為球權使用率 (USG%)，縱軸為真實命中率 (TS%)，基準線採聯盟標竿 (USG 20.0%, TS 52.0%)。點擊圓圈可直接展開下方數據表並自動定位。
             </p>
           </div>
 
@@ -447,7 +442,7 @@ export default function ScatterPage() {
               fillOpacity="0.04"
             />
 
-            {/* 動態十字基準虛線 */}
+            {/* 十字基準虛線 (標準標竿線：20% / 52%) */}
             <line
               x1={splitX}
               y1={padding.top}
@@ -467,7 +462,7 @@ export default function ScatterPage() {
               strokeDasharray="4 4"
             />
 
-            {/* 動態基準線文字標註 */}
+            {/* 基準線文字標註 */}
             <text
               x={splitX + 6}
               y={padding.top + 16}
@@ -475,7 +470,7 @@ export default function ScatterPage() {
               fontSize="11"
               fontWeight="bold"
             >
-              主力平均 USG% ({baselineUsg.toFixed(1)}%)
+              核心球權門檻 ({baselineUsg.toFixed(1)}%)
             </text>
             <text
               x={width - padding.right - 145}
@@ -484,7 +479,7 @@ export default function ScatterPage() {
               fontSize="11"
               fontWeight="bold"
             >
-              主力平均 TS% ({baselineTs.toFixed(1)}%)
+              高效命中門檻 ({baselineTs.toFixed(1)}%)
             </text>
 
             {/* X 軸刻度與標籤 */}
@@ -674,7 +669,7 @@ export default function ScatterPage() {
         </div>
       </div>
 
-      {/* 5. 掛載下方球員詳細數據清單表格 (支援雙 Tab、凍結首欄+首列、全欄位點擊排序) */}
+      {/* 5. 下方球員詳細數據清單表格 */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border border-[#30363D] bg-[#161B22] shadow-md gap-3">
           <div
@@ -730,12 +725,9 @@ export default function ScatterPage() {
         {isTableExpanded && (
           <div className="overflow-x-auto max-h-[620px] overflow-y-auto rounded-2xl border border-[#30363D] bg-[#161B22] shadow-2xl relative animate-in fade-in">
             <table className="w-full text-left text-xs whitespace-nowrap border-separate border-spacing-0">
-              {/* 凍結表頭 (Sticky Header: top-0 z-30) */}
               <thead className="bg-[#0E1117] text-gray-400 uppercase font-mono tracking-wider sticky top-0 z-30 shadow-md">
                 {tableTab === 'traditional' ? (
-                  /* 基礎數據表頭 */
                   <tr>
-                    {/* 雙重凍結最左欄：球員名稱 (top-0 + left-0 -> z-40) */}
                     <th className="py-3.5 px-4 font-bold text-white sticky top-0 left-0 z-40 bg-[#0E1117] border-b border-r border-[#30363D] shadow-[2px_0_5px_rgba(0,0,0,0.4)]">
                       球員
                     </th>
@@ -759,9 +751,7 @@ export default function ScatterPage() {
                     {renderSortableTh('plus_minus', '+/-')}
                   </tr>
                 ) : (
-                  /* 進階數據表頭 */
                   <tr>
-                    {/* 雙重凍結最左欄：球員名稱 (top-0 + left-0 -> z-40) */}
                     <th className="py-3.5 px-4 font-bold text-white sticky top-0 left-0 z-40 bg-[#0E1117] border-b border-r border-[#30363D] shadow-[2px_0_5px_rgba(0,0,0,0.4)]">
                       球員
                     </th>
@@ -815,7 +805,6 @@ export default function ScatterPage() {
                             : 'hover:bg-[#21262D]/60'
                         }`}
                       >
-                        {/* 凍結最左側球員欄 (Sticky Column: left-0 z-20) */}
                         <td className={`py-3 px-4 sticky left-0 z-20 font-sans font-bold text-white border-r border-[#21262D]/40 shadow-[2px_0_5px_rgba(0,0,0,0.3)] transition-colors ${
                           isSelected ? 'bg-[#272118]' : 'bg-[#161B22] group-hover:bg-[#1C2128]'
                         }`}>
@@ -869,7 +858,6 @@ export default function ScatterPage() {
                         </td>
 
                         {tableTab === 'traditional' ? (
-                          /* 基礎攻守數據格 */
                           <>
                             <td className="py-3 px-3 text-right text-gray-300">
                               {player.fgm ?? 0}/{player.fga ?? 0}
@@ -915,7 +903,6 @@ export default function ScatterPage() {
                             </td>
                           </>
                         ) : (
-                          /* 進階效率數據格 */
                           <>
                             <td className="py-3 px-3 text-right text-[#FF9100] font-bold">
                               {(player.efg_pct ?? 0).toFixed(1)}%

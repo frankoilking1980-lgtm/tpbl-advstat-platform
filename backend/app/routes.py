@@ -125,12 +125,19 @@ def clean_val_num(val, default=0.0):
         return default
 
 
+# =====================================================================
+# 象限判定核心：自動相容小數 (0.548) 與百分比 (54.8)
+# =====================================================================
 def get_quadrant(usg_pct: float, ts_pct: float):
-    if usg_pct >= 20.0 and ts_pct >= 52.0:
+    # 自動相容小數點格式（如 0.548 自動放大為 54.8，0.331 自動放大為 33.1）
+    real_ts = ts_pct * 100.0 if (0 < ts_pct <= 1.0) else ts_pct
+    real_usg = usg_pct * 100.0 if (0 < usg_pct <= 1.0) else usg_pct
+
+    if real_usg >= 20.0 and real_ts >= 52.0:
         return "Q1", "第一象限：高球權・高效率 (核心進攻支柱)"
-    elif usg_pct < 20.0 and ts_pct >= 52.0:
+    elif real_usg < 20.0 and real_ts >= 52.0:
         return "Q2", "第二象限：低球權・高效率 (高效終結與奇兵)"
-    elif usg_pct < 20.0 and ts_pct < 52.0:
+    elif real_usg < 20.0 and real_ts < 52.0:
         return "Q3", "第三象限：低球權・低效率 (體系角色調整中)"
     else:
         return "Q4", "第四象限：高球權・低效率 (持球負擔重/待增溫)"
@@ -688,16 +695,24 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
     players = []
     for r in rows:
         p_name = r["player_name"]
-        usg = round(float(r["usg_pct"] or 0.0), 1)
-        ts = round(float(r["ts_pct"] or 0.0), 1)
-        efg = round(float(r["efg_pct"] or 0.0), 1)
+        raw_usg = float(r["usg_pct"] or 0.0)
+        raw_ts = float(r["ts_pct"] or 0.0)
+        raw_efg = float(r["efg_pct"] or 0.0)
+
+        # 統一處理百分比數值 (自動適配小數如 0.548 -> 54.8)
+        disp_ts = round(raw_ts * 100.0 if (0 < raw_ts <= 1.0) else raw_ts, 1)
+        disp_usg = round(raw_usg * 100.0 if (0 < raw_usg <= 1.0) else raw_usg, 1)
+        disp_efg = round(raw_efg * 100.0 if (0 < raw_efg <= 1.0) else raw_efg, 1)
+
         mpg = round(float(r["mpg"] or 0.0), 1)
         ppg = round(float(r["ppg"] or 0.0), 1)
         rpg = round(float(r["rpg"] or 0.0), 1)
         apg = round(float(r["apg"] or 0.0), 1)
         spg = round(float(r["spg"] or 0.0), 1)
         bpg = round(float(r["bpg"] or 0.0), 1)
-        q, q_label = get_quadrant(usg, ts)
+
+        # 象限嚴密標準化判定
+        q, q_label = get_quadrant(disp_usg, disp_ts)
         minutes_str = f"{int(mpg)}:{int((mpg % 1) * 60):02d}"
 
         ex = excel_player_map.get(p_name, {})
@@ -742,11 +757,11 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
             "plus_minus": round(float(r["gmsc"] or 0.0) - 10.0, 1),
             "three_par": three_par,
             "ftr": ftr,
-            "usg_pct": usg,
+            "usg_pct": disp_usg,
             "ast_pct": round(apg * 4.0, 1),
             "tov_pct": 12.0,
-            "ts_pct": ts,
-            "efg_pct": efg,
+            "ts_pct": disp_ts,
+            "efg_pct": disp_efg,
             "gmsc": round(float(r["gmsc"] or 0.0), 1),
             "quadrant": q,
             "quadrant_label": q_label,
@@ -777,9 +792,14 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
     if not r:
         raise HTTPException(status_code=404, detail="找不到該球員數據")
 
-    usg = round(float(r["usg_pct"] or 0.0), 1)
-    ts = round(float(r["ts_pct"] or 0.0), 1)
-    efg = round(float(r["efg_pct"] or 0.0), 1)
+    raw_usg = float(r["usg_pct"] or 0.0)
+    raw_ts = float(r["ts_pct"] or 0.0)
+    raw_efg = float(r["efg_pct"] or 0.0)
+
+    disp_ts = round(raw_ts * 100.0 if (0 < raw_ts <= 1.0) else raw_ts, 1)
+    disp_usg = round(raw_usg * 100.0 if (0 < raw_usg <= 1.0) else raw_usg, 1)
+    disp_efg = round(raw_efg * 100.0 if (0 < raw_efg <= 1.0) else raw_efg, 1)
+
     mpg = round(float(r["mpg"] or 0.0), 1)
     ppg = round(float(r["ppg"] or 0.0), 1)
     rpg = round(float(r["rpg"] or 0.0), 1)
@@ -787,7 +807,8 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
     spg = round(float(r["spg"] or 0.0), 1)
     bpg = round(float(r["bpg"] or 0.0), 1)
     gmsc = round(float(r["gmsc"] or 0.0), 1)
-    q, q_label = get_quadrant(usg, ts)
+
+    q, q_label = get_quadrant(disp_usg, disp_ts)
 
     return {
         "player_info": {
@@ -805,9 +826,9 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
             "bpg": bpg,
             "tpg": 1.5,
             "plus_minus": round(gmsc - 10.0, 1),
-            "usg_pct": usg,
-            "ts_pct": ts,
-            "efg_pct": efg,
+            "usg_pct": disp_usg,
+            "ts_pct": disp_ts,
+            "efg_pct": disp_efg,
             "gmsc": gmsc,
             "quadrant": q,
             "quadrant_label": q_label,
@@ -816,7 +837,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
         },
         "radar": {
             "scoring": min(100.0, round((ppg / 30.0) * 100, 1)),
-            "shooting": min(100.0, round(ts, 1)),
+            "shooting": min(100.0, round(disp_ts, 1)),
             "playmaking": min(100.0, round((apg / 10.0) * 100, 1)),
             "rebounding": min(100.0, round((rpg / 15.0) * 100, 1)),
             "defense": min(100.0, round(((spg + bpg) / 4.0) * 100, 1)),
@@ -830,7 +851,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
         "identity": r["identity"],
         "stats": {
             "mpg": mpg, "ppg": ppg, "rpg": rpg, "apg": apg, "spg": spg, "bpg": bpg,
-            "efg_pct": efg, "ts_pct": ts, "usg_pct": usg, "gmsc": gmsc,
+            "efg_pct": disp_efg, "ts_pct": disp_ts, "usg_pct": disp_usg, "gmsc": gmsc,
         },
         "shot_chart_review": r["shot_chart_review"],
         "performance_review": r["performance_review"],
@@ -1434,10 +1455,14 @@ def _fetch_team_players(team_name: str, stage: str):
         apg = round(float(r["apg"] or 0.0), 1)
         spg = round(float(r["spg"] or 0.0), 1)
         bpg = round(float(r["bpg"] or 0.0), 1)
-        efg = round(float(r["efg_pct"] or 0.0), 1)
-        ts = round(float(r["ts_pct"] or 0.0), 1)
-        usg = round(float(r["usg_pct"] or 0.0), 1)
+        raw_efg = float(r["efg_pct"] or 0.0)
+        raw_ts = float(r["ts_pct"] or 0.0)
+        raw_usg = float(r["usg_pct"] or 0.0)
         gmsc = round(float(r["gmsc"] or 0.0), 1)
+
+        disp_ts = round(raw_ts * 100.0 if (0 < raw_ts <= 1.0) else raw_ts, 1)
+        disp_usg = round(raw_usg * 100.0 if (0 < raw_usg <= 1.0) else raw_usg, 1)
+        disp_efg = round(raw_efg * 100.0 if (0 < raw_efg <= 1.0) else raw_efg, 1)
 
         players.append({
             "id": r["id"],
@@ -1464,9 +1489,9 @@ def _fetch_team_players(team_name: str, stage: str):
             "tov": 1.5,
             "pf": 2.0,
             "plus_minus": int(gmsc - 10),
-            "efg_pct": round(efg / 100.0, 3) if efg > 1 else efg,
-            "ts_pct": round(ts / 100.0, 3) if ts > 1 else ts,
-            "usg_pct": usg,
+            "efg_pct": round(disp_efg / 100.0, 3),
+            "ts_pct": round(disp_ts / 100.0, 3),
+            "usg_pct": disp_usg,
             "gmsc": gmsc,
             "ortg": round(105.0 + (gmsc - 10.0) * 0.8, 1),
             "drtg": round(105.0 - (spg + bpg) * 2.0, 1),
@@ -1636,7 +1661,6 @@ def get_team_last_lineup(
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # 搜尋該球隊最新一場比賽 (支援隊名簡稱如 "國王")
     search_kw = team[-2:]
     cur.execute("""
         SELECT id, home_team, away_team, stage 
@@ -1656,11 +1680,9 @@ def get_team_last_lineup(
     a_team = normalize_team_name(g["away_team"])
     is_home = (search_kw in h_team)
     
-    # 1. 取得帶有 is_starting: true 的官方先發球員集合
     off_starters = _get_official_starting_players(game_id, h_team, a_team)
     target_starters_set = off_starters["home_starters"] if is_home else off_starters["away_starters"]
     
-    # 2. 取得該場比賽 Excel Boxscore 的完整登錄球員
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
     team_excel = _find_team_excel_file(season_folder, team)
     gid_match = re.search(r"(G\d+)", str(game_id), re.IGNORECASE)
@@ -1679,11 +1701,9 @@ def get_team_last_lineup(
             else:
                 bench.append(pname)
                 
-    # 若成功萃取出剛好 5 位先發，直接精準回傳
     if len(starters) == 5:
         return {"starters": starters, "bench": bench[:9]}
         
-    # 保底推導：補齊先發與板凳
     all_pnames = [p["player_name"].split(" ")[0].split("(")[0].strip() for p in box] if box else []
     for s in target_starters_set:
         if s in all_pnames and s not in starters:
