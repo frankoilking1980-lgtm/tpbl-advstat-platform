@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { HelpCircle, History, RotateCcw } from 'lucide-react';
+import { HelpCircle, History, RotateCcw, Camera } from 'lucide-react';
+import MatchupShareCardModal from '@/components/MatchupShareCardModal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -106,6 +107,9 @@ export default function MatchupPage() {
 
   const [startersB, setStartersB] = useState<(Player | null)[]>([null, null, null, null, null]);
   const [benchB, setBenchB] = useState<Player[]>([]);
+
+  // 社群 1:1 戰報卡彈窗開關狀態
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // 各隊陣容記憶池
   const savedLineupsRef = useRef<Record<string, TeamLineupState>>({});
@@ -302,7 +306,7 @@ export default function MatchupPage() {
     }
   };
 
-  // 核心修復：彈窗候選池（更換先發時開放板凳球員與未登錄球員供對調）
+  // 彈窗候選池（更換先發時開放板凳球員與未登錄球員供對調）
   const availablePool = useMemo(() => {
     if (!activePicker) return [];
     const { side, type, starterIndex } = activePicker;
@@ -522,7 +526,7 @@ export default function MatchupPage() {
     };
   }, [aggA, aggB]);
 
-  // 核心修復：嚴密洋將名額驗證（防堵先發雙洋與登錄三洋漏洞）
+  // 選人與名額驗證
   const handleSelectPlayer = (player: Player) => {
     if (!activePicker) return;
     const { side, type, starterIndex } = activePicker;
@@ -537,20 +541,17 @@ export default function MatchupPage() {
       const willReplaceForeign = currentTarget?.identity === '洋將';
       const isFromBench = currentBench.some((p) => p.player_name === player.player_name);
 
-      // 1. 檢驗場上先發洋將 (上限 2 名)
       const nextStartersForeign = foreignStats.starters - (willReplaceForeign ? 1 : 0) + (isForeign ? 1 : 0);
       if (nextStartersForeign > 2) {
         alert('【違規限制】場上先發洋將不得超過 2 名！');
         return;
       }
 
-      // 2. 檢驗整隊 14 人登錄洋將 (上限 3 名)
       if (!isFromBench && isForeign && !willReplaceForeign && foreignStats.total >= 3) {
         alert('【違規限制】14人登錄名單洋將總計不得超過 3 名！');
         return;
       }
 
-      // 3. 執行智慧互換 (Swap)
       const benchIdx = currentBench.findIndex((p) => p.player_name === player.player_name);
       if (benchIdx !== -1) {
         if (currentTarget) {
@@ -669,6 +670,16 @@ export default function MatchupPage() {
                 <HelpCircle className="w-3.5 h-3.5" />
                 <span>模型依據</span>
               </Link>
+              
+              {/* 📸 新增社群 1:1 戰報卡按鈕 */}
+              <button
+                type="button"
+                onClick={() => setIsShareModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF9100] hover:bg-amber-400 text-slate-950 font-black transition-colors shadow-md text-xs"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>生成戰報卡</span>
+              </button>
             </div>
           </div>
 
@@ -761,7 +772,7 @@ export default function MatchupPage() {
             </div>
           </div>
 
-          {/* 頂部四維數據直接呈現 (健全度防除以零) */}
+          {/* 頂部四維數據直接呈現 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-[#21262D]">
             <div className="bg-[#0E1117] p-2.5 rounded-lg border border-[#21262D]">
               <div className="text-[11px] text-gray-400 font-medium">投籃效率 (eFG%)</div>
@@ -1229,6 +1240,25 @@ export default function MatchupPage() {
             </div>
           </div>
         )}
+
+        {/* ============================================================== */}
+        {/* 4. 社群 16:9 戰報分享卡 Modal 掛載 */}
+        {/* ============================================================== */}
+        <MatchupShareCardModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          teamA={teamA}
+          teamB={teamB}
+          startersA={startersA}
+          startersB={startersB}
+          benchA={benchA}
+          benchB={benchB}
+          aggA={aggA}
+          aggB={aggB}
+          matchupResults={matchupResults}
+          foreignStatsA={foreignStatsA}
+          foreignStatsB={foreignStatsB}
+        />
       </main>
     </div>
   );

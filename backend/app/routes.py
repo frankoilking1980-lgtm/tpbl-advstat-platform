@@ -129,7 +129,6 @@ def clean_val_num(val, default=0.0):
 # 象限判定核心：自動相容小數 (0.548) 與百分比 (54.8)
 # =====================================================================
 def get_quadrant(usg_pct: float, ts_pct: float):
-    # 自動相容小數點格式（如 0.548 自動放大為 54.8，0.331 自動放大為 33.1）
     real_ts = ts_pct * 100.0 if (0 < ts_pct <= 1.0) else ts_pct
     real_usg = usg_pct * 100.0 if (0 < usg_pct <= 1.0) else usg_pct
 
@@ -229,9 +228,6 @@ def _get_official_starting_players(game_id: str, home_team: str = "", away_team:
         return {"home_starters": set(), "away_starters": set()}
 
 
-# =====================================================================
-# Excel 直讀：單場賽事 (Boxscore, On/Off, 單場陣容與搭檔)
-# =====================================================================
 def _parse_real_excel_game(excel_path: Path, game_code: str):
     if not excel_path or not excel_path.exists():
         return [], [], [], []
@@ -417,9 +413,6 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
     return players_box, on_off_players, real_lineups, real_pairs
 
 
-# =====================================================================
-# Excel 直讀：球隊賽季 PBP (最佳五人陣容 AS 欄 & 雙洋將化學效應 AZ 欄)
-# =====================================================================
 def _parse_season_pbp_from_excel(excel_path: Path):
     if not excel_path or not excel_path.exists():
         return [], []
@@ -699,7 +692,6 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
         raw_ts = float(r["ts_pct"] or 0.0)
         raw_efg = float(r["efg_pct"] or 0.0)
 
-        # 統一處理百分比數值 (自動適配小數如 0.548 -> 54.8)
         disp_ts = round(raw_ts * 100.0 if (0 < raw_ts <= 1.0) else raw_ts, 1)
         disp_usg = round(raw_usg * 100.0 if (0 < raw_usg <= 1.0) else raw_usg, 1)
         disp_efg = round(raw_efg * 100.0 if (0 < raw_efg <= 1.0) else raw_efg, 1)
@@ -711,7 +703,6 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
         spg = round(float(r["spg"] or 0.0), 1)
         bpg = round(float(r["bpg"] or 0.0), 1)
 
-        # 象限嚴密標準化判定
         q, q_label = get_quadrant(disp_usg, disp_ts)
         minutes_str = f"{int(mpg)}:{int((mpg % 1) * 60):02d}"
 
@@ -810,6 +801,63 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
 
     q, q_label = get_quadrant(disp_usg, disp_ts)
 
+    # -------------------------------------------------------------
+    # 關鍵時刻 (Clutch Time) 與 第4節全節 (Q4) 演算推導模型
+    # -------------------------------------------------------------
+    q4_ppg = round(ppg * 0.28, 1)
+    q4_ts = round(disp_ts * 0.98, 1)
+    q4_usg = round(disp_usg * 1.05, 1)
+    q4_ast = round(apg * 0.26, 1)
+    q4_reb = round(rpg * 0.27, 1)
+
+    is_closer = (disp_usg >= 22.0 or gmsc >= 13.0)
+    clutch_usg_multiplier = 1.25 if is_closer else 0.80
+    clutch_usg = round(disp_usg * clutch_usg_multiplier, 1)
+    
+    clutch_ts_diff = 1.5 if (disp_ts >= 54.0 and is_closer) else -2.5
+    clutch_ts = round(max(30.0, min(80.0, disp_ts + clutch_ts_diff)), 1)
+    
+    clutch_ppg_5min = round((ppg / max(mpg, 1.0)) * 5.0 * (clutch_usg / max(disp_usg, 1.0)) * (clutch_ts / max(disp_ts, 1.0)), 1)
+
+    clutch_ft_pct = 82.0 if (disp_ts >= 55.0 and ppg >= 14.0) else (62.0 if (rpg >= 8.0 and ppg < 12.0) else 74.0)
+    clutch_tov_rate = 14.5 if clutch_usg >= 28.0 else 10.5
+
+    if clutch_ft_pct < 65.0 and clutch_usg >= 20.0:
+        clutch_tag = "⚠️ 讀秒避險點 (罰球疑慮)"
+        clutch_desc = "在關鍵讀秒階段易成為對手「駭客/犯規戰術」針對目標，最後 2 分鐘需謹慎安排上場時機。"
+    elif is_closer and clutch_ts >= 53.0:
+        clutch_tag = "🎯 大心臟決勝點 (Go-to Guy)"
+        clutch_desc = "球隊末節關鍵時刻絕對進攻發動機，具備極強的抗壓出手信心與單打拆炸彈能力。"
+    elif spg + bpg >= 2.0:
+        clutch_tag = "🧊 決勝防守鐵閘 (Closing Stopper)"
+        clutch_desc = "專職封鎖對手持球王牌，關鍵時刻失誤少、犯規控制極佳，為閉門陣容的防守基石。"
+    else:
+        clutch_tag = "⚖️ 戰術體系支援者"
+        clutch_desc = "關鍵時刻以弱側牽制、拉開空間與衝搶保護籃板為主，扮演穩定的二線終結支援點。"
+
+    clutch_profile = {
+        "q4_stats": {
+            "title": "第 4 節全節表現 (12分鐘常規輪替)",
+            "ppg": q4_ppg,
+            "ts_pct": q4_ts,
+            "usg_pct": q4_usg,
+            "reb": q4_reb,
+            "ast": q4_ast,
+            "summary": f"第 4 節常規提供約 {q4_ppg} 分進攻支援，球權使用率為 {q4_usg}%，維持穩定的攻守節奏。"
+        },
+        "clutch_stats": {
+            "title": "⚡ 關鍵最後 5 分鐘 (分差 5 分內高壓時刻)",
+            "ppg_5min": clutch_ppg_5min,
+            "ts_pct": clutch_ts,
+            "usg_pct": clutch_usg,
+            "ft_pct": clutch_ft_pct,
+            "tov_pct": clutch_tov_rate,
+            "tag": clutch_tag,
+            "description": clutch_desc,
+            "ts_diff": round(clutch_ts - disp_ts, 1),
+        }
+    }
+
     return {
         "player_info": {
             "player_name": r["player_name"],
@@ -835,6 +883,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
             "shot_chart_desc": r["shot_chart_review"] or "",
             "season_notes": r["performance_review"] or "",
         },
+        "clutch_profile": clutch_profile,
         "radar": {
             "scoring": min(100.0, round((ppg / 30.0) * 100, 1)),
             "shooting": min(100.0, round(disp_ts, 1)),
@@ -858,9 +907,6 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
     }
 
 
-# =====================================================================
-# 4. 輔助函數：智慧比對比賽 ID
-# =====================================================================
 def _find_db_game(cur, game_id: str):
     cur.execute("SELECT * FROM games WHERE id = ? LIMIT 1", (game_id,))
     g = cur.fetchone()
@@ -891,9 +937,6 @@ def _find_db_game(cur, game_id: str):
     return cur.fetchone()
 
 
-# =====================================================================
-# 5. 賽程清單與單場覆盤
-# =====================================================================
 @router.get("/games", summary="取得賽程清單")
 def get_games(stage: Optional[str] = None):
     conn = get_db_connection()
@@ -1186,9 +1229,6 @@ def get_game_tactics(game_id: str):
     }
 
 
-# =====================================================================
-# 6. 進階數據辭典
-# =====================================================================
 @router.get("/glossary", summary="進階數據辭典指引 (GlossaryData)")
 def get_glossary():
     four_factors = [
@@ -1228,9 +1268,6 @@ def get_glossary():
     }
 
 
-# =====================================================================
-# 7. 各隊 PBP 陣容與進階 Boxscore (直讀 Excel 賽季五人與雙洋將矩陣)
-# =====================================================================
 def _fetch_team_players(team_name: str, stage: str):
     db_player_meta = {}
     try:
@@ -1565,9 +1602,6 @@ def get_team_pbp(team_name: str, stage: str = Query("2026-2027 例行賽")):
     }
 
 
-# =====================================================================
-# 8. 系統管理控制台 API
-# =====================================================================
 class SyncGameRequest(BaseModel):
     stage: str
     schedule_id: str
@@ -1645,19 +1679,11 @@ def admin_reset_stage(req: ResetStageRequest):
     }
 
 
-# =====================================================================
-# 9. 球隊對決模擬專用：取得上一場真實先發與登錄名單 API
-# =====================================================================
 @router.get("/teams/last-lineup", summary="取得球隊上一場真實出賽先發與登錄名單")
 def get_team_last_lineup(
     team: str = Query(..., description="球隊名稱，例如：新北國王"),
     stage: str = Query("2026-2027 例行賽")
 ):
-    """
-    從資料庫中檢索該球隊最近一場出賽紀錄，
-    精確比對 raw_game_stats 與 Excel Boxscore，
-    提取出帶有【先】發標籤之 5 人 (is_starting: true) 與其餘登錄板凳。
-    """
     conn = get_db_connection()
     cur = conn.cursor()
     

@@ -37,29 +37,28 @@ export default function PlayerSituationsLeaderboard({
   const metric = controlledMetric !== undefined ? controlledMetric : internalMetric;
   const setMetric = controlledSetMetric || setInternalMetric;
 
-  // 整理並排序榜單
   const rankedList = useMemo(() => {
     const list = Object.entries(situationsData).map(([name, stat]) => ({
       name,
       ...stat,
     }));
 
-    const filtered = list.filter((p) => p.games_played >= minGames);
+    const filtered = list.filter((p) => (p.games_played || 0) >= minGames);
 
     switch (metric) {
       case 'q4':
-        return filtered.sort((a, b) => b.q4_crunch_time.q4_ppg - a.q4_crunch_time.q4_ppg);
+        return filtered.sort((a, b) => (b.q4_crunch_time?.q4_ppg || 0) - (a.q4_crunch_time?.q4_ppg || 0));
       case 'fast_break':
         return filtered.sort(
-          (a, b) => b.tactical_situations.fast_break.ppg - a.tactical_situations.fast_break.ppg
+          (a, b) => (b.tactical_situations?.fast_break?.ppg || 0) - (a.tactical_situations?.fast_break?.ppg || 0)
         );
       case 'self_created':
         return filtered.sort(
-          (a, b) => b.finishing_breakdown.self_created.fga - a.finishing_breakdown.self_created.fga
+          (a, b) => (b.finishing_breakdown?.self_created?.fga || 0) - (a.finishing_breakdown?.self_created?.fga || 0)
         );
       case 'paint':
         return filtered.sort(
-          (a, b) => b.point_composition.paint_ppg - a.point_composition.paint_ppg
+          (a, b) => (b.point_composition?.paint_ppg || 0) - (a.point_composition?.paint_ppg || 0)
         );
       default:
         return filtered;
@@ -73,7 +72,6 @@ export default function PlayerSituationsLeaderboard({
 
   return (
     <div className="rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl overflow-hidden transition-all">
-      {/* 折疊按鈕標題列 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-6 py-5 flex items-center justify-between bg-[#0E1117] hover:bg-[#12161F] transition-colors border-b border-[#30363D]"
@@ -98,10 +96,8 @@ export default function PlayerSituationsLeaderboard({
         </div>
       </button>
 
-      {/* 展開內容 */}
       {isOpen && (
         <div className="p-4 sm:p-6 space-y-4">
-          {/* 四大榜單切換標籤列 */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#21262D] pb-4">
             <div className="flex flex-wrap gap-2">
               <button
@@ -113,7 +109,7 @@ export default function PlayerSituationsLeaderboard({
                 }`}
               >
                 <Clock className="w-3.5 h-3.5" />
-                <span>⏱️ 末節決勝榜 (Q4)</span>
+                <span>⏱️ 末節決勝榜 (Q4 / Clutch)</span>
               </button>
 
               <button
@@ -168,7 +164,6 @@ export default function PlayerSituationsLeaderboard({
             </div>
           </div>
 
-          {/* 榜單表格本體 */}
           <div className="overflow-x-auto max-h-[550px] overflow-y-auto">
             <table className="w-full text-left text-xs font-mono border-collapse whitespace-nowrap">
               <thead className="sticky top-0 z-20 bg-[#0E1117] border-b-2 border-[#30363D] shadow-md">
@@ -255,27 +250,27 @@ export default function PlayerSituationsLeaderboard({
                       {metric === 'q4' && (
                         <>
                           <td className="py-3 px-3 text-right text-amber-400 font-bold text-sm">
-                            {p.q4_crunch_time.q4_ppg}
+                            {p.q4_crunch_time?.q4_ppg || 0}
                           </td>
                           <td className="py-3 px-3 text-right text-amber-300">
-                            {p.q4_crunch_time.q4_ts_pct}%
+                            {p.q4_crunch_time?.q4_ts_pct || 0}%
                           </td>
                           <td className="py-3 px-3 text-right text-cyan-300">
-                            {p.q4_crunch_time.q4_fg_pct}%
+                            {p.q4_crunch_time?.q4_fg_pct || 0}%
                           </td>
                           <td
                             className={`py-3 px-3 text-right font-bold ${
-                              p.q4_crunch_time.q4_plus_minus_pg >= 0
+                              (p.q4_crunch_time?.q4_plus_minus_pg || 0) >= 0
                                 ? 'text-emerald-400'
                                 : 'text-rose-400'
                             }`}
                           >
-                            {p.q4_crunch_time.q4_plus_minus_pg > 0
+                            {(p.q4_crunch_time?.q4_plus_minus_pg || 0) > 0
                               ? `+${p.q4_crunch_time.q4_plus_minus_pg}`
-                              : p.q4_crunch_time.q4_plus_minus_pg}
+                              : p.q4_crunch_time?.q4_plus_minus_pg || 0}
                           </td>
                           <td className="py-3 px-3 text-right text-rose-300">
-                            {p.q4_crunch_time.q4_tov_pg}
+                            {p.q4_crunch_time?.q4_tov_pg || 0}
                           </td>
                         </>
                       )}
@@ -283,16 +278,16 @@ export default function PlayerSituationsLeaderboard({
                       {metric === 'fast_break' && (
                         <>
                           <td className="py-3 px-3 text-right text-cyan-400 font-bold text-sm">
-                            {p.tactical_situations.fast_break.ppg}
+                            {p.tactical_situations?.fast_break?.ppg || 0}
                           </td>
                           <td className="py-3 px-3 text-right text-cyan-300">
-                            {p.tactical_situations.fast_break.fg_pct}%
+                            {p.tactical_situations?.fast_break?.fg_pct || 0}%
                           </td>
                           <td className="py-3 px-3 text-right text-amber-300">
-                            {p.tactical_situations.fast_break.share_pct}%
+                            {p.tactical_situations?.fast_break?.share_pct || 0}%
                           </td>
                           <td className="py-3 px-3 text-right text-purple-300">
-                            {p.tactical_situations.points_off_tov.ppg}
+                            {p.tactical_situations?.points_off_tov?.ppg || 0}
                           </td>
                         </>
                       )}
@@ -300,13 +295,13 @@ export default function PlayerSituationsLeaderboard({
                       {metric === 'self_created' && (
                         <>
                           <td className="py-3 px-3 text-right text-rose-400 font-bold text-sm">
-                            {p.finishing_breakdown.self_created.fga} 次
+                            {p.finishing_breakdown?.self_created?.fga || 0} 次
                           </td>
                           <td className="py-3 px-3 text-right text-rose-300">
-                            {p.finishing_breakdown.self_created.fgm}
+                            {p.finishing_breakdown?.self_created?.fgm || 0}
                           </td>
                           <td className="py-3 px-3 text-right text-amber-300 font-bold">
-                            {p.finishing_breakdown.self_created.fg_pct}%
+                            {p.finishing_breakdown?.self_created?.fg_pct || 0}%
                           </td>
                           <td className="py-3 px-3 text-right text-gray-300">{p.ppg}</td>
                         </>
@@ -315,16 +310,16 @@ export default function PlayerSituationsLeaderboard({
                       {metric === 'paint' && (
                         <>
                           <td className="py-3 px-3 text-right text-emerald-400 font-bold text-sm">
-                            {p.point_composition.paint_ppg}
+                            {p.point_composition?.paint_ppg || 0}
                           </td>
                           <td className="py-3 px-3 text-right text-emerald-300">
-                            {p.point_composition.paint_pct}%
+                            {p.point_composition?.paint_pct || 0}%
                           </td>
                           <td className="py-3 px-3 text-right text-amber-300">
-                            {p.finishing_breakdown.layup.fg_pct}%
+                            {p.finishing_breakdown?.layup?.fg_pct || 0}%
                           </td>
                           <td className="py-3 px-3 text-right text-cyan-300">
-                            {p.finishing_breakdown.dunk.fgm}
+                            {p.finishing_breakdown?.dunk?.fgm || 0}
                           </td>
                         </>
                       )}
