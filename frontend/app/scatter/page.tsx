@@ -63,6 +63,40 @@ interface AdvancedPlayer {
   season_notes?: string;
 }
 
+const QUADRANT_LABELS: Record<'Q1' | 'Q2' | 'Q3' | 'Q4', string> = {
+  Q1: '第一象限：高球權・高效率 (核心進攻支柱)',
+  Q2: '第二象限：低球權・高效率 (高效終結與奇兵)',
+  Q3: '第三象限：低球權・低效率 (體系角色調整中)',
+  Q4: '第四象限：高球權・低效率 (持球負擔重/待增溫)',
+};
+
+const safeNum = (val: unknown, fallback = 0): number => {
+  const n = typeof val === 'number' ? val : Number(val);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const fixPct = (val: unknown): number => {
+  const n = safeNum(val, 0);
+  if (n > 0 && n <= 1.0) {
+    return Number((n * 100).toFixed(1));
+  }
+  return Number(n.toFixed(1));
+};
+
+const classifyQuadrant = (usg: number, ts: number): 'Q1' | 'Q2' | 'Q3' | 'Q4' => {
+  if (usg >= 20.0 && ts >= 52.0) return 'Q1';
+  if (usg < 20.0 && ts >= 52.0) return 'Q2';
+  if (usg < 20.0 && ts < 52.0) return 'Q3';
+  return 'Q4';
+};
+
+const STRING_SORT_FIELDS = new Set<keyof AdvancedPlayer>([
+  'player_name',
+  'team_name',
+  'identity',
+  'position',
+]);
+
 export default function ScatterPage() {
   const { stage } = useStage();
   const [minPpg, setMinPpg] = useState<number>(8);
@@ -81,31 +115,28 @@ export default function ScatterPage() {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   );
 
-  // 1. 座標百分比歸一化 (徹底修正小數點 0.548 -> 54.8)
+  // 1. 座標百分比歸一化 (徹底修正小數點 0.548 -> 54.8，並以歸一化座標鎖定象限單一真相)
   const normalizedPlayers = useMemo(() => {
     if (!rawPlayers) return [];
-
-    const fixPct = (val: number | undefined | null): number => {
-      if (val === undefined || val === null) return 0;
-      if (val > 0 && val <= 1.0) {
-        return Number((val * 100).toFixed(1));
-      }
-      return Number(val.toFixed(1));
-    };
 
     return rawPlayers.map((p) => {
       const ts = fixPct(p.ts_pct);
       const usg = fixPct(p.usg_pct);
-
-      // 嚴密對齊後端標準：USG >= 20.0, TS >= 52.0
-      let syncedQ: 'Q1' | 'Q2' | 'Q3' | 'Q4' = 'Q4';
-      if (usg >= 20.0 && ts >= 52.0) syncedQ = 'Q1';
-      else if (usg < 20.0 && ts >= 52.0) syncedQ = 'Q2';
-      else if (usg < 20.0 && ts < 52.0) syncedQ = 'Q3';
-      else syncedQ = 'Q4';
+      const syncedQ = classifyQuadrant(usg, ts);
 
       return {
         ...p,
+        identity: p.identity || '本土',
+        games_played: safeNum(p.games_played, 0),
+        mpg: Number(safeNum(p.mpg, 0).toFixed(1)),
+        ppg: Number(safeNum(p.ppg, 0).toFixed(1)),
+        rpg: Number(safeNum(p.rpg, 0).toFixed(1)),
+        apg: Number(safeNum(p.apg, 0).toFixed(1)),
+        spg: Number(safeNum(p.spg, 0).toFixed(1)),
+        bpg: Number(safeNum(p.bpg, 0).toFixed(1)),
+        tpg: Number(safeNum(p.tpg, 0).toFixed(1)),
+        gmsc: Number(safeNum(p.gmsc, 0).toFixed(1)),
+        plus_minus: Number(safeNum(p.plus_minus, 0).toFixed(1)),
         usg_pct: usg,
         ts_pct: ts,
         efg_pct: fixPct(p.efg_pct),
@@ -116,13 +147,14 @@ export default function ScatterPage() {
         ftr: fixPct(p.ftr),
         ast_pct: fixPct(p.ast_pct),
         tov_pct: fixPct(p.tov_pct),
-        fgm: Number((p.fgm ?? 0).toFixed(1)),
-        fga: Number((p.fga ?? 0).toFixed(1)),
-        p3m: Number((p.p3m ?? 0).toFixed(1)),
-        p3a: Number((p.p3a ?? 0).toFixed(1)),
-        ftm: Number((p.ftm ?? 0).toFixed(1)),
-        fta: Number((p.fta ?? 0).toFixed(1)),
-        quadrant: p.quadrant || syncedQ,
+        fgm: Number(safeNum(p.fgm, 0).toFixed(1)),
+        fga: Number(safeNum(p.fga, 0).toFixed(1)),
+        p3m: Number(safeNum(p.p3m, 0).toFixed(1)),
+        p3a: Number(safeNum(p.p3a, 0).toFixed(1)),
+        ftm: Number(safeNum(p.ftm, 0).toFixed(1)),
+        fta: Number(safeNum(p.fta, 0).toFixed(1)),
+        quadrant: syncedQ,
+        quadrant_label: QUADRANT_LABELS[syncedQ],
       };
     });
   }, [rawPlayers]);
@@ -136,14 +168,15 @@ export default function ScatterPage() {
       }
 
       const matchPpg = p.ppg >= minPpg;
+      const ident = p.identity ?? '';
       const isForeign =
-        p.identity.includes('洋將') ||
-        p.identity.includes('外籍生') ||
-        p.identity.includes('歸化');
+        ident.includes('洋將') ||
+        ident.includes('外籍生') ||
+        ident.includes('歸化');
 
       let matchIdentity = true;
       if (identityFilter === '本土') {
-        matchIdentity = !isForeign && (p.identity === '本土' || p.identity.includes('本土'));
+        matchIdentity = !isForeign && (ident === '本土' || ident.includes('本土'));
       } else if (identityFilter === '洋將') {
         matchIdentity = isForeign;
       }
@@ -152,22 +185,29 @@ export default function ScatterPage() {
     });
   }, [normalizedPlayers, minPpg, identityFilter]);
 
-  // 3. 象限判定核心：全站統一標準（杜絕浮動平均值帶來的判定錯亂）
-  const getPlayerQuadrant = (p: AdvancedPlayer): 'Q1' | 'Q2' | 'Q3' | 'Q4' => {
-    if (p.quadrant) return p.quadrant;
-    if (p.usg_pct >= 20.0 && p.ts_pct >= 52.0) return 'Q1';
-    if (p.usg_pct < 20.0 && p.ts_pct >= 52.0) return 'Q2';
-    if (p.usg_pct < 20.0 && p.ts_pct < 52.0) return 'Q3';
-    return 'Q4';
-  };
+  const activeSelectedPlayer = useMemo(() => {
+    if (!selectedPlayer) return null;
+    return (
+      filteredPlayers.find(
+        (p) => p.player_name === selectedPlayer.player_name && p.team_name === selectedPlayer.team_name
+      ) ?? null
+    );
+  }, [selectedPlayer, filteredPlayers]);
+
+  // 3. 象限判定核心：全站統一標準（絕對同步繪圖座標與標籤）
+  const getPlayerQuadrant = (p: AdvancedPlayer): 'Q1' | 'Q2' | 'Q3' | 'Q4' =>
+    classifyQuadrant(safeNum(p.usg_pct, 0), safeNum(p.ts_pct, 0));
 
   // 象限分割基準線：以聯盟進階數據公認基準 (20% / 52%) 為基準十字線
   const baselineUsg = 20.0;
   const baselineTs = 52.0;
 
-  // 4. 動態自適應座標軸邊界與刻度
+  // 4. 動態自適應座標軸邊界與刻度（防護 NaN 與極端少數點 max === min 除以零）
   const { minUsg, maxUsg, minTs, maxTs, xTicks, yTicks } = useMemo(() => {
-    if (filteredPlayers.length === 0) {
+    const usgVals = filteredPlayers.map((p) => safeNum(p.usg_pct, NaN)).filter(Number.isFinite);
+    const tsVals = filteredPlayers.map((p) => safeNum(p.ts_pct, NaN)).filter(Number.isFinite);
+
+    if (usgVals.length === 0 || tsVals.length === 0) {
       return {
         minUsg: 10,
         maxUsg: 40,
@@ -177,18 +217,19 @@ export default function ScatterPage() {
         yTicks: [30, 40, 50, 60, 70, 80],
       };
     }
-    const usgVals = filteredPlayers.map((p) => p.usg_pct);
-    const tsVals = filteredPlayers.map((p) => p.ts_pct);
 
-    const rawMinUsg = Math.min(...usgVals);
-    const rawMaxUsg = Math.max(...usgVals);
-    const rawMinTs = Math.min(...tsVals);
-    const rawMaxTs = Math.max(...tsVals);
+    const rawMinUsg = Math.min(...usgVals, baselineUsg);
+    const rawMaxUsg = Math.max(...usgVals, baselineUsg);
+    const rawMinTs = Math.min(...tsVals, baselineTs);
+    const rawMaxTs = Math.max(...tsVals, baselineTs);
 
     const minU = Math.max(0, Math.min(10, Math.floor((rawMinUsg - 2) / 5) * 5));
-    const maxU = Math.max(35, Math.ceil((rawMaxUsg + 3) / 5) * 5);
+    let maxU = Math.max(35, Math.ceil((rawMaxUsg + 3) / 5) * 5);
+    if (maxU <= minU) maxU = minU + 5;
+
     const minT = Math.max(0, Math.min(30, Math.floor((rawMinTs - 5) / 10) * 10));
-    const maxT = Math.max(75, Math.ceil((rawMaxTs + 5) / 10) * 10);
+    let maxT = Math.max(75, Math.ceil((rawMaxTs + 5) / 10) * 10);
+    if (maxT <= minT) maxT = minT + 10;
 
     const xT: number[] = [];
     for (let u = minU; u <= maxU; u += 5) {
@@ -207,14 +248,16 @@ export default function ScatterPage() {
   const padding = { top: 40, right: 40, bottom: 60, left: 60 };
 
   const getX = (usg: number) => {
-    const clamped = Math.max(minUsg, Math.min(maxUsg, usg));
-    const range = Math.max(1, maxUsg - minUsg);
+    const safeVal = safeNum(usg, minUsg);
+    const clamped = Math.max(minUsg, Math.min(maxUsg, safeVal));
+    const range = Math.max(1e-6, maxUsg - minUsg);
     return padding.left + ((clamped - minUsg) / range) * (width - padding.left - padding.right);
   };
 
   const getY = (ts: number) => {
-    const clamped = Math.max(minTs, Math.min(maxTs, ts));
-    const range = Math.max(1, maxTs - minTs);
+    const safeVal = safeNum(ts, minTs);
+    const clamped = Math.max(minTs, Math.min(maxTs, safeVal));
+    const range = Math.max(1e-6, maxTs - minTs);
     return height - padding.bottom - ((clamped - minTs) / range) * (height - padding.top - padding.bottom);
   };
 
@@ -267,12 +310,16 @@ export default function ScatterPage() {
     return [...filteredPlayers].sort((a, b) => {
       const valA = a[sortField];
       const valB = b[sortField];
-      if (typeof valA === 'number' && typeof valB === 'number') {
-        return sortAsc ? valA - valB : valB - valA;
+      if (STRING_SORT_FIELDS.has(sortField)) {
+        const cmp = String(valA ?? '').localeCompare(String(valB ?? ''), 'zh-Hant');
+        return sortAsc ? cmp : -cmp;
       }
-      return sortAsc
-        ? String(valA ?? '').localeCompare(String(valB ?? ''))
-        : String(valB ?? '').localeCompare(String(valA ?? ''));
+      const numA = safeNum(valA, Number.NEGATIVE_INFINITY);
+      const numB = safeNum(valB, Number.NEGATIVE_INFINITY);
+      if (numA !== numB) {
+        return sortAsc ? numA - numB : numB - numA;
+      }
+      return a.player_name.localeCompare(b.player_name, 'zh-Hant');
     });
   }, [filteredPlayers, sortField, sortAsc]);
 
@@ -464,7 +511,7 @@ export default function ScatterPage() {
 
             {/* 基準線文字標註 */}
             <text
-              x={splitX + 6}
+              x={Math.min(width - padding.right - 135, splitX + 6)}
               y={padding.top + 16}
               fill="#94A3B8"
               fontSize="11"
@@ -474,7 +521,7 @@ export default function ScatterPage() {
             </text>
             <text
               x={width - padding.right - 145}
-              y={splitY - 6}
+              y={Math.max(padding.top + 14, splitY - 6)}
               fill="#94A3B8"
               fontSize="11"
               fontWeight="bold"
@@ -558,7 +605,9 @@ export default function ScatterPage() {
               const r = getBubbleRadius(p.gmsc);
               const q = getPlayerQuadrant(p);
               const color = getQuadrantColor(q);
-              const isSelected = selectedPlayer?.player_name === p.player_name;
+              const isSelected =
+                activeSelectedPlayer?.player_name === p.player_name &&
+                activeSelectedPlayer?.team_name === p.team_name;
               const shortName = p.player_name.split('(')[0].trim();
 
               return (
@@ -604,63 +653,65 @@ export default function ScatterPage() {
 
         {/* 頂部選中球員卡片外層容器 */}
         <div className="mt-4 min-h-[76px] flex items-center">
-          {selectedPlayer ? (
-            <div className="w-full min-h-[76px] p-4 rounded-2xl bg-[#0E1117] border border-[#FF9100]/60 shadow-2xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in">
-              <div className="flex items-center space-x-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-slate-950 text-sm shadow shrink-0"
-                  style={{ backgroundColor: getQuadrantColor(getPlayerQuadrant(selectedPlayer)) }}
-                >
-                  #{selectedPlayer.jersey_number || '-'}
-                </div>
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <h4 className="text-base font-black text-white">
-                      {selectedPlayer.player_name}
-                    </h4>
-                    <span className="text-xs text-gray-400">
-                      ({selectedPlayer.team_name} • {selectedPlayer.identity} • {selectedPlayer.position})
-                    </span>
+          {activeSelectedPlayer ? (
+            (() => {
+              const selQ = getPlayerQuadrant(activeSelectedPlayer);
+              return (
+                <div className="w-full min-h-[76px] p-4 rounded-2xl bg-[#0E1117] border border-[#FF9100]/60 shadow-2xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in">
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-slate-950 text-sm shadow shrink-0"
+                      style={{ backgroundColor: getQuadrantColor(selQ) }}
+                    >
+                      #{activeSelectedPlayer.jersey_number || '-'}
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h4 className="text-base font-black text-white">
+                          {activeSelectedPlayer.player_name}
+                        </h4>
+                        <span className="text-xs text-gray-400">
+                          ({activeSelectedPlayer.team_name} • {activeSelectedPlayer.identity} • {activeSelectedPlayer.position})
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {QUADRANT_LABELS[selQ]}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-400">
-                    {getPlayerQuadrant(selectedPlayer) === 'Q1' && '第一象限：高球權・高效率 (核心進攻支柱)'}
-                    {getPlayerQuadrant(selectedPlayer) === 'Q2' && '第二象限：低球權・高效率 (高效終結與奇兵)'}
-                    {getPlayerQuadrant(selectedPlayer) === 'Q3' && '第三象限：低球權・低效率 (體系角色調整中)'}
-                    {getPlayerQuadrant(selectedPlayer) === 'Q4' && '第四象限：高球權・低效率 (持球負擔重/待增溫)'}
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex items-center space-x-5 text-xs font-mono">
-                <div>
-                  <span className="text-gray-500 block">PPG</span>
-                  <span className="text-white font-bold">{selectedPlayer.ppg}</span>
+                  <div className="flex items-center space-x-5 text-xs font-mono">
+                    <div>
+                      <span className="text-gray-500 block">PPG</span>
+                      <span className="text-white font-bold">{activeSelectedPlayer.ppg}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">USG%</span>
+                      <span className="text-[#FF9100] font-bold">{activeSelectedPlayer.usg_pct}%</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">TS%</span>
+                      <span className="text-[#00E676] font-bold">{activeSelectedPlayer.ts_pct}%</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">eFG%</span>
+                      <span className="text-sky-400 font-bold">{activeSelectedPlayer.efg_pct}%</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">GmSc</span>
+                      <span className="text-amber-400 font-bold">{activeSelectedPlayer.gmsc}</span>
+                    </div>
+                    <PlayerLink
+                      name={activeSelectedPlayer.player_name}
+                      stage={stage}
+                      className="px-3 py-1.5 rounded-lg bg-[#FF9100] text-slate-950 font-black text-xs hover:bg-amber-400 transition-colors"
+                    >
+                      查看球員戰力卡 →
+                    </PlayerLink>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-gray-500 block">USG%</span>
-                  <span className="text-[#FF9100] font-bold">{selectedPlayer.usg_pct}%</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block">TS%</span>
-                  <span className="text-[#00E676] font-bold">{selectedPlayer.ts_pct}%</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block">eFG%</span>
-                  <span className="text-sky-400 font-bold">{selectedPlayer.efg_pct}%</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block">GmSc</span>
-                  <span className="text-amber-400 font-bold">{selectedPlayer.gmsc}</span>
-                </div>
-                <PlayerLink
-                  name={selectedPlayer.player_name}
-                  stage={stage}
-                  className="px-3 py-1.5 rounded-lg bg-[#FF9100] text-slate-950 font-black text-xs hover:bg-amber-400 transition-colors"
-                >
-                  查看球員戰力卡 →
-                </PlayerLink>
-              </div>
-            </div>
+              );
+            })()
           ) : (
             <div className="w-full min-h-[76px] p-4 rounded-2xl bg-[#0E1117]/50 border border-dashed border-[#30363D] flex items-center justify-center text-xs text-gray-500">
               點擊上方象限圖氣泡或下方表格以選中球員
@@ -791,7 +842,9 @@ export default function ScatterPage() {
                   sortedTablePlayers.map((player) => {
                     const q = getPlayerQuadrant(player);
                     const qColor = getQuadrantColor(q);
-                    const isSelected = selectedPlayer?.player_name === player.player_name;
+                    const isSelected =
+                      activeSelectedPlayer?.player_name === player.player_name &&
+                      activeSelectedPlayer?.team_name === player.team_name;
                     const rowId = `scatter-row-${encodeURIComponent(player.player_name.trim())}`;
 
                     return (
@@ -836,12 +889,12 @@ export default function ScatterPage() {
                         <td className="py-3 px-3 text-center">
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              player.identity.includes('洋將')
+                              (player.identity ?? '').includes('洋將')
                                 ? 'bg-[#FF9100]/15 text-[#FF9100] border border-[#FF9100]/30'
                                 : 'bg-[#00E676]/15 text-[#00E676] border border-[#00E676]/30'
                             }`}
                           >
-                            {player.identity}
+                            {player.identity || '本土'}
                           </span>
                         </td>
                         <td className="py-3 px-3 text-center text-gray-400 font-sans">
@@ -899,7 +952,9 @@ export default function ScatterPage() {
                                 ? 'text-red-400'
                                 : 'text-gray-400'
                             }`}>
-                              {player.plus_minus > 0 ? `+${player.plus_minus.toFixed(1)}` : player.plus_minus.toFixed(1)}
+                              {(player.plus_minus ?? 0) > 0
+                                ? `+${safeNum(player.plus_minus, 0).toFixed(1)}`
+                                : safeNum(player.plus_minus, 0).toFixed(1)}
                             </td>
                           </>
                         ) : (
@@ -935,7 +990,9 @@ export default function ScatterPage() {
                                 ? 'text-red-400'
                                 : 'text-gray-400'
                             }`}>
-                              {player.plus_minus > 0 ? `+${player.plus_minus.toFixed(1)}` : player.plus_minus.toFixed(1)}
+                              {(player.plus_minus ?? 0) > 0
+                                ? `+${safeNum(player.plus_minus, 0).toFixed(1)}`
+                                : safeNum(player.plus_minus, 0).toFixed(1)}
                             </td>
                           </>
                         )}

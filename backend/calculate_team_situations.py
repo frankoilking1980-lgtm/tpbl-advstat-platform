@@ -48,17 +48,20 @@ def get_player_identity_map():
         print(f"⚠️ 找不到資料庫檔案: {DB_PATH}")
         return id_map
 
+    conn = None
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=30.0)
         cur = conn.cursor()
         cur.execute("SELECT player_name, identity FROM player_stats WHERE identity IS NOT NULL AND identity != ''")
         for p_name, ident in cur.fetchall():
             clean = str(p_name).split(" ")[0].split("(")[0].strip()
             id_map[clean] = str(ident).strip()
-        conn.close()
         print(f"🔍 成功載入 {len(id_map)} 位球員官方登錄身分資料。")
     except Exception as e:
         print(f"⚠️ 讀取球員身分失敗: {e}")
+    finally:
+        if conn is not None:
+            conn.close()
 
     return id_map
 

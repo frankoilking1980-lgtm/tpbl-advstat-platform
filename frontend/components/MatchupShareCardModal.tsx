@@ -97,12 +97,24 @@ function CardTeamLogo({ teamName, color }: { teamName: string; color: string }) 
       <img
         src={`/logos/${fileBase}.${ext}`}
         alt={teamName}
+        crossOrigin="anonymous"
+        decoding="sync"
+        loading="eager"
         className="w-full h-full object-contain"
         onError={handleError}
       />
     </div>
   );
 }
+
+const calcDualBarWidths = (valA: number, valB: number): [number, number] => {
+  const safeA = Number.isFinite(valA) && valA > 0 ? valA : 0;
+  const safeB = Number.isFinite(valB) && valB > 0 ? valB : 0;
+  const sum = safeA + safeB;
+  if (sum <= 0) return [50, 50];
+  const widthA = Math.min(95, Math.max(5, (safeA / sum) * 100));
+  return [widthA, 100 - widthA];
+};
 
 export default function MatchupShareCardModal({
   isOpen,
@@ -125,16 +137,49 @@ export default function MatchupShareCardModal({
 
   if (!isOpen) return null;
 
+  const renderCardDataUrl = async (): Promise<string> => {
+    if (!cardRef.current) throw new Error('Card container not mounted');
+
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+
+    const imgs = Array.from(cardRef.current.querySelectorAll('img'));
+    await Promise.all(
+      imgs.map((img) => {
+        if (img.complete) return Promise.resolve();
+        return new Promise<void>((resolve) => {
+          img.addEventListener('load', () => resolve(), { once: true });
+          img.addEventListener('error', () => resolve(), { once: true });
+        });
+      })
+    );
+
+    const isMobile =
+      typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const ratios = isMobile ? [1.5, 1] : [2, 1.5, 1];
+    let lastError: unknown;
+
+    for (const pixelRatio of ratios) {
+      try {
+        return await toPng(cardRef.current, {
+          cacheBust: false,
+          pixelRatio,
+          width: 1200,
+          height: 675,
+        });
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError;
+  };
+
   const handleDownload = async () => {
-    if (!cardRef.current) return;
+    if (!cardRef.current || isExporting) return;
     setIsExporting(true);
     try {
-      const dataUrl = await toPng(cardRef.current, {
-        cacheBust: true,
-        pixelRatio: 2,
-        width: 1200,
-        height: 675,
-      });
+      const dataUrl = await renderCardDataUrl();
       const link = document.createElement('a');
       link.download = `TPBL_16-9_Matchup_${teamA}_vs_${teamB}.png`;
       link.href = dataUrl;
@@ -148,16 +193,10 @@ export default function MatchupShareCardModal({
   };
 
   const handleNativeShare = async () => {
-    if (!cardRef.current) return;
+    if (!cardRef.current || isExporting) return;
     setIsExporting(true);
     try {
-      const dataUrl = await toPng(cardRef.current, {
-        cacheBust: true,
-        pixelRatio: 2,
-        width: 1200,
-        height: 675,
-      });
-
+      const dataUrl = await renderCardDataUrl();
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `TPBL_${teamA}_vs_${teamB}.png`, { type: 'image/png' });
 
@@ -167,25 +206,21 @@ export default function MatchupShareCardModal({
           text: `推演比分 ${teamA} ${matchupResults.scoreA} : ${matchupResults.scoreB} ${teamB}！詳細對決數據請見：tpbl-advstats.com`,
           files: [file],
         });
-      } else {
+      } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(
           `【TPBL 對決模擬戰報】\n${teamA} ${matchupResults.scoreA} : ${matchupResults.scoreB} ${teamB}\n勝率推演：${teamA} ${matchupResults.winRateA}% · ${teamB} ${matchupResults.winRateB}%\n👉 深度排陣模擬：https://tpbl-advstats.com/matchup`
         );
         setCopied(true);
         setTimeout(() => setCopied(false), 2500);
       }
-    } catch (err) {
-      console.warn('分享動作被取消或不支援:', err);
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.warn('分享或繪圖異常:', err);
+        alert('戰報卡分享失敗，請改用下載按鈕儲存圖片。');
+      }
     } finally {
       setIsExporting(false);
     }
-  };
-
-  // 雙色長條圖百分比防除以零安全計算
-  const calcBarWidthA = (valA: number, valB: number) => {
-    const sum = (valA || 0) + (valB || 0);
-    if (sum <= 0) return 50;
-    return Math.min(95, Math.max(5, (valA / sum) * 100));
   };
 
   return (
@@ -212,9 +247,15 @@ export default function MatchupShareCardModal({
             style={{ width: '1200px', height: '675px' }}
             className="bg-[#0E1117] text-white p-7 rounded-2xl border border-[#30363D] flex flex-col justify-between select-none relative shadow-2xl shrink-0 overflow-hidden font-sans"
           >
-            {/* 背景科技光暈 */}
-            <div className="absolute -top-32 -left-32 w-80 h-80 bg-[#FF9100]/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-[#2979FF]/10 rounded-full blur-3xl pointer-events-none" />
+            {/* 背景科技光暈（以 radial-gradient 替代大面積 blur filter，降低行動端 Canvas 記憶體壓力） */}
+            <div
+              className="absolute -top-32 -left-32 w-80 h-80 rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(255,145,0,0.14) 0%, rgba(255,145,0,0) 70%)' }}
+            />
+            <div
+              className="absolute -bottom-32 -right-32 w-80 h-80 rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(41,121,255,0.14) 0%, rgba(41,121,255,0) 70%)' }}
+            />
 
             {/* 1. 卡片頂部：標題與資訊列 */}
             <div className="flex items-center justify-between pb-2.5 border-b border-[#21262D] z-10">
@@ -454,85 +495,29 @@ export default function MatchupShareCardModal({
 
             {/* 4. 底層四大進階攻防數據：改為精緻「雙色長條圖 (Dual-Color Progress Bar)」 */}
             <div className="grid grid-cols-4 gap-3 z-10 pt-1">
-              {/* 投籃效率 eFG% */}
-              <div className="bg-[#161B22] p-2.5 rounded-xl border border-[#21262D]">
-                <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold mb-1">
-                  <span>投籃效率 (eFG%)</span>
-                  <span className="font-mono">
-                    <span className="text-[#FF9100]">{aggA.efg}%</span> : <span className="text-[#2979FF]">{aggB.efg}%</span>
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-[#21262D] rounded-full overflow-hidden flex shadow-inner">
-                  <div
-                    style={{ width: `${calcBarWidthA(aggA.efg, aggB.efg)}%` }}
-                    className="bg-[#FF9100] transition-all"
-                  />
-                  <div
-                    style={{ width: `${100 - calcBarWidthA(aggA.efg, aggB.efg)}%` }}
-                    className="bg-[#2979FF] transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* 全隊籃板 */}
-              <div className="bg-[#161B22] p-2.5 rounded-xl border border-[#21262D]">
-                <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold mb-1">
-                  <span>全隊籃板 (14人)</span>
-                  <span className="font-mono">
-                    <span className="text-[#FF9100]">{aggA.totalReb}</span> : <span className="text-[#2979FF]">{aggB.totalReb}</span>
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-[#21262D] rounded-full overflow-hidden flex shadow-inner">
-                  <div
-                    style={{ width: `${calcBarWidthA(aggA.totalReb, aggB.totalReb)}%` }}
-                    className="bg-[#FF9100] transition-all"
-                  />
-                  <div
-                    style={{ width: `${100 - calcBarWidthA(aggA.totalReb, aggB.totalReb)}%` }}
-                    className="bg-[#2979FF] transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* 全隊助攻 */}
-              <div className="bg-[#161B22] p-2.5 rounded-xl border border-[#21262D]">
-                <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold mb-1">
-                  <span>全隊助攻 (14人)</span>
-                  <span className="font-mono">
-                    <span className="text-[#FF9100]">{aggA.totalAst}</span> : <span className="text-[#2979FF]">{aggB.totalAst}</span>
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-[#21262D] rounded-full overflow-hidden flex shadow-inner">
-                  <div
-                    style={{ width: `${calcBarWidthA(aggA.totalAst, aggB.totalAst)}%` }}
-                    className="bg-[#FF9100] transition-all"
-                  />
-                  <div
-                    style={{ width: `${100 - calcBarWidthA(aggA.totalAst, aggB.totalAst)}%` }}
-                    className="bg-[#2979FF] transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* 防守壓迫 */}
-              <div className="bg-[#161B22] p-2.5 rounded-xl border border-[#21262D]">
-                <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold mb-1">
-                  <span>防守壓迫 (STL+BLK)</span>
-                  <span className="font-mono">
-                    <span className="text-[#FF9100]">{aggA.totalStocks}</span> : <span className="text-[#2979FF]">{aggB.totalStocks}</span>
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-[#21262D] rounded-full overflow-hidden flex shadow-inner">
-                  <div
-                    style={{ width: `${calcBarWidthA(aggA.totalStocks, aggB.totalStocks)}%` }}
-                    className="bg-[#FF9100] transition-all"
-                  />
-                  <div
-                    style={{ width: `${100 - calcBarWidthA(aggA.totalStocks, aggB.totalStocks)}%` }}
-                    className="bg-[#2979FF] transition-all"
-                  />
-                </div>
-              </div>
+              {[
+                { label: '投籃效率 (eFG%)', valA: aggA.efg, valB: aggB.efg, suffix: '%' },
+                { label: '全隊籃板 (14人)', valA: aggA.totalReb, valB: aggB.totalReb, suffix: '' },
+                { label: '全隊助攻 (14人)', valA: aggA.totalAst, valB: aggB.totalAst, suffix: '' },
+                { label: '防守壓迫 (STL+BLK)', valA: aggA.totalStocks, valB: aggB.totalStocks, suffix: '' },
+              ].map((item) => {
+                const [widthA, widthB] = calcDualBarWidths(item.valA, item.valB);
+                return (
+                  <div key={item.label} className="bg-[#161B22] p-2.5 rounded-xl border border-[#21262D]">
+                    <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold mb-1">
+                      <span>{item.label}</span>
+                      <span className="font-mono">
+                        <span className="text-[#FF9100]">{item.valA}{item.suffix}</span> :{' '}
+                        <span className="text-[#2979FF]">{item.valB}{item.suffix}</span>
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-[#21262D] rounded-full overflow-hidden flex shadow-inner">
+                      <div style={{ width: `${widthA}%` }} className="bg-[#FF9100] transition-all" />
+                      <div style={{ width: `${widthB}%` }} className="bg-[#2979FF] transition-all" />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* 5. 卡片最底部：版權與官方網址 */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useRef, Suspense } from 'react';
 import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
 import { useStage } from '@/context/StageContext';
@@ -242,14 +242,40 @@ interface SituationsResponse {
 }
 
 const STAGES = [
-  '2026-2027 季前熱身賽',
+  '2026-2027 熱身賽',
   '2026-2027 例行賽',
   '2025-2026 冠軍賽',
   '2025-2026 季後賽',
   '2025-2026 季後挑戰賽',
   '2025-2026 例行賽',
+  '2024-2025 冠軍賽',
   '2024-2025 例行賽',
 ];
+
+const safeNum = (val: unknown, fallback = 0): number => {
+  const n = typeof val === 'number' ? val : Number(val);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const formatPct100 = (val: unknown): string => {
+  if (val === undefined || val === null) return '-';
+  const n = Number(val);
+  if (!Number.isFinite(n)) return '-';
+  const scaled = n > 0 && n <= 1.0 ? n * 100 : n;
+  return `${scaled.toFixed(1)}%`;
+};
+
+const clampRadarScore = (val: unknown, fallback = 0): number => {
+  const n = typeof val === 'number' ? val : Number(val);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(100, n));
+};
+
+const normalizeStageParam = (raw: string | null): string | null => {
+  if (!raw) return null;
+  const normalized = raw.trim().replace('季前熱身賽', '熱身賽');
+  return STAGES.includes(normalized) ? normalized : null;
+};
 
 const staticJsonFetcher = async (url: string) => {
   const res = await fetch(url);
@@ -277,22 +303,26 @@ function calculateSituationalRadar(playerInfo?: PlayerInfo, situations?: PlayerS
     return { iso: 50, transition: 50, clutch: 50, paint: 50, ftr: 50, tov_ctrl: 50 };
   }
 
-  const ppg = Number(playerInfo.ppg || 0);
-  const usg = Number(playerInfo.usg_pct || 0);
-  const ts = Number(playerInfo.ts_pct || 0);
-  const rpg = Number(playerInfo.rpg || 0);
-  const spg = Number(playerInfo.spg || 0);
-  const tpg = realTpg !== undefined ? realTpg : Number(playerInfo.tpg || playerInfo.tov || 1.5);
+  const ppg = safeNum(playerInfo.ppg, 0);
+  const rawUsg = safeNum(playerInfo.usg_pct, 0);
+  const rawTs = safeNum(playerInfo.ts_pct, 0);
+  const usg = rawUsg > 0 && rawUsg <= 1.0 ? rawUsg * 100 : rawUsg;
+  const ts = rawTs > 0 && rawTs <= 1.0 ? rawTs * 100 : rawTs;
+  const rpg = safeNum(playerInfo.rpg, 0);
+  const spg = safeNum(playerInfo.spg, 0);
+  const tpg = realTpg !== undefined && Number.isFinite(realTpg)
+    ? realTpg
+    : safeNum(playerInfo.tpg ?? playerInfo.tov, 1.5);
 
   const q4Data = situations?.q4_crunch_time || (situations as any)?.q4;
-  const q4Ppg = Number(q4Data?.q4_ppg || q4Data?.ppg || ppg * 0.25);
-  const q4Ts = Number(q4Data?.q4_ts_pct || q4Data?.ts_pct || ts);
+  const q4Ppg = safeNum(q4Data?.q4_ppg ?? q4Data?.ppg, ppg * 0.25);
+  const q4Ts = safeNum(q4Data?.q4_ts_pct ?? q4Data?.ts_pct, ts);
 
   const fbData = situations?.tactical_situations?.fast_break || (situations as any)?.fast_break;
-  const fbPpg = Number(fbData?.ppg || spg * 2.0);
+  const fbPpg = safeNum(fbData?.ppg, spg * 2.0);
 
   const paintData = situations?.point_composition;
-  const paintPpg = Number(paintData?.paint_ppg || (playerInfo.position?.includes('C') ? 10.0 : 6.0));
+  const paintPpg = safeNum(paintData?.paint_ppg, playerInfo.position?.includes('C') ? 10.0 : 6.0);
 
   const isoScore = Math.min(99, Math.max(30, Math.round((usg / 28.0) * 50 + (ts / 58.0) * 45)));
   const transScore = Math.min(99, Math.max(30, Math.round((fbPpg / 5.0) * 85 + (spg / 2.0) * 15)));
@@ -316,8 +346,13 @@ function PlayerCardsContent() {
   const searchParams = useSearchParams();
   const queryPlayer = searchParams.get('player');
   const queryStage = searchParams.get('stage');
+  const normalizedQueryStage = normalizeStageParam(queryStage);
+  const normalizedQueryPlayer = (queryPlayer ?? '').trim();
+  const appliedDeepLinkKeyRef = useRef<string | null>(null);
 
-  const [stageA, setStageA] = useState<string>(queryStage || globalStage || '2026-2027 例行賽');
+  const [stageA, setStageA] = useState<string>(
+    normalizedQueryStage || globalStage || '2026-2027 例行賽'
+  );
   const [teamA, setTeamA] = useState<string>('新北國王');
   const [playerA, setPlayerA] = useState<string>('');
 
@@ -375,41 +410,53 @@ function PlayerCardsContent() {
   }, [listB, teamB]);
 
   useEffect(() => {
-    if (queryStage && STAGES.includes(queryStage) && queryStage !== stageA) {
-      setStageA(queryStage);
+    if (queryStage) {
+      const validStage = normalizeStageParam(queryStage) || globalStage || '2026-2027 例行賽';
+      setStageA((prev) => (prev !== validStage ? validStage : prev));
     }
-  }, [queryStage]);
+  }, [queryStage, globalStage]);
 
   useEffect(() => {
     if (!listA || listA.length === 0) return;
+    const linkKey = `${normalizedQueryStage ?? ''}::${normalizedQueryPlayer}`;
 
-    if (queryPlayer) {
-      const decodedQuery = decodeURIComponent(queryPlayer).trim();
-      const target = listA.find((p) => p.player_name.trim() === decodedQuery);
+    if (normalizedQueryPlayer && appliedDeepLinkKeyRef.current !== linkKey) {
+      appliedDeepLinkKeyRef.current = linkKey;
+      const target = listA.find((p) => p.player_name.trim() === normalizedQueryPlayer);
       if (target) {
-        if (target.team_name && target.team_name !== teamA) {
+        if (target.team_name) {
           setTeamA(target.team_name);
         }
         setPlayerA(target.player_name);
         return;
       }
+
+      // 查無該球員（轉隊或不存在）時平滑降級至有效隊伍與首位球員
+      const fallbackTeam = teamsA.includes(teamA) ? teamA : teamsA[0] || '';
+      if (fallbackTeam && fallbackTeam !== teamA) {
+        setTeamA(fallbackTeam);
+      }
+      const fallbackPlayer = listA.find((p) => p.team_name === fallbackTeam) || listA[0];
+      if (fallbackPlayer) {
+        setPlayerA(fallbackPlayer.player_name);
+      }
+      return;
     }
 
     if (teamsA.length > 0 && !teamsA.includes(teamA)) {
       setTeamA(teamsA[0]);
     }
-  }, [listA, queryPlayer, teamsA]);
+  }, [listA, teamsA, normalizedQueryPlayer, normalizedQueryStage, teamA]);
 
   useEffect(() => {
-    if (!filteredPlayersA || filteredPlayersA.length === 0) return;
-    if (queryPlayer && filteredPlayersA.some((p) => p.player_name === queryPlayer)) {
-      setPlayerA(queryPlayer);
+    if (!filteredPlayersA || filteredPlayersA.length === 0) {
+      if (listA && listA.length > 0) setPlayerA('');
       return;
     }
     if (!playerA || !filteredPlayersA.some((p) => p.player_name === playerA)) {
       setPlayerA(filteredPlayersA[0].player_name);
     }
-  }, [filteredPlayersA, queryPlayer]);
+  }, [filteredPlayersA, listA, playerA]);
 
   useEffect(() => {
     if (teamsB.length > 0 && !teamsB.includes(teamB)) {
@@ -473,14 +520,11 @@ function PlayerCardsContent() {
 
   const getRealTpg = (info?: PlayerInfo, fallbackList?: PlayerInfo[]): number | undefined => {
     if (!info) return undefined;
-    if (info.tpg !== undefined && info.tpg !== null && info.tpg !== 1.5) {
-      return Number(info.tpg);
-    }
-    if (info.tov !== undefined && info.tov !== null && info.tov !== 1.5) {
-      return Number(info.tov);
-    }
-    if (info.topg !== undefined && info.topg !== null && info.topg !== 1.5) {
-      return Number(info.topg);
+    for (const raw of [info.tpg, info.tov, info.topg]) {
+      if (raw !== undefined && raw !== null) {
+        const n = Number(raw);
+        if (Number.isFinite(n) && n !== 1.5) return n;
+      }
     }
 
     const targetName = (info.player_name || '').trim();
@@ -488,11 +532,12 @@ function PlayerCardsContent() {
     if (found) {
       const val = found.tpg ?? (found as any).tov ?? (found as any).topg;
       if (val !== undefined && val !== null) {
-        return Number(val);
+        const n = Number(val);
+        if (Number.isFinite(n)) return n;
       }
     }
 
-    return info.tpg ?? info.tov ?? 1.5;
+    return safeNum(info.tpg ?? info.tov, 1.5);
   };
 
   const realTpgA = useMemo(() => getRealTpg(cardA?.player_info, listA), [cardA, listA]);
@@ -604,54 +649,41 @@ function PlayerCardsContent() {
   const radius = 145;
 
   const getCoordinates = (value: number, index: number) => {
+    const safeVal = clampRadarScore(value, 0);
     const angle = (Math.PI / 3) * index - Math.PI / 2;
-    const r = (value / 100) * radius;
+    const r = (safeVal / 100) * radius;
     const x = center + r * Math.cos(angle);
     const y = center + r * Math.sin(angle);
     return { x, y };
   };
 
+  const buildRadarPolygon = (
+    dims: { key: string }[],
+    scores?: Record<string, number>
+  ): string => {
+    if (!scores) return '';
+    return dims
+      .map((d, i) => {
+        const val = clampRadarScore(scores[d.key], 0);
+        const { x, y } = getCoordinates(val, i);
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      })
+      .join(' ');
+  };
+
   const polyA = useMemo(() => {
     if (radarMode === 'traditional') {
-      if (!cardA?.radar) return '';
-      return traditionalDims
-        .map((d, i) => {
-          const val = cardA.radar[d.key as keyof typeof cardA.radar] || 50;
-          const { x, y } = getCoordinates(val, i);
-          return `${x},${y}`;
-        })
-        .join(' ');
-    } else {
-      return situationalDims
-        .map((d, i) => {
-          const val = sitRadarA[d.key as keyof typeof sitRadarA] || 50;
-          const { x, y } = getCoordinates(val, i);
-          return `${x},${y}`;
-        })
-        .join(' ');
+      return buildRadarPolygon(traditionalDims, cardA?.radar as Record<string, number> | undefined);
     }
+    return buildRadarPolygon(situationalDims, sitRadarA as Record<string, number>);
   }, [cardA, radarMode, sitRadarA]);
 
   const polyB = useMemo(() => {
     if (!playerB) return '';
     if (radarMode === 'traditional') {
-      if (!cardB?.radar) return '';
-      return traditionalDims
-        .map((d, i) => {
-          const val = cardB.radar[d.key as keyof typeof cardB.radar] || 50;
-          const { x, y } = getCoordinates(val, i);
-          return `${x},${y}`;
-        })
-        .join(' ');
-    } else {
-      return situationalDims
-        .map((d, i) => {
-          const val = sitRadarB[d.key as keyof typeof sitRadarB] || 50;
-          const { x, y } = getCoordinates(val, i);
-          return `${x},${y}`;
-        })
-        .join(' ');
+      return buildRadarPolygon(traditionalDims, cardB?.radar as Record<string, number> | undefined);
     }
+    return buildRadarPolygon(situationalDims, sitRadarB as Record<string, number>);
   }, [cardB, playerB, radarMode, sitRadarB]);
 
   const compareList = [
@@ -891,9 +923,7 @@ function PlayerCardsContent() {
                     <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
                     <div className="flex items-center">
                       <span className="text-amber-300 font-bold whitespace-nowrap">
-                        {cardA?.player_info.ts_pct !== undefined 
-                          ? `${(cardA.player_info.ts_pct <= 1 ? cardA.player_info.ts_pct * 100 : cardA.player_info.ts_pct).toFixed(1)}%` 
-                          : '-'}
+                        {formatPct100(cardA?.player_info.ts_pct)}
                       </span>
                       <PRTag pr={prPlayerA?.badges?.['TS%']?.pr} />
                     </div>
@@ -1090,7 +1120,7 @@ function PlayerCardsContent() {
                     <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
                     <div className="flex items-center">
                       <span className="text-emerald-300 font-bold whitespace-nowrap">
-                        {cardB?.player_info.ts_pct !== undefined ? `${cardB.player_info.ts_pct}%` : '-'}
+                        {formatPct100(cardB?.player_info.ts_pct)}
                       </span>
                       <PRTag pr={prPlayerB?.badges?.['TS%']?.pr} />
                     </div>
@@ -1177,7 +1207,7 @@ function PlayerCardsContent() {
                     <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
                     <div className="flex items-center">
                       <span className="text-amber-300 font-bold whitespace-nowrap">
-                        {cardA?.player_info.ts_pct !== undefined ? `${cardA.player_info.ts_pct}%` : '-'}
+                        {formatPct100(cardA?.player_info.ts_pct)}
                       </span>
                       <PRTag pr={prPlayerA?.badges?.['TS%']?.pr} />
                     </div>
@@ -1393,10 +1423,14 @@ function PlayerCardsContent() {
                 </thead>
                 <tbody className="divide-y divide-[#21262D] font-mono">
                   {compareList.map((item, idx) => {
-                    const a = item.valA ?? 0;
-                    const b = item.valB ?? 0;
-                    const aWins = item.lowerIsBetter ? a < b : a > b;
-                    const bWins = item.lowerIsBetter ? b < a : b > a;
+                    const numA = item.valA !== undefined && item.valA !== null ? Number(item.valA) : NaN;
+                    const numB = item.valB !== undefined && item.valB !== null ? Number(item.valB) : NaN;
+                    const hasA = Number.isFinite(numA);
+                    const hasB = Number.isFinite(numB);
+                    const a = hasA ? numA : 0;
+                    const b = hasB ? numB : 0;
+                    const aWins = hasA && hasB && (item.lowerIsBetter ? a < b : a > b);
+                    const bWins = hasA && hasB && (item.lowerIsBetter ? b < a : b > a);
 
                     return (
                       <tr key={idx} className="hover:bg-[#21262D]/60 transition-colors">
@@ -1406,7 +1440,7 @@ function PlayerCardsContent() {
                           }`}
                         >
                           <span className="inline-flex items-center">
-                            {item.valA !== undefined ? item.format(item.valA) : '-'}
+                            {hasA ? item.format(numA) : '-'}
                             <PRTag pr={item.prA} />
                           </span>
                         </td>
@@ -1419,7 +1453,7 @@ function PlayerCardsContent() {
                           }`}
                         >
                           <span className="inline-flex items-center">
-                            {item.valB !== undefined ? item.format(item.valB) : '-'}
+                            {hasB ? item.format(numB) : '-'}
                             <PRTag pr={item.prB} />
                           </span>
                         </td>
@@ -1446,7 +1480,9 @@ function PlayerCardsContent() {
                       </td>
                       <td className="py-3 px-6 text-right font-mono font-black text-white text-base">
                         <div className="inline-flex items-center justify-end">
-                          {item.valA !== undefined ? item.format(item.valA) : '-'}
+                          {item.valA !== undefined && item.valA !== null && Number.isFinite(Number(item.valA))
+                            ? item.format(Number(item.valA))
+                            : '-'}
                           <PRTag pr={item.prA} />
                         </div>
                       </td>

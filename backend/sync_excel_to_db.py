@@ -6,6 +6,7 @@ sync_excel_to_db.py - 100% 基於 build_db.py 原生邏輯的週度同步工具
 import os
 import re
 import json
+import math
 import shutil
 import sqlite3
 import argparse
@@ -13,6 +14,7 @@ import datetime
 from pathlib import Path
 import pandas as pd
 import openpyxl
+from build_db import clean_num, clean_pct_100
 
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BACKEND_DIR.parent
@@ -52,22 +54,6 @@ def normalize_team(name: str) -> str:
         if k in clean:
             return v
     return clean
-
-
-def clean_num(val, default=0.0):
-    if pd.isna(val) or val is None:
-        return default
-    s = str(val).replace("%", "").strip()
-    try:
-        return float(s)
-    except ValueError:
-        if ":" in s:
-            parts = s.split(":")
-            try:
-                return round(float(parts[0]) + float(parts[1]) / 60.0, 1)
-            except Exception:
-                return default
-        return default
 
 
 def clean_player_name(raw_name):
@@ -115,6 +101,7 @@ def rollback_database(db_path: Path):
 def sanitize_excel_sheet_names(folder: Path):
     excel_files = [f for f in folder.glob("*.xlsx") if f.name != "tpbl_summary.xlsx"]
     for ef in excel_files:
+        wb = None
         try:
             wb = openpyxl.load_workbook(ef)
             modified = False
@@ -131,10 +118,13 @@ def sanitize_excel_sheet_names(folder: Path):
                 wb.save(ef)
         except Exception as e:
             print(f"  [!] 檢查分頁名稱略過 ({ef.name}): {e}")
+        finally:
+            if wb is not None:
+                wb.close()
 
 
 # ==================== Step 2: 初始化與清空當季舊資料 (Delete) ====================
-def init_and_clean_stage(conn: sqlite3.Connection, stage_name: str):
+def init_and_clean_stage(conn: sqlite3.Connection, stage_name: str, auto_commit: bool = True):
     cur = conn.cursor()
     # 移除先前測試時多建的干擾表，確保後端 100% 走 build_db 原生讀取邏輯
     cur.execute("DROP TABLE IF EXISTS box_scores")
@@ -215,12 +205,13 @@ def init_and_clean_stage(conn: sqlite3.Connection, stage_name: str):
     cur.execute("DELETE FROM team_summary WHERE season_stage = ?", (stage_name,))
     cur.execute("DELETE FROM player_stats WHERE season_stage = ?", (stage_name,))
     cur.execute("DELETE FROM game_matchups WHERE stage = ?", (stage_name,))
-    conn.commit()
+    if auto_commit:
+        conn.commit()
     print("✓ 當季舊資料清空完畢。")
 
 
 # ==================== Step 3: 原生 build_db 寫入邏輯 (Update) ====================
-def process_schedules(conn: sqlite3.Connection, folder: Path, stage_name: str):
+def process_schedules(conn: sqlite3.Connection, folder: Path, stage_name: str, auto_commit: bool = True):
     sched_file = folder / "schedule.json"
     if not sched_file.exists():
         sched_file = folder / "schedule"
@@ -254,13 +245,14 @@ def process_schedules(conn: sqlite3.Connection, folder: Path, stage_name: str):
                 int(clean_num(g.get("away_score", 0), 0)),
                 g.get("status", "FINAL")
             ))
-        conn.commit()
+        if auto_commit:
+            conn.commit()
         print(f"  [OK] 賽程匯入成功: {folder.name} (schedule.json 共寫入 {len(items)} 場)")
     except Exception as e:
         print(f"  [!] 賽程處理失敗 ({folder.name}): {e}")
 
 
-def process_team_summary(conn: sqlite3.Connection, folder: Path, stage_name: str):
+def process_team_summary(conn: sqlite3.Connection, folder: Path, stage_name: str, auto_commit: bool = True):
     summary_file = folder / "tpbl_summary.xlsx"
     if not summary_file.exists():
         return
@@ -311,10 +303,11 @@ def process_team_summary(conn: sqlite3.Connection, folder: Path, stage_name: str
 
         teams_data = {}
         for r in range(header_a_idx + 1, block_b_idx):
-            team = str(raw_df.iloc[r, c_team]).strip() if pd.notna(raw_df.iloc[r, c_team]) else ""
-            if not team or team in ["nan", "None", "球隊名稱", "平均", "聯盟平均"] or team.startswith("【"):
+            team_raw = str(raw_df.iloc[r, c_team]).strip() if pd.notna(raw_df.iloc[r, c_team]) else ""
+            if not team_raw or team_raw in ["nan", "None", "球隊名稱", "平均", "聯盟平均"] or team_raw.startswith("【"):
                 continue
 
+            team = normalize_team(team_raw)
             gp = int(clean_num(raw_df.iloc[r, c_gp], 0)) if c_gp is not None else 0
             rec_val = str(raw_df.iloc[r, c_rec]).strip() if (c_rec is not None and pd.notna(raw_df.iloc[r, c_rec])) else f"{gp}場"
             if "USG%" in rec_val or len(rec_val) > 15:
@@ -323,12 +316,12 @@ def process_team_summary(conn: sqlite3.Connection, folder: Path, stage_name: str
             pace = clean_num(raw_df.iloc[r, c_pace]) if c_pace is not None else 0.0
             ortg = clean_num(raw_df.iloc[r, c_ortg]) if c_ortg is not None else 0.0
             drtg = clean_num(raw_df.iloc[r, c_drtg]) if c_drtg is not None else 0.0
-            net_rtg = clean_num(raw_df.iloc[r, c_net]) if c_net is not None else (round(ortg - drtg, 1) if (ortg and drtg) else 0.0)
-            efg = clean_num(raw_df.iloc[r, c_efg]) if c_efg is not None else 0.0
-            three_par = clean_num(raw_df.iloc[r, c_3par]) if c_3par is not None else 0.0
-            tov = clean_num(raw_df.iloc[r, c_tov]) if c_tov is not None else 0.0
-            orb = clean_num(raw_df.iloc[r, c_orb]) if c_orb is not None else 0.0
-            ftr = clean_num(raw_df.iloc[r, c_ftr]) if c_ftr is not None else 0.0
+            net_rtg = clean_num(raw_df.iloc[r, c_net]) if c_net is not None else (round(ortg - drtg, 1) if (ortg > 0 or drtg > 0) else 0.0)
+            efg = clean_pct_100(raw_df.iloc[r, c_efg]) if c_efg is not None else 0.0
+            three_par = clean_pct_100(raw_df.iloc[r, c_3par]) if c_3par is not None else 0.0
+            tov = clean_pct_100(raw_df.iloc[r, c_tov]) if c_tov is not None else 0.0
+            orb = clean_pct_100(raw_df.iloc[r, c_orb]) if c_orb is not None else 0.0
+            ftr = clean_pct_100(raw_df.iloc[r, c_ftr]) if c_ftr is not None else 0.0
 
             teams_data[team] = {
                 "gp": gp, "record": rec_val, "pace": pace, "ortg": ortg,
@@ -338,7 +331,8 @@ def process_team_summary(conn: sqlite3.Connection, folder: Path, stage_name: str
             }
 
         for r in range(block_b_idx, len(raw_df)):
-            team = str(raw_df.iloc[r, 0]).strip() if pd.notna(raw_df.iloc[r, 0]) else ""
+            raw_t = str(raw_df.iloc[r, 0]).strip() if pd.notna(raw_df.iloc[r, 0]) else ""
+            team = normalize_team(raw_t)
             if team in teams_data:
                 teams_data[team]["core"] = str(raw_df.iloc[r, 2]).strip() if pd.notna(raw_df.iloc[r, 2]) else ""
                 teams_data[team]["finisher"] = str(raw_df.iloc[r, 3]).strip() if pd.notna(raw_df.iloc[r, 3]) else ""
@@ -359,19 +353,20 @@ def process_team_summary(conn: sqlite3.Connection, folder: Path, stage_name: str
             ))
             inserted += 1
 
-        conn.commit()
+        if auto_commit:
+            conn.commit()
         print(f"  [OK] 匯總表匯入成功: {folder.name} (共寫入 {inserted} 隊四要素與戰術評級)")
     except Exception as e:
         print(f"  [!] 匯總表解析失敗 ({folder.name}): {e}")
 
 
-def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: str):
+def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: str, auto_commit: bool = True):
     excel_files = [f for f in folder.glob("*.xlsx") if f.name != "tpbl_summary.xlsx"]
     cur = conn.cursor()
 
     for ef in excel_files:
         try:
-            team_name = ef.stem.split("-")[-1].strip()
+            team_name = normalize_team(ef.stem.split("-")[-1].strip())
             xls = pd.ExcelFile(ef)
 
             adv_lookup = {}
@@ -381,7 +376,7 @@ def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: st
                     p_name = clean_player_name(raw_adv.iloc[r, 2])
                     if p_name:
                         adv_lookup[p_name] = {
-                            "usg": clean_num(raw_adv.iloc[r, 21]),
+                            "usg": clean_pct_100(raw_adv.iloc[r, 21]),
                             "gmsc": clean_num(raw_adv.iloc[r, 24]),
                         }
 
@@ -402,8 +397,8 @@ def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: st
                     apg = clean_num(raw_avg.iloc[r, 23])
                     spg = clean_num(raw_avg.iloc[r, 24])
                     bpg = clean_num(raw_avg.iloc[r, 25])
-                    efg = clean_num(raw_avg.iloc[r, 30])
-                    ts = clean_num(raw_avg.iloc[r, 31])
+                    efg = clean_pct_100(raw_avg.iloc[r, 30])
+                    ts = clean_pct_100(raw_avg.iloc[r, 31])
                     shot_review = str(raw_avg.iloc[r, 33]).strip() if (len(raw_avg.columns) > 33 and pd.notna(raw_avg.iloc[r, 33])) else ""
                     perf_review = str(raw_avg.iloc[r, 34]).strip() if (len(raw_avg.columns) > 34 and pd.notna(raw_avg.iloc[r, 34])) else ""
 
@@ -480,7 +475,8 @@ def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: st
                             VALUES (?, ?, ?, ?, ?)
                             """, (game_code, stage_name, team_name, scen, desc))
 
-            conn.commit()
+            if auto_commit:
+                conn.commit()
         except Exception as e:
             print(f"  [!] 球員/單場表解析失敗 ({ef.name}): {e}")
 
@@ -515,30 +511,38 @@ def main():
     # 2. 自動檢查並將 Excel 分頁中的 27550/27551 改為 G09/G10
     sanitize_excel_sheet_names(target_folder)
 
-    # 3. 連線資料庫、移除干擾表並清空當季舊資料
-    conn = sqlite3.connect(db_path)
-    init_and_clean_stage(conn, stage_name)
+    # 3. 連線資料庫、開啟 WAL 與鎖超時、原子性交易寫入
+    conn = sqlite3.connect(db_path, timeout=30.0)
+    try:
+        conn.execute("PRAGMA busy_timeout = 30000;")
+        conn.execute("PRAGMA journal_mode = WAL;")
+        init_and_clean_stage(conn, stage_name, auto_commit=False)
 
-    # 4. 執行與 build_db.py 完全一致的匯入流程
-    print(f"\n🚀 [Step 3/3: Update] 開始寫入 [{stage_name}] 最新數據...")
-    process_schedules(conn, target_folder, stage_name)
-    process_team_summary(conn, target_folder, stage_name)
-    process_player_excels(conn, target_folder, stage_name)
+        # 4. 執行與 build_db.py 完全一致的匯入流程 (同一交易內完成)
+        print(f"\n🚀 [Step 3/3: Update] 開始寫入 [{stage_name}] 最新數據...")
+        process_schedules(conn, target_folder, stage_name, auto_commit=False)
+        process_team_summary(conn, target_folder, stage_name, auto_commit=False)
+        process_player_excels(conn, target_folder, stage_name, auto_commit=False)
+        conn.commit()
 
-    cur = conn.cursor()
-    g_cnt = cur.execute("SELECT COUNT(*) FROM games WHERE stage = ?", (stage_name,)).fetchone()[0]
-    t_cnt = cur.execute("SELECT COUNT(*) FROM team_summary WHERE season_stage = ?", (stage_name,)).fetchone()[0]
-    p_cnt = cur.execute("SELECT COUNT(*) FROM player_stats WHERE season_stage = ?", (stage_name,)).fetchone()[0]
-    m_cnt = cur.execute("SELECT COUNT(*) FROM game_matchups WHERE stage = ?", (stage_name,)).fetchone()[0]
+        cur = conn.cursor()
+        g_cnt = cur.execute("SELECT COUNT(*) FROM games WHERE stage = ?", (stage_name,)).fetchone()[0]
+        t_cnt = cur.execute("SELECT COUNT(*) FROM team_summary WHERE season_stage = ?", (stage_name,)).fetchone()[0]
+        p_cnt = cur.execute("SELECT COUNT(*) FROM player_stats WHERE season_stage = ?", (stage_name,)).fetchone()[0]
+        m_cnt = cur.execute("SELECT COUNT(*) FROM game_matchups WHERE stage = ?", (stage_name,)).fetchone()[0]
 
-    print("\n" + "=" * 65)
-    print(f"✅ [{stage_name}] 同步完成！當季統計：")
-    print(f"  - 賽程場次 (games): {g_cnt} 場")
-    print(f"  - 四要素匯總 (team_summary): {t_cnt} 筆")
-    print(f"  - 球員數據與短評 (player_stats): {p_cnt} 筆")
-    print(f"  - 單場焦點對位 (game_matchups): {m_cnt} 筆")
-    print("=" * 65)
-    conn.close()
+        print("\n" + "=" * 65)
+        print(f"✅ [{stage_name}] 同步完成！當季統計：")
+        print(f"  - 賽程場次 (games): {g_cnt} 場")
+        print(f"  - 四要素匯總 (team_summary): {t_cnt} 筆")
+        print(f"  - 球員數據與短評 (player_stats): {p_cnt} 筆")
+        print(f"  - 單場焦點對位 (game_matchups): {m_cnt} 筆")
+        print("=" * 65)
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

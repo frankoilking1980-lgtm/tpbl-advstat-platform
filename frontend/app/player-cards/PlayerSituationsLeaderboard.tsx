@@ -6,6 +6,26 @@ import { ChevronDown, ChevronUp, Zap, Clock, Target, Shield } from 'lucide-react
 
 export type LeaderboardMetric = 'q4' | 'fast_break' | 'self_created' | 'paint';
 
+const toFiniteNum = (val: unknown, fallback = 0): number => {
+  const n = typeof val === 'number' ? val : Number(val);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const getPrimarySortValue = (p: PlayerSituationsData, m: LeaderboardMetric): number => {
+  switch (m) {
+    case 'q4':
+      return toFiniteNum(p.q4_crunch_time?.q4_ppg, 0);
+    case 'fast_break':
+      return toFiniteNum(p.tactical_situations?.fast_break?.ppg, 0);
+    case 'self_created':
+      return toFiniteNum(p.finishing_breakdown?.self_created?.fga, 0);
+    case 'paint':
+      return toFiniteNum(p.point_composition?.paint_ppg, 0);
+    default:
+      return 0;
+  }
+};
+
 interface Props {
   situationsData: Record<string, PlayerSituationsData>;
   selectedPlayerName: string;
@@ -38,31 +58,29 @@ export default function PlayerSituationsLeaderboard({
   const setMetric = controlledSetMetric || setInternalMetric;
 
   const rankedList = useMemo(() => {
-    const list = Object.entries(situationsData).map(([name, stat]) => ({
-      name,
-      ...stat,
-    }));
+    if (!situationsData || typeof situationsData !== 'object') return [];
 
-    const filtered = list.filter((p) => (p.games_played || 0) >= minGames);
+    const list = Object.entries(situationsData)
+      .filter(([, stat]) => Boolean(stat && typeof stat === 'object'))
+      .map(([name, stat]) => ({
+        name,
+        ...stat,
+      }));
 
-    switch (metric) {
-      case 'q4':
-        return filtered.sort((a, b) => (b.q4_crunch_time?.q4_ppg || 0) - (a.q4_crunch_time?.q4_ppg || 0));
-      case 'fast_break':
-        return filtered.sort(
-          (a, b) => (b.tactical_situations?.fast_break?.ppg || 0) - (a.tactical_situations?.fast_break?.ppg || 0)
-        );
-      case 'self_created':
-        return filtered.sort(
-          (a, b) => (b.finishing_breakdown?.self_created?.fga || 0) - (a.finishing_breakdown?.self_created?.fga || 0)
-        );
-      case 'paint':
-        return filtered.sort(
-          (a, b) => (b.point_composition?.paint_ppg || 0) - (a.point_composition?.paint_ppg || 0)
-        );
-      default:
-        return filtered;
-    }
+    const filtered = list.filter((p) => toFiniteNum(p.games_played, 0) >= minGames);
+
+    return filtered.sort((a, b) => {
+      const diffPrimary = getPrimarySortValue(b, metric) - getPrimarySortValue(a, metric);
+      if (diffPrimary !== 0) return diffPrimary;
+
+      const diffPpg = toFiniteNum(b.ppg, 0) - toFiniteNum(a.ppg, 0);
+      if (diffPpg !== 0) return diffPpg;
+
+      const diffMpg = toFiniteNum(b.mpg, 0) - toFiniteNum(a.mpg, 0);
+      if (diffMpg !== 0) return diffMpg;
+
+      return a.name.localeCompare(b.name, 'zh-Hant');
+    });
   }, [situationsData, metric, minGames]);
 
   const handleRowClick = (name: string, team: string) => {
@@ -243,34 +261,35 @@ export default function PlayerSituationsLeaderboard({
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-3 font-sans text-gray-400">{p.team}</td>
-                      <td className="py-3 px-3 text-center text-gray-300">{p.games_played}</td>
-                      <td className="py-3 px-3 text-center text-gray-300">{p.mpg} 分</td>
+                      <td className="py-3 px-3 font-sans text-gray-400">{p.team || '-'}</td>
+                      <td className="py-3 px-3 text-center text-gray-300">{toFiniteNum(p.games_played, 0)}</td>
+                      <td className="py-3 px-3 text-center text-gray-300">{toFiniteNum(p.mpg, 0)} 分</td>
 
                       {metric === 'q4' && (
                         <>
                           <td className="py-3 px-3 text-right text-amber-400 font-bold text-sm">
-                            {p.q4_crunch_time?.q4_ppg || 0}
+                            {toFiniteNum(p.q4_crunch_time?.q4_ppg, 0)}
                           </td>
                           <td className="py-3 px-3 text-right text-amber-300">
-                            {p.q4_crunch_time?.q4_ts_pct || 0}%
+                            {toFiniteNum(p.q4_crunch_time?.q4_ts_pct, 0)}%
                           </td>
                           <td className="py-3 px-3 text-right text-cyan-300">
-                            {p.q4_crunch_time?.q4_fg_pct || 0}%
+                            {toFiniteNum(p.q4_crunch_time?.q4_fg_pct, 0)}%
                           </td>
-                          <td
-                            className={`py-3 px-3 text-right font-bold ${
-                              (p.q4_crunch_time?.q4_plus_minus_pg || 0) >= 0
-                                ? 'text-emerald-400'
-                                : 'text-rose-400'
-                            }`}
-                          >
-                            {(p.q4_crunch_time?.q4_plus_minus_pg || 0) > 0
-                              ? `+${p.q4_crunch_time.q4_plus_minus_pg}`
-                              : p.q4_crunch_time?.q4_plus_minus_pg || 0}
-                          </td>
+                          {(() => {
+                            const pm = toFiniteNum(p.q4_crunch_time?.q4_plus_minus_pg, 0);
+                            return (
+                              <td
+                                className={`py-3 px-3 text-right font-bold ${
+                                  pm >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                                }`}
+                              >
+                                {pm > 0 ? `+${pm}` : pm}
+                              </td>
+                            );
+                          })()}
                           <td className="py-3 px-3 text-right text-rose-300">
-                            {p.q4_crunch_time?.q4_tov_pg || 0}
+                            {toFiniteNum(p.q4_crunch_time?.q4_tov_pg, 0)}
                           </td>
                         </>
                       )}
@@ -278,16 +297,16 @@ export default function PlayerSituationsLeaderboard({
                       {metric === 'fast_break' && (
                         <>
                           <td className="py-3 px-3 text-right text-cyan-400 font-bold text-sm">
-                            {p.tactical_situations?.fast_break?.ppg || 0}
+                            {toFiniteNum(p.tactical_situations?.fast_break?.ppg, 0)}
                           </td>
                           <td className="py-3 px-3 text-right text-cyan-300">
-                            {p.tactical_situations?.fast_break?.fg_pct || 0}%
+                            {toFiniteNum(p.tactical_situations?.fast_break?.fg_pct, 0)}%
                           </td>
                           <td className="py-3 px-3 text-right text-amber-300">
-                            {p.tactical_situations?.fast_break?.share_pct || 0}%
+                            {toFiniteNum(p.tactical_situations?.fast_break?.share_pct, 0)}%
                           </td>
                           <td className="py-3 px-3 text-right text-purple-300">
-                            {p.tactical_situations?.points_off_tov?.ppg || 0}
+                            {toFiniteNum(p.tactical_situations?.points_off_tov?.ppg, 0)}
                           </td>
                         </>
                       )}
@@ -295,31 +314,31 @@ export default function PlayerSituationsLeaderboard({
                       {metric === 'self_created' && (
                         <>
                           <td className="py-3 px-3 text-right text-rose-400 font-bold text-sm">
-                            {p.finishing_breakdown?.self_created?.fga || 0} 次
+                            {toFiniteNum(p.finishing_breakdown?.self_created?.fga, 0)} 次
                           </td>
                           <td className="py-3 px-3 text-right text-rose-300">
-                            {p.finishing_breakdown?.self_created?.fgm || 0}
+                            {toFiniteNum(p.finishing_breakdown?.self_created?.fgm, 0)}
                           </td>
                           <td className="py-3 px-3 text-right text-amber-300 font-bold">
-                            {p.finishing_breakdown?.self_created?.fg_pct || 0}%
+                            {toFiniteNum(p.finishing_breakdown?.self_created?.fg_pct, 0)}%
                           </td>
-                          <td className="py-3 px-3 text-right text-gray-300">{p.ppg}</td>
+                          <td className="py-3 px-3 text-right text-gray-300">{toFiniteNum(p.ppg, 0)}</td>
                         </>
                       )}
 
                       {metric === 'paint' && (
                         <>
                           <td className="py-3 px-3 text-right text-emerald-400 font-bold text-sm">
-                            {p.point_composition?.paint_ppg || 0}
+                            {toFiniteNum(p.point_composition?.paint_ppg, 0)}
                           </td>
                           <td className="py-3 px-3 text-right text-emerald-300">
-                            {p.point_composition?.paint_pct || 0}%
+                            {toFiniteNum(p.point_composition?.paint_pct, 0)}%
                           </td>
                           <td className="py-3 px-3 text-right text-amber-300">
-                            {p.finishing_breakdown?.layup?.fg_pct || 0}%
+                            {toFiniteNum(p.finishing_breakdown?.layup?.fg_pct, 0)}%
                           </td>
                           <td className="py-3 px-3 text-right text-cyan-300">
-                            {p.finishing_breakdown?.dunk?.fgm || 0}
+                            {toFiniteNum(p.finishing_breakdown?.dunk?.fgm, 0)}
                           </td>
                         </>
                       )}

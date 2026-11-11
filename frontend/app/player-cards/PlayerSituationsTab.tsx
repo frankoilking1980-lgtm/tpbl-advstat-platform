@@ -63,6 +63,16 @@ interface Props {
   data?: PlayerSituationsData;
 }
 
+const safeN = (val: unknown, fallback = 0): number => {
+  const n = typeof val === 'number' ? val : Number(val);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const clampPctBar = (val: unknown): number => {
+  const n = safeN(val, 0);
+  return Math.max(0, Math.min(100, n));
+};
+
 export default function PlayerSituationsTab({ activeTab, data }: Props) {
   // 末節內部子模式切換：'q4_full' (第4節全節 12分鐘) | 'clutch_5min' (最後5分鐘高壓時刻)
   const [subMode, setSubMode] = useState<'q4_full' | 'clutch_5min'>('clutch_5min');
@@ -75,26 +85,56 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
     );
   }
 
-  const { point_composition: comp, tactical_situations: tac, finishing_breakdown: fin, q4_crunch_time: q4 } = data;
+  const comp = data.point_composition;
+  const tac = data.tactical_situations;
+  const fin = data.finishing_breakdown;
+  const q4 = data.q4_crunch_time;
 
-  // 健全度保護推算：若 JSON 尚未包含 clutch 子欄位，自動依照進階數據模型導算
-  const isHighUsg = q4.q4_ppg >= 4.5 || (data.ppg >= 14.0);
-  const clutchPpg = q4.clutch_ppg_5min ?? Number(((q4.q4_ppg / Math.max(1, q4.q4_mpg)) * 5.0 * (isHighUsg ? 1.15 : 0.9)).toFixed(1));
-  const clutchTs = q4.clutch_ts_pct ?? Number(Math.max(30, Math.min(80, q4.q4_ts_pct + (isHighUsg ? 1.5 : -2.0))).toFixed(1));
-  const clutchUsg = q4.clutch_usg_pct ?? Number((isHighUsg ? 28.5 : 18.2).toFixed(1));
-  const clutchFt = q4.clutch_ft_pct ?? (comp.free_throw_pct >= 15.0 ? 81.5 : (data.position?.includes('C') ? 62.0 : 74.5));
-  const clutchTov = q4.clutch_tov_pct ?? (isHighUsg ? 13.8 : 9.5);
+  const paintPct = clampPctBar(comp?.paint_pct);
+  const paintPpg = safeN(comp?.paint_ppg, 0);
+  const threePtPct = clampPctBar(comp?.three_pt_pct);
+  const threePtPpg = safeN(comp?.three_pt_ppg, 0);
+  const midRangePct = clampPctBar(comp?.mid_range_pct);
+  const midRangePpg = safeN(comp?.mid_range_ppg, 0);
+  const ftPctShare = clampPctBar(comp?.free_throw_pct);
+  const ftPpg = safeN(comp?.free_throw_ppg, 0);
 
-  let clutchTag = q4.clutch_tag;
-  let clutchDesc = q4.clutch_desc;
+  const q4Games = safeN(q4?.q4_games, 0);
+  const q4Mpg = safeN(q4?.q4_mpg, 0);
+  const q4Ppg = safeN(q4?.q4_ppg, 0);
+  const q4Ts = safeN(q4?.q4_ts_pct, 0);
+  const q4Fg = safeN(q4?.q4_fg_pct, 0);
+  const q4Tov = safeN(q4?.q4_tov_pg, 0);
+  const q4Pm = safeN(q4?.q4_plus_minus_pg, 0);
+
+  // 健全度保護推算：避免未出賽或零分鐘樣本被強制抬升至 30% 產出假性升溫
+  const hasClutchSample = q4Games > 0 && q4Mpg > 0;
+  const isHighUsg = q4Ppg >= 4.5 || safeN(data.ppg, 0) >= 14.0;
+  const clutchPpg = hasClutchSample
+    ? safeN(q4?.clutch_ppg_5min, Number(((q4Ppg / Math.max(1, q4Mpg)) * 5.0 * (isHighUsg ? 1.15 : 0.9)).toFixed(1)))
+    : 0;
+  const clutchTs = hasClutchSample
+    ? safeN(q4?.clutch_ts_pct, q4Ts > 0 ? Number(Math.max(0, Math.min(80, q4Ts + (isHighUsg ? 1.5 : -2.0))).toFixed(1)) : 0)
+    : 0;
+  const clutchUsg = hasClutchSample ? safeN(q4?.clutch_usg_pct, Number((isHighUsg ? 28.5 : 18.2).toFixed(1))) : 0;
+  const clutchFt = hasClutchSample
+    ? safeN(q4?.clutch_ft_pct, ftPctShare >= 15.0 ? 81.5 : data.position?.includes('C') ? 62.0 : 74.5)
+    : 0;
+  const clutchTov = hasClutchSample ? safeN(q4?.clutch_tov_pct, isHighUsg ? 13.8 : 9.5) : 0;
+
+  let clutchTag = q4?.clutch_tag;
+  let clutchDesc = q4?.clutch_desc;
   if (!clutchTag) {
-    if (clutchFt < 65.0 && isHighUsg) {
+    if (!hasClutchSample) {
+      clutchTag = '⏳ 末節樣本不足';
+      clutchDesc = '該球員本季第四節尚無足夠出賽時間紀錄，暫不推演關鍵時刻抗壓指標。';
+    } else if (clutchFt < 65.0 && isHighUsg) {
       clutchTag = '⚠️ 讀秒避險點 (罰球疑慮)';
       clutchDesc = '在關鍵讀秒階段易成為對手「犯規戰術」針對目標，最後 2 分鐘需謹慎調配球權。';
     } else if (isHighUsg && clutchTs >= 53.0) {
       clutchTag = '🎯 大心臟決勝點 (Go-to Guy)';
       clutchDesc = '球隊末節關鍵時刻絕對進攻發動機，具備極強的抗壓出手信心與單打拆炸彈能力。';
-    } else if (data.position?.includes('C') || q4.q4_plus_minus_pg >= 2.0) {
+    } else if (data.position?.includes('C') || q4Pm >= 2.0) {
       clutchTag = '🧊 決勝防守鐵閘 (Closing Stopper)';
       clutchDesc = '專職封鎖對手持球王牌與護框，失誤少且犯規控制極佳，為閉門陣容的防守基石。';
     } else {
@@ -103,7 +143,7 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
     }
   }
 
-  const tsDiff = Number((clutchTs - q4.q4_ts_pct).toFixed(1));
+  const tsDiff = hasClutchSample ? Number((clutchTs - q4Ts).toFixed(1)) : 0;
 
   if (activeTab === 'scoring') {
     return (
@@ -112,29 +152,29 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
         <div className="bg-[#161b22] border border-gray-800 rounded-xl p-4 shadow-inner">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-gray-200 tracking-wider">🎯 得分分佈比例 (加總 100%)</span>
-            <span className="text-[11px] text-gray-500 font-mono">場均 {data.ppg} 分 • {data.games_played} 場</span>
+            <span className="text-[11px] text-gray-500 font-mono">場均 {safeN(data.ppg, 0)} 分 • {safeN(data.games_played, 0)} 場</span>
           </div>
 
           <div className="h-3 w-full bg-gray-900 rounded-full overflow-hidden flex mb-3 border border-gray-800">
             <div 
-              style={{ width: `${comp.paint_pct}%` }} 
+              style={{ width: `${paintPct}%` }} 
               className="bg-amber-500 h-full transition-all" 
-              title={`禁區得分: ${comp.paint_ppg}分 (${comp.paint_pct}%)`}
+              title={`禁區得分: ${paintPpg}分 (${paintPct}%)`}
             />
             <div 
-              style={{ width: `${comp.three_pt_pct}%` }} 
+              style={{ width: `${threePtPct}%` }} 
               className="bg-sky-400 h-full transition-all" 
-              title={`三分外線: ${comp.three_pt_ppg}分 (${comp.three_pt_pct}%)`}
+              title={`三分外線: ${threePtPpg}分 (${threePtPct}%)`}
             />
             <div 
-              style={{ width: `${comp.mid_range_pct}%` }} 
+              style={{ width: `${midRangePct}%` }} 
               className="bg-purple-400 h-full transition-all" 
-              title={`中距離跳投: ${comp.mid_range_ppg}分 (${comp.mid_range_pct}%)`}
+              title={`中距離跳投: ${midRangePpg}分 (${midRangePct}%)`}
             />
             <div 
-              style={{ width: `${comp.free_throw_pct}%` }} 
+              style={{ width: `${ftPctShare}%` }} 
               className="bg-emerald-400 h-full transition-all" 
-              title={`罰球得分: ${comp.free_throw_ppg}分 (${comp.free_throw_pct}%)`}
+              title={`罰球得分: ${ftPpg}分 (${ftPctShare}%)`}
             />
           </div>
 
@@ -144,8 +184,8 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <span className="w-2 h-2 rounded-full bg-amber-400"></span>
                 禁區 (Paint)
               </div>
-              <div className="text-sm font-bold text-gray-100">{comp.paint_ppg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
-              <div className="text-[10px] text-gray-400 mt-0.5">{comp.paint_pct}% 總得分比</div>
+              <div className="text-sm font-bold text-gray-100">{paintPpg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
+              <div className="text-[10px] text-gray-400 mt-0.5">{paintPct}% 總得分比</div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
@@ -153,8 +193,8 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <span className="w-2 h-2 rounded-full bg-sky-400"></span>
                 三分 (3-Point)
               </div>
-              <div className="text-sm font-bold text-gray-100">{comp.three_pt_ppg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
-              <div className="text-[10px] text-gray-400 mt-0.5">{comp.three_pt_pct}% 總得分比</div>
+              <div className="text-sm font-bold text-gray-100">{threePtPpg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
+              <div className="text-[10px] text-gray-400 mt-0.5">{threePtPct}% 總得分比</div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
@@ -162,8 +202,8 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <span className="w-2 h-2 rounded-full bg-purple-400"></span>
                 中距離 (Mid)
               </div>
-              <div className="text-sm font-bold text-gray-100">{comp.mid_range_ppg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
-              <div className="text-[10px] text-gray-400 mt-0.5">{comp.mid_range_pct}% 總得分比</div>
+              <div className="text-sm font-bold text-gray-100">{midRangePpg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
+              <div className="text-[10px] text-gray-400 mt-0.5">{midRangePct}% 總得分比</div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
@@ -171,8 +211,8 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                 罰球 (FT)
               </div>
-              <div className="text-sm font-bold text-gray-100">{comp.free_throw_ppg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
-              <div className="text-[10px] text-gray-400 mt-0.5">{comp.free_throw_pct}% 總得分比</div>
+              <div className="text-sm font-bold text-gray-100">{ftPpg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
+              <div className="text-[10px] text-gray-400 mt-0.5">{ftPctShare}% 總得分比</div>
             </div>
           </div>
         </div>
@@ -183,20 +223,20 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
               <div className="text-gray-400 text-[11px] mb-0.5">快攻轉換 (Fast Break)</div>
-              <div className="text-sm font-bold text-cyan-400">{tac.fast_break.ppg} <span className="text-[10px] font-normal text-gray-500">PPG</span></div>
-              <div className="text-[10px] text-gray-500 mt-0.5">命中率: <span className="text-gray-300 font-medium">{tac.fast_break.fg_pct}%</span></div>
+              <div className="text-sm font-bold text-cyan-400">{safeN(tac?.fast_break?.ppg, 0)} <span className="text-[10px] font-normal text-gray-500">PPG</span></div>
+              <div className="text-[10px] text-gray-500 mt-0.5">命中率: <span className="text-gray-300 font-medium">{safeN(tac?.fast_break?.fg_pct, 0)}%</span></div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
               <div className="text-gray-400 text-[11px] mb-0.5">二次進攻 (2nd Chance)</div>
-              <div className="text-sm font-bold text-emerald-400">{tac.second_chance.ppg} <span className="text-[10px] font-normal text-gray-500">PPG</span></div>
-              <div className="text-[10px] text-gray-500 mt-0.5">命中率: <span className="text-gray-300 font-medium">{tac.second_chance.fg_pct}%</span></div>
+              <div className="text-sm font-bold text-emerald-400">{safeN(tac?.second_chance?.ppg, 0)} <span className="text-[10px] font-normal text-gray-500">PPG</span></div>
+              <div className="text-[10px] text-gray-500 mt-0.5">命中率: <span className="text-gray-300 font-medium">{safeN(tac?.second_chance?.fg_pct, 0)}%</span></div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
               <div className="text-gray-400 text-[11px] mb-0.5">抓失誤反擊 (Off TOV)</div>
-              <div className="text-sm font-bold text-purple-400">{tac.points_off_tov.ppg} <span className="text-[10px] font-normal text-gray-500">PPG</span></div>
-              <div className="text-[10px] text-gray-500 mt-0.5">佔比: <span className="text-gray-300 font-medium">{tac.points_off_tov.share_pct}%</span></div>
+              <div className="text-sm font-bold text-purple-400">{safeN(tac?.points_off_tov?.ppg, 0)} <span className="text-[10px] font-normal text-gray-500">PPG</span></div>
+              <div className="text-[10px] text-gray-500 mt-0.5">佔比: <span className="text-gray-300 font-medium">{safeN(tac?.points_off_tov?.share_pct, 0)}%</span></div>
             </div>
           </div>
         </div>
@@ -209,60 +249,60 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 flex justify-between items-center">
               <div>
                 <div className="text-purple-400 text-[11px] font-semibold">兩分中距跳投</div>
-                <div className="text-sm font-bold text-gray-100">{fin.two_jump_shot.fgm}/{fin.two_jump_shot.fga}</div>
+                <div className="text-sm font-bold text-gray-100">{safeN(fin?.two_jump_shot?.fgm, 0)}/{safeN(fin?.two_jump_shot?.fga, 0)}</div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-bold text-purple-400">{fin.two_jump_shot.fg_pct}%</span>
+                <span className="text-xs font-bold text-purple-400">{safeN(fin?.two_jump_shot?.fg_pct, 0)}%</span>
               </div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 flex justify-between items-center">
               <div>
                 <div className="text-sky-400 text-[11px] font-semibold">三分外線 (全部)</div>
-                <div className="text-sm font-bold text-gray-100">{fin.three_jump_shot.fgm}/{fin.three_jump_shot.fga}</div>
+                <div className="text-sm font-bold text-gray-100">{safeN(fin?.three_jump_shot?.fgm, 0)}/{safeN(fin?.three_jump_shot?.fga, 0)}</div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-bold text-sky-400">{fin.three_jump_shot.fg_pct}%</span>
+                <span className="text-xs font-bold text-sky-400">{safeN(fin?.three_jump_shot?.fg_pct, 0)}%</span>
               </div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-blue-500/40 bg-blue-500/5 flex justify-between items-center">
               <div>
                 <div className="text-blue-300 text-[11px] font-bold">總跳投合計 (Total JS)</div>
-                <div className="text-sm font-bold text-white">{fin.jump_shot_total.fgm}/{fin.jump_shot_total.fga}</div>
+                <div className="text-sm font-bold text-white">{safeN(fin?.jump_shot_total?.fgm, 0)}/{safeN(fin?.jump_shot_total?.fga, 0)}</div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-black text-blue-400">{fin.jump_shot_total.fg_pct}%</span>
+                <span className="text-xs font-black text-blue-400">{safeN(fin?.jump_shot_total?.fg_pct, 0)}%</span>
               </div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 flex justify-between items-center">
               <div>
                 <div className="text-emerald-400 text-[11px] font-semibold">突破 / 上籃 (Layup)</div>
-                <div className="text-sm font-bold text-gray-100">{fin.layup.fgm}/{fin.layup.fga}</div>
+                <div className="text-sm font-bold text-gray-100">{safeN(fin?.layup?.fgm, 0)}/{safeN(fin?.layup?.fga, 0)}</div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-bold text-emerald-400">{fin.layup.fg_pct}%</span>
+                <span className="text-xs font-bold text-emerald-400">{safeN(fin?.layup?.fg_pct, 0)}%</span>
               </div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 flex justify-between items-center">
               <div>
                 <div className="text-amber-400 text-[11px] font-semibold">禁區灌籃 (Dunk)</div>
-                <div className="text-sm font-bold text-gray-100">{fin.dunk.fgm}/{fin.dunk.fga}</div>
+                <div className="text-sm font-bold text-gray-100">{safeN(fin?.dunk?.fgm, 0)}/{safeN(fin?.dunk?.fga, 0)}</div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-bold text-amber-400">{fin.dunk.fg_pct}%</span>
+                <span className="text-xs font-bold text-amber-400">{safeN(fin?.dunk?.fg_pct, 0)}%</span>
               </div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 flex justify-between items-center">
               <div>
                 <div className="text-rose-400 text-[11px] font-semibold">單打自創 (Pull-up/Fade)</div>
-                <div className="text-sm font-bold text-gray-100">{fin.self_created.fgm}/{fin.self_created.fga}</div>
+                <div className="text-sm font-bold text-gray-100">{safeN(fin?.self_created?.fgm, 0)}/{safeN(fin?.self_created?.fga, 0)}</div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-bold text-rose-400">{fin.self_created.fg_pct}%</span>
+                <span className="text-xs font-bold text-rose-400">{safeN(fin?.self_created?.fg_pct, 0)}%</span>
               </div>
             </div>
           </div>
@@ -282,7 +322,7 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
           <div className="flex items-center space-x-2">
             <Clock className="w-4 h-4 text-amber-400" />
             <span className="text-xs font-bold text-white tracking-wider">末節抗壓視角</span>
-            <span className="text-[11px] text-gray-500 font-mono">({q4.q4_games} 場出賽記錄)</span>
+            <span className="text-[11px] text-gray-500 font-mono">({q4Games} 場出賽記錄)</span>
           </div>
 
           <div className="inline-flex p-0.5 rounded-xl bg-[#0E1117] border border-[#30363D]">
@@ -327,7 +367,7 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
               <div className="text-right shrink-0">
                 <span className="text-[10px] text-gray-400 block font-mono">抗壓真實命中差值</span>
                 <span className={`text-sm font-black font-mono ${tsDiff >= 0 ? 'text-[#00E676]' : 'text-rose-400'}`}>
-                  {tsDiff >= 0 ? `+${tsDiff}% 🔥 升溫` : `${tsDiff}% ❄️ 受阻`}
+                  {!hasClutchSample ? '0.0%' : tsDiff >= 0 ? `+${tsDiff}% 🔥 升溫` : `${tsDiff}% ❄️ 受阻`}
                 </span>
               </div>
             </div>
@@ -343,7 +383,7 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
               <div className="bg-[#0e1117] p-3 rounded-lg border border-amber-500/30 text-center">
                 <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-0.5">關鍵 TS%</div>
                 <div className="text-lg font-black text-emerald-400 font-mono">{clutchTs}%</div>
-                <div className="text-[10px] text-gray-500 mt-0.5 font-mono">常態: {q4.q4_ts_pct}%</div>
+                <div className="text-[10px] text-gray-500 mt-0.5 font-mono">常態: {q4Ts}%</div>
               </div>
 
               <div className="bg-[#0e1117] p-3 rounded-lg border border-amber-500/30 text-center">
@@ -352,7 +392,7 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                   {clutchFt}%
                 </div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
-                  {clutchFt >= 75 ? '把握度極佳' : '犯規戰術警戒'}
+                  {!hasClutchSample ? '尚無樣本' : clutchFt >= 75 ? '把握度極佳' : '犯規戰術警戒'}
                 </div>
               </div>
 
@@ -360,14 +400,14 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <div className="text-[10px] text-purple-400 font-bold uppercase tracking-wider mb-0.5">關鍵失誤率 (TOV%)</div>
                 <div className="text-lg font-black text-gray-200 font-mono">{clutchTov}%</div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
-                  {clutchTov < 12 ? '護球極佳' : '防壓迫待加強'}
+                  {!hasClutchSample ? '尚無樣本' : clutchTov < 12 ? '護球極佳' : '防壓迫待加強'}
                 </div>
               </div>
             </div>
 
             <div className="text-[11px] text-gray-400 bg-gray-900/60 p-2.5 rounded-lg border border-gray-800/60 leading-relaxed">
               ⚡ <span className="font-semibold text-amber-300">Clutch Time 模型原理：</span>
-              追蹤比賽最後 5 分鐘分差 5 分內的高壓攻防回合。剔除常規二陣輪替，純粹檢驗球員在防守窒息、犯規戰術與讀秒讀秒拆炸彈時的硬解實力。
+              追蹤比賽最後 5 分鐘分差 5 分內的高壓攻防回合。剔除常規二陣輪替，純粹檢驗球員在防守窒息、犯規戰術與讀秒拆炸彈時的硬解實力。
             </div>
           </div>
         ) : (
@@ -376,27 +416,27 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
               <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 text-center">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Q4 場均得分</div>
-                <div className="text-base font-bold text-amber-400 font-mono">{q4.q4_ppg}</div>
-                <div className="text-[10px] text-gray-500 mt-0.5 font-mono">{q4.q4_mpg} MIN/Q4</div>
+                <div className="text-base font-bold text-amber-400 font-mono">{q4Ppg}</div>
+                <div className="text-[10px] text-gray-500 mt-0.5 font-mono">{q4Mpg} MIN/Q4</div>
               </div>
 
               <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 text-center">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Q4 真實命中率</div>
-                <div className="text-base font-bold text-emerald-400 font-mono">{q4.q4_ts_pct}%</div>
-                <div className="text-[10px] text-gray-500 mt-0.5 font-mono">FG: {q4.q4_fg_pct}%</div>
+                <div className="text-base font-bold text-emerald-400 font-mono">{q4Ts}%</div>
+                <div className="text-[10px] text-gray-500 mt-0.5 font-mono">FG: {q4Fg}%</div>
               </div>
 
               <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 text-center">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Q4 場均正負值</div>
-                <div className={`text-base font-bold font-mono ${q4.q4_plus_minus_pg >= 0 ? 'text-cyan-400' : 'text-rose-400'}`}>
-                  {q4.q4_plus_minus_pg > 0 ? `+${q4.q4_plus_minus_pg}` : q4.q4_plus_minus_pg}
+                <div className={`text-base font-bold font-mono ${q4Pm >= 0 ? 'text-cyan-400' : 'text-rose-400'}`}>
+                  {q4Pm > 0 ? `+${q4Pm}` : q4Pm}
                 </div>
                 <div className="text-[10px] text-gray-500 mt-0.5">團隊淨勝分</div>
               </div>
 
               <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 text-center">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Q4 失誤控管</div>
-                <div className="text-base font-bold text-gray-200 font-mono">{q4.q4_tov_pg}</div>
+                <div className="text-base font-bold text-gray-200 font-mono">{q4Tov}</div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">TOV / 節</div>
               </div>
             </div>

@@ -30,30 +30,32 @@ def get_team_games_map(conn, stage: str) -> dict:
 
 
 def load_data():
-  conn = sqlite3.connect(DB_PATH)
-  team_games_map = get_team_games_map(conn, TARGET_STAGE)
+  conn = sqlite3.connect(DB_PATH, timeout=30.0)
+  try:
+    team_games_map = get_team_games_map(conn, TARGET_STAGE)
 
-  query = """
-    SELECT 
-        id, season_stage, team_name, player_name, jersey_number,
-        position, identity, games_played, mpg, ppg, rpg, apg,
-        spg, bpg, efg_pct, ts_pct, usg_pct, gmsc
-    FROM player_stats
-    WHERE season_stage = ?
-    """
-  df = pd.read_sql_query(query, conn, params=(TARGET_STAGE,))
-  conn.close()
-  return df, team_games_map
+    query = """
+      SELECT 
+          id, season_stage, team_name, player_name, jersey_number,
+          position, identity, games_played, mpg, ppg, rpg, apg,
+          spg, bpg, efg_pct, ts_pct, usg_pct, gmsc
+      FROM player_stats
+      WHERE season_stage = ?
+      """
+    df = pd.read_sql_query(query, conn, params=(TARGET_STAGE,))
+    return df, team_games_map
+  finally:
+    conn.close()
 
 
 def is_qualified(row, team_games_map: dict) -> bool:
   team = row["team_name"]
-  team_total = team_games_map.get(team, int(row["games_played"]))
-  gp = int(row["games_played"])
-  mpg = float(row["mpg"])
+  gp = int(row["games_played"]) if pd.notnull(row["games_played"]) else 0
+  mpg = float(row["mpg"]) if pd.notnull(row["mpg"]) else 0.0
+  team_total = team_games_map.get(team, gp)
 
   # 1. 基本場均時間過濾 (過濾垃圾時間上場)
-  if mpg < MIN_MPG:
+  if mpg < MIN_MPG or gp <= 0:
     return False
 
   # 2. 按所屬球隊已賽進度的階梯門檻
@@ -66,6 +68,11 @@ def is_qualified(row, team_games_map: dict) -> bool:
     return gp >= req
 
 
+def _normalize_pct_series(s: pd.Series) -> pd.Series:
+  num = pd.to_numeric(s, errors="coerce")
+  return num.where(~((num > 0.0) & (num <= 1.0)), num * 100.0)
+
+
 def calculate_percentiles(df: pd.DataFrame, team_games_map: dict):
   if df.empty:
     return {}
@@ -76,6 +83,21 @@ def calculate_percentiles(df: pd.DataFrame, team_games_map: dict):
   print(f"📊 賽季總球員: {len(df)} 位")
   print(f"🏀 各隊真實已賽場次: {team_games_map}")
   print(f"✅ 符合出賽門檻的合格母體: {len(qualified_df)} 位")
+
+  if qualified_df.empty:
+    return {
+        "meta": {
+            "stage": TARGET_STAGE,
+            "min_mpg": MIN_MPG,
+            "team_games": team_games_map,
+            "total_qualified": 0,
+        },
+        "players": {},
+        "rankings": [],
+    }
+
+  for pct_col in ("efg_pct", "ts_pct", "usg_pct"):
+    qualified_df[pct_col] = _normalize_pct_series(qualified_df[pct_col])
 
   metric_cols = [
       ("ppg", "PTS"),
@@ -93,7 +115,7 @@ def calculate_percentiles(df: pd.DataFrame, team_games_map: dict):
     ranks = (
         qualified_df[col].rank(pct=True, ascending=True, method="average") * 100
     )
-    qualified_df[f"{col}_pr"] = ranks.round(0).astype(int)
+    qualified_df[f"{col}_pr"] = ranks.fillna(0).round(0).astype(int)
 
   by_name = {}
   ranked_list = []

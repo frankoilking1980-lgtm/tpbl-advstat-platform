@@ -3,8 +3,10 @@
 build_db.py - 智慧適配各季 Excel 結構、跨季賽程隔離與單場對位入庫（自動補齊 DRtg/NetRtg/FTr/ORB% 版）
 """
 import json
+import math
 import sqlite3
 import re
+import datetime
 from pathlib import Path
 import pandas as pd
 
@@ -118,20 +120,72 @@ def init_database(conn: sqlite3.Connection):
     conn.commit()
 
 
+def _parse_time_to_minutes(val, default=0.0):
+    if isinstance(val, datetime.timedelta):
+        return max(0.0, round(val.total_seconds() / 60.0, 1))
+    if isinstance(val, datetime.datetime):
+        if val.year in (1899, 1900):
+            base = datetime.datetime(1899, 12, 30) if val.year == 1899 else datetime.datetime(1900, 1, 1)
+            extra = 86400 if val.year == 1900 else 0
+            return max(0.0, round(((val - base).total_seconds() + extra) / 60.0, 1))
+        return round(val.hour * 60.0 + val.minute + val.second / 60.0, 1)
+    if isinstance(val, datetime.time):
+        if val.hour == 0:
+            return round(val.minute + val.second / 60.0, 1)
+        return round(val.hour * 60.0 + val.minute + val.second / 60.0, 1)
+
+    s = str(val).strip()
+    extra_days = 0
+    day_match = re.match(r"^(-?\d+)\s*days?,?\s*(.+)$", s, re.IGNORECASE)
+    if day_match:
+        extra_days = int(day_match.group(1))
+        if extra_days < 0:
+            return default
+        s = day_match.group(2).strip()
+
+    if ":" in s:
+        parts = s.split(":")
+        try:
+            if len(parts) == 3:
+                h, m, sec = float(parts[0]), float(parts[1]), float(parts[2])
+                if h == 0 and extra_days == 0:
+                    return round(m + sec / 60.0, 1)
+                return round(extra_days * 1440.0 + h * 60.0 + m + sec / 60.0, 1)
+            if len(parts) == 2:
+                return round(extra_days * 1440.0 + float(parts[0]) + float(parts[1]) / 60.0, 1)
+        except Exception:
+            return default
+    return default
+
+
 def clean_num(val, default=0.0):
-    if pd.isna(val) or val is None:
+    if val is None or isinstance(val, bool) or pd.isna(val):
         return default
-    s = str(val).replace("%", "").strip()
+    if isinstance(val, (int, float)):
+        return float(val) if math.isfinite(val) else default
+    if isinstance(val, (datetime.datetime, datetime.timedelta, datetime.time)):
+        return _parse_time_to_minutes(val, default)
+
+    s = str(val).strip().replace("%", "").replace(",", "")
+    s = s.replace("−", "-").replace("–", "-")
+    if s.lower() in {"", "-", "—", "none", "nan", "null", "n/a", "#n/a", "#div/0!", "#value!", "dnp", "inf", "-inf", "+inf"}:
+        return default
+    if s.startswith("(") and s.endswith(")"):
+        s = "-" + s[1:-1].strip()
     try:
-        return float(s)
+        f_val = float(s)
+        return f_val if math.isfinite(f_val) else default
     except ValueError:
-        if ":" in s:
-            parts = s.split(":")
-            try:
-                return round(float(parts[0]) + float(parts[1]) / 60.0, 1)
-            except Exception:
-                return default
+        if ":" in s or "day" in s.lower():
+            return _parse_time_to_minutes(s, default)
         return default
+
+
+def clean_pct_100(val, default=0.0):
+    v = clean_num(val, default)
+    if not math.isfinite(v):
+        return default
+    return round(v * 100.0, 2) if (0.0 < v <= 1.0) else round(v, 2)
 
 
 def clean_player_name(raw_name):
@@ -243,11 +297,11 @@ def process_team_summary(conn: sqlite3.Connection, folder: Path, stage_name: str
             ortg = clean_num(raw_df.iloc[r, c_ortg]) if c_ortg is not None else 0.0
             drtg = clean_num(raw_df.iloc[r, c_drtg]) if c_drtg is not None else 0.0
             net_rtg = clean_num(raw_df.iloc[r, c_net]) if c_net is not None else (round(ortg - drtg, 1) if (ortg and drtg) else 0.0)
-            efg = clean_num(raw_df.iloc[r, c_efg]) if c_efg is not None else 0.0
-            three_par = clean_num(raw_df.iloc[r, c_3par]) if c_3par is not None else 0.0
-            tov = clean_num(raw_df.iloc[r, c_tov]) if c_tov is not None else 0.0
-            orb = clean_num(raw_df.iloc[r, c_orb]) if c_orb is not None else 0.0
-            ftr = clean_num(raw_df.iloc[r, c_ftr]) if c_ftr is not None else 0.0
+            efg = clean_pct_100(raw_df.iloc[r, c_efg]) if c_efg is not None else 0.0
+            three_par = clean_pct_100(raw_df.iloc[r, c_3par]) if c_3par is not None else 0.0
+            tov = clean_pct_100(raw_df.iloc[r, c_tov]) if c_tov is not None else 0.0
+            orb = clean_pct_100(raw_df.iloc[r, c_orb]) if c_orb is not None else 0.0
+            ftr = clean_pct_100(raw_df.iloc[r, c_ftr]) if c_ftr is not None else 0.0
 
             teams_data[team] = {
                 "gp": gp, "record": rec_val, "pace": pace, "ortg": ortg,
@@ -302,7 +356,7 @@ def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: st
                     p_name = clean_player_name(raw_adv.iloc[r, 2])
                     if p_name:
                         adv_lookup[p_name] = {
-                            "usg": clean_num(raw_adv.iloc[r, 21]),
+                            "usg": clean_pct_100(raw_adv.iloc[r, 21]),
                             "gmsc": clean_num(raw_adv.iloc[r, 24]),
                         }
 
@@ -323,8 +377,8 @@ def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: st
                     apg = clean_num(raw_avg.iloc[r, 23])
                     spg = clean_num(raw_avg.iloc[r, 24])
                     bpg = clean_num(raw_avg.iloc[r, 25])
-                    efg = clean_num(raw_avg.iloc[r, 30])
-                    ts = clean_num(raw_avg.iloc[r, 31])
+                    efg = clean_pct_100(raw_avg.iloc[r, 30])
+                    ts = clean_pct_100(raw_avg.iloc[r, 31])
                     shot_review = str(raw_avg.iloc[r, 33]).strip() if (len(raw_avg.columns) > 33 and pd.notna(raw_avg.iloc[r, 33])) else ""
                     perf_review = str(raw_avg.iloc[r, 34]).strip() if (len(raw_avg.columns) > 34 and pd.notna(raw_avg.iloc[r, 34])) else ""
 
@@ -435,7 +489,7 @@ def enhance_team_defense_and_four_factors(conn: sqlite3.Connection):
             diff = (wins - losses) * 2.5
             calc_drtg = round(max(85.0, ortg - diff), 1)
 
-        net_rtg = round(ortg - calc_drtg, 1) if (ortg and calc_drtg) else 0.0
+        net_rtg = round(ortg - calc_drtg, 1) if (ortg > 0 or calc_drtg > 0) else 0.0
 
         # 2. 計算 FTr (罰球率) 與 ORB% (進攻籃板率)
         # 查該隊在 player_stats 的總投籃與總籃板
@@ -477,37 +531,41 @@ def main():
         DB_PATH.unlink()
         print(f"[*] 清除既有舊庫: {DB_PATH}")
 
-    conn = sqlite3.connect(DB_PATH)
-    init_database(conn)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
+    try:
+        conn.execute("PRAGMA busy_timeout = 30000;")
+        conn.execute("PRAGMA journal_mode = WAL;")
+        init_database(conn)
 
-    subfolders = [f for f in DATA_DIR.iterdir() if f.is_dir()]
-    print(f"[*] 找到 {len(subfolders)} 個賽季資料夾，開始萃取數據...")
+        subfolders = [f for f in DATA_DIR.iterdir() if f.is_dir()]
+        print(f"[*] 找到 {len(subfolders)} 個賽季資料夾，開始萃取數據...")
 
-    for folder in sorted(subfolders):
-        stage_name = STAGE_MAPPING.get(folder.name, folder.name)
-        print(f"\n📂 正在處理: {folder.name} -> [{stage_name}]")
-        process_schedules(conn, folder, stage_name)
-        process_team_summary(conn, folder, stage_name)
-        process_player_excels(conn, folder, stage_name)
+        for folder in sorted(subfolders):
+            stage_name = STAGE_MAPPING.get(folder.name, folder.name)
+            print(f"\n📂 正在處理: {folder.name} -> [{stage_name}]")
+            process_schedules(conn, folder, stage_name)
+            process_team_summary(conn, folder, stage_name)
+            process_player_excels(conn, folder, stage_name)
 
-    # 執行補全計算
-    enhance_team_defense_and_four_factors(conn)
+        # 執行補全計算
+        enhance_team_defense_and_four_factors(conn)
 
-    cur = conn.cursor()
-    games_count = cur.execute("SELECT COUNT(*) FROM games").fetchone()[0]
-    team_count = cur.execute("SELECT COUNT(*) FROM team_summary").fetchone()[0]
-    player_count = cur.execute("SELECT COUNT(*) FROM player_stats").fetchone()[0]
-    matchup_count = cur.execute("SELECT COUNT(*) FROM game_matchups").fetchone()[0]
+        cur = conn.cursor()
+        games_count = cur.execute("SELECT COUNT(*) FROM games").fetchone()[0]
+        team_count = cur.execute("SELECT COUNT(*) FROM team_summary").fetchone()[0]
+        player_count = cur.execute("SELECT COUNT(*) FROM player_stats").fetchone()[0]
+        matchup_count = cur.execute("SELECT COUNT(*) FROM game_matchups").fetchone()[0]
 
-    print("\n" + "=" * 65)
-    print("✅ 資料庫建置完成！數據統計：")
-    print(f"  - 賽程場次 (games): {games_count} 場")
-    print(f"  - 四要素匯總 (team_summary): {team_count} 筆 (含 DRtg/NetRtg 補全)")
-    print(f"  - 球員數據與短評 (player_stats): {player_count} 筆")
-    print(f"  - 單場焦點對位 (game_matchups): {matchup_count} 筆")
-    print(f"  - 輸出目標: {DB_PATH.resolve()}")
-    print("=" * 65)
-    conn.close()
+        print("\n" + "=" * 65)
+        print("✅ 資料庫建置完成！數據統計：")
+        print(f"  - 賽程場次 (games): {games_count} 場")
+        print(f"  - 四要素匯總 (team_summary): {team_count} 筆 (含 DRtg/NetRtg 補全)")
+        print(f"  - 球員數據與短評 (player_stats): {player_count} 筆")
+        print(f"  - 單場焦點對位 (game_matchups): {matchup_count} 筆")
+        print(f"  - 輸出目標: {DB_PATH.resolve()}")
+        print("=" * 65)
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

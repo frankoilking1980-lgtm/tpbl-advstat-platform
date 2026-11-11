@@ -95,6 +95,46 @@ function TeamLogo({ teamName, color }: { teamName: string; color: string }) {
 const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'];
 const MAX_BENCH_COUNT = 9;
 
+const isSameTeam = (playerTeam: string, targetTeam: string): boolean =>
+  Boolean(playerTeam) && (playerTeam.includes(targetTeam) || targetTeam.includes(playerTeam));
+
+const calcDualBarWidths = (valA: number, valB: number): [number, number] => {
+  const safeA = Number.isFinite(valA) && valA > 0 ? valA : 0;
+  const safeB = Number.isFinite(valB) && valB > 0 ? valB : 0;
+  const sum = safeA + safeB;
+  if (sum <= 0) return [50, 50];
+  const widthA = Math.min(95, Math.max(5, (safeA / sum) * 100));
+  return [widthA, 100 - widthA];
+};
+
+const calcNextForeignCounts = (
+  currentStarters: (Player | null)[],
+  currentBench: Player[],
+  starterIndex: number,
+  incoming: Player
+) => {
+  const sForeign = currentStarters.filter((p) => p?.identity === '洋將').length;
+  const bForeign = currentBench.filter((p) => p.identity === '洋將').length;
+  const totalForeign = sForeign + bForeign;
+
+  const currentTarget = currentStarters[starterIndex];
+  const willReplaceForeign = currentTarget?.identity === '洋將';
+  const isIncomingForeign = incoming.identity === '洋將';
+  const isFromBench = currentBench.some((p) => p.player_name === incoming.player_name);
+
+  const nextStartersForeign = sForeign - (willReplaceForeign ? 1 : 0) + (isIncomingForeign ? 1 : 0);
+
+  let nextTotalForeign = totalForeign;
+  if (!isFromBench) {
+    // 若被換下的先發將退回板凳，則不會釋出 14 人登錄名單的洋將名額
+    const targetMovesToBench = Boolean(currentTarget) && currentBench.length < MAX_BENCH_COUNT;
+    const freedForeignSlot = !targetMovesToBench && willReplaceForeign ? 1 : 0;
+    nextTotalForeign = totalForeign - freedForeignSlot + (isIncomingForeign ? 1 : 0);
+  }
+
+  return { nextStartersForeign, nextTotalForeign };
+};
+
 export default function MatchupPage() {
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,14 +151,37 @@ export default function MatchupPage() {
   // 社群 1:1 戰報卡彈窗開關狀態
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  // 各隊陣容記憶池
+  // 各隊陣容記憶池與非同步請求序號保護
   const savedLineupsRef = useRef<Record<string, TeamLineupState>>({});
+  const latestTeamARef = useRef(teamA);
+  const latestTeamBRef = useRef(teamB);
+  const latestLineupARef = useRef<TeamLineupState>({ starters: startersA, bench: benchA });
+  const latestLineupBRef = useRef<TeamLineupState>({ starters: startersB, bench: benchB });
+  const rosterReqSeqRef = useRef<{ A: number; B: number }>({ A: 0, B: 0 });
+  const isSelectingRef = useRef(false);
 
   const [activePicker, setActivePicker] = useState<{
     side: 'A' | 'B';
     type: 'starter' | 'bench';
     starterIndex?: number;
   } | null>(null);
+
+  // 即時同步最新陣容至 ref 與記憶池（資料未載入前不覆寫空快照）
+  useEffect(() => {
+    latestTeamARef.current = teamA;
+    latestLineupARef.current = { starters: [...startersA], bench: [...benchA] };
+    if (allPlayers.length > 0 && (startersA.some(Boolean) || benchA.length > 0)) {
+      savedLineupsRef.current[teamA] = { starters: [...startersA], bench: [...benchA] };
+    }
+  }, [teamA, startersA, benchA, allPlayers.length]);
+
+  useEffect(() => {
+    latestTeamBRef.current = teamB;
+    latestLineupBRef.current = { starters: [...startersB], bench: [...benchB] };
+    if (allPlayers.length > 0 && (startersB.some(Boolean) || benchB.length > 0)) {
+      savedLineupsRef.current[teamB] = { starters: [...startersB], bench: [...benchB] };
+    }
+  }, [teamB, startersB, benchB, allPlayers.length]);
 
   // 1. 載入球員數據
   useEffect(() => {
@@ -165,7 +228,7 @@ export default function MatchupPage() {
   // 標準常規排陣
   const generateDefaultLineup = (teamName: string, playersList: Player[]): TeamLineupState => {
     const pool = playersList
-      .filter((p) => p.team_name.includes(teamName) || teamName.includes(p.team_name))
+      .filter((p) => isSameTeam(p.team_name, teamName))
       .sort((a, b) => b.mpg - a.mpg);
 
     const starters: (Player | null)[] = [null, null, null, null, null];
@@ -204,78 +267,113 @@ export default function MatchupPage() {
     return { starters, bench };
   };
 
-  // 切換隊伍 A：嚴密防禦性儲存，避免 React 批處理狀態丟失
-  const handleTeamAChange = (newTeam: string) => {
-    savedLineupsRef.current[teamA] = {
-      starters: startersA,
-      bench: benchA,
-    };
+  // 共用防禦性隊伍切換：避免快速切換陳舊閉包或非同步請求踩踏記憶池
+  const handleTeamChange = (side: 'A' | 'B', newTeam: string) => {
+    const currentSideTeam = side === 'A' ? latestTeamARef.current : latestTeamBRef.current;
+    const otherSideTeam = side === 'A' ? latestTeamBRef.current : latestTeamARef.current;
+    if (!newTeam || newTeam === currentSideTeam || newTeam === otherSideTeam) return;
 
-    setTeamA(newTeam);
+    rosterReqSeqRef.current[side] += 1;
+    setActivePicker(null);
 
-    if (savedLineupsRef.current[newTeam]) {
-      const saved = savedLineupsRef.current[newTeam];
-      setStartersA(saved.starters);
-      setBenchA(saved.bench);
+    if (allPlayers.length > 0) {
+      const latestLineup = side === 'A' ? latestLineupARef.current : latestLineupBRef.current;
+      if (latestLineup.starters.some(Boolean) || latestLineup.bench.length > 0) {
+        savedLineupsRef.current[currentSideTeam] = {
+          starters: [...latestLineup.starters],
+          bench: [...latestLineup.bench],
+        };
+      }
+    }
+
+    if (side === 'A') {
+      latestTeamARef.current = newTeam;
+      setTeamA(newTeam);
     } else {
-      const def = generateDefaultLineup(newTeam, allPlayers);
-      setStartersA(def.starters);
-      setBenchA(def.bench);
+      latestTeamBRef.current = newTeam;
+      setTeamB(newTeam);
+    }
+
+    const saved = savedLineupsRef.current[newTeam];
+    const nextLineup =
+      saved && (saved.starters.some(Boolean) || saved.bench.length > 0)
+        ? { starters: [...saved.starters], bench: [...saved.bench] }
+        : allPlayers.length > 0
+        ? generateDefaultLineup(newTeam, allPlayers)
+        : { starters: [null, null, null, null, null], bench: [] };
+
+    if (side === 'A') {
+      setStartersA(nextLineup.starters);
+      setBenchA(nextLineup.bench);
+    } else {
+      setStartersB(nextLineup.starters);
+      setBenchB(nextLineup.bench);
     }
   };
 
-  // 切換隊伍 B：嚴密防禦性儲存
-  const handleTeamBChange = (newTeam: string) => {
-    savedLineupsRef.current[teamB] = {
-      starters: startersB,
-      bench: benchB,
-    };
-
-    setTeamB(newTeam);
-
-    if (savedLineupsRef.current[newTeam]) {
-      const saved = savedLineupsRef.current[newTeam];
-      setStartersB(saved.starters);
-      setBenchB(saved.bench);
-    } else {
-      const def = generateDefaultLineup(newTeam, allPlayers);
-      setStartersB(def.starters);
-      setBenchB(def.bench);
-    }
-  };
+  const handleTeamAChange = (newTeam: string) => handleTeamChange('A', newTeam);
+  const handleTeamBChange = (newTeam: string) => handleTeamChange('B', newTeam);
 
   useEffect(() => {
     if (allPlayers.length > 0) {
-      if (!savedLineupsRef.current[teamA]) {
-        const defA = generateDefaultLineup(teamA, allPlayers);
+      const curA = latestTeamARef.current;
+      const curB = latestTeamBRef.current;
+      const savedA = savedLineupsRef.current[curA];
+      if (!savedA || (!savedA.starters.some(Boolean) && savedA.bench.length === 0)) {
+        const defA = generateDefaultLineup(curA, allPlayers);
         setStartersA(defA.starters);
         setBenchA(defA.bench);
       }
-      if (!savedLineupsRef.current[teamB]) {
-        const defB = generateDefaultLineup(teamB, allPlayers);
+      const savedB = savedLineupsRef.current[curB];
+      if (!savedB || (!savedB.starters.some(Boolean) && savedB.bench.length === 0)) {
+        const defB = generateDefaultLineup(curB, allPlayers);
         setStartersB(defB.starters);
         setBenchB(defB.bench);
       }
     }
   }, [allPlayers]);
 
-  // 一鍵精準帶入上一場真實先發名單
+  // 一鍵精準帶入上一場真實先發名單（含請求競態隔離與 TPBL 洋將/去重校驗）
   const handleLoadLastGameRoster = async (side: 'A' | 'B') => {
-    const targetTeam = side === 'A' ? teamA : teamB;
+    const targetTeam = side === 'A' ? latestTeamARef.current : latestTeamBRef.current;
+    const reqId = ++rosterReqSeqRef.current[side];
     try {
       const res = await fetch(`${API_BASE}/api/teams/last-lineup?team=${encodeURIComponent(targetTeam)}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.starters && data.starters.length === 5) {
-          const teamPool = allPlayers.filter((p) => p.team_name.includes(targetTeam) || targetTeam.includes(p.team_name));
+        const currentTeam = side === 'A' ? latestTeamARef.current : latestTeamBRef.current;
+        if (reqId !== rosterReqSeqRef.current[side] || currentTeam !== targetTeam) {
+          return;
+        }
 
-          const newStarters = data.starters.map((name: string) => {
-            return teamPool.find((p) => p.player_name.trim() === name.trim()) || null;
+        if (Array.isArray(data.starters) && data.starters.length === 5) {
+          const teamPool = allPlayers.filter((p) => isSameTeam(p.team_name, targetTeam));
+          const seenNames = new Set<string>();
+          let startersForeign = 0;
+          let totalForeign = 0;
+
+          const newStarters: (Player | null)[] = data.starters.map((name: string) => {
+            const found = teamPool.find((p) => p.player_name.trim() === String(name).trim());
+            if (!found || seenNames.has(found.player_name)) return null;
+            if (found.identity === '洋將' && (startersForeign >= 2 || totalForeign >= 3)) return null;
+            seenNames.add(found.player_name);
+            if (found.identity === '洋將') {
+              startersForeign++;
+              totalForeign++;
+            }
+            return found;
           });
 
-          const newBench = (data.bench || [])
-            .map((name: string) => teamPool.find((p) => p.player_name.trim() === name.trim()))
-            .filter(Boolean) as Player[];
+          const newBench: Player[] = [];
+          for (const name of data.bench || []) {
+            if (newBench.length >= MAX_BENCH_COUNT) break;
+            const found = teamPool.find((p) => p.player_name.trim() === String(name).trim());
+            if (!found || seenNames.has(found.player_name)) continue;
+            if (found.identity === '洋將' && totalForeign >= 3) continue;
+            seenNames.add(found.player_name);
+            if (found.identity === '洋將') totalForeign++;
+            newBench.push(found);
+          }
 
           if (side === 'A') {
             setStartersA(newStarters);
@@ -291,10 +389,14 @@ export default function MatchupPage() {
       console.warn('API 呼叫失敗，請確保後端已重啟', e);
     }
 
-    alert(`未能抓取到【${targetTeam}】上一場的先發標記，請確認後端 routes.py 是否已更新。`);
+    const currentTeam = side === 'A' ? latestTeamARef.current : latestTeamBRef.current;
+    if (reqId === rosterReqSeqRef.current[side] && currentTeam === targetTeam) {
+      alert(`未能抓取到【${targetTeam}】上一場的先發標記，請確認後端 routes.py 是否已更新。`);
+    }
   };
 
   const handleResetLineup = (side: 'A' | 'B') => {
+    rosterReqSeqRef.current[side] += 1;
     const targetTeam = side === 'A' ? teamA : teamB;
     const def = generateDefaultLineup(targetTeam, allPlayers);
     if (side === 'A') {
@@ -306,28 +408,24 @@ export default function MatchupPage() {
     }
   };
 
-  // 彈窗候選池（更換先發時開放板凳球員與未登錄球員供對調）
+  // 彈窗候選池（更換先發時排除所有現任先發避免自我複製，僅開放板凳與未登錄球員）
   const availablePool = useMemo(() => {
     if (!activePicker) return [];
-    const { side, type, starterIndex } = activePicker;
+    const { side, type } = activePicker;
     const targetTeam = side === 'A' ? teamA : teamB;
     const currentStarters = side === 'A' ? startersA : startersB;
     const currentBench = side === 'A' ? benchA : benchB;
 
-    const teamAll = allPlayers.filter(
-      (p) => p.team_name.includes(targetTeam) || targetTeam.includes(p.team_name)
+    const teamAll = allPlayers.filter((p) => isSameTeam(p.team_name, targetTeam));
+    const starterNames = new Set(
+      currentStarters.filter(Boolean).map((p) => p!.player_name)
     );
 
     if (type === 'starter') {
-      const otherStarterNames = new Set(
-        currentStarters
-          .filter((p, idx) => idx !== starterIndex && p !== null)
-          .map((p) => p!.player_name)
-      );
-      return teamAll.filter((p) => !otherStarterNames.has(p.player_name));
+      return teamAll.filter((p) => !starterNames.has(p.player_name));
     } else {
       const allSelectedNames = new Set([
-        ...currentStarters.filter(Boolean).map((p) => p!.player_name),
+        ...Array.from(starterNames),
         ...currentBench.map((p) => p.player_name),
       ]);
       return teamAll.filter((p) => !allSelectedNames.has(p.player_name));
@@ -526,9 +624,15 @@ export default function MatchupPage() {
     };
   }, [aggA, aggB]);
 
-  // 選人與名額驗證
+  useEffect(() => {
+    isSelectingRef.current = false;
+  }, [activePicker]);
+
+  // 選人與名額驗證（含防連擊鎖與嚴格 TPBL 洋將邊界）
   const handleSelectPlayer = (player: Player) => {
-    if (!activePicker) return;
+    if (!activePicker || isSelectingRef.current) return;
+    isSelectingRef.current = true;
+
     const { side, type, starterIndex } = activePicker;
     const isForeign = player.identity === '洋將';
 
@@ -537,21 +641,31 @@ export default function MatchupPage() {
     const foreignStats = side === 'A' ? foreignStatsA : foreignStatsB;
 
     if (type === 'starter' && starterIndex !== undefined) {
-      const currentTarget = currentStarters[starterIndex];
-      const willReplaceForeign = currentTarget?.identity === '洋將';
-      const isFromBench = currentBench.some((p) => p.player_name === player.player_name);
+      if (currentStarters.some((p) => p?.player_name === player.player_name)) {
+        setActivePicker(null);
+        return;
+      }
 
-      const nextStartersForeign = foreignStats.starters - (willReplaceForeign ? 1 : 0) + (isForeign ? 1 : 0);
+      const { nextStartersForeign, nextTotalForeign } = calcNextForeignCounts(
+        currentStarters,
+        currentBench,
+        starterIndex,
+        player
+      );
+
       if (nextStartersForeign > 2) {
+        isSelectingRef.current = false;
         alert('【違規限制】場上先發洋將不得超過 2 名！');
         return;
       }
 
-      if (!isFromBench && isForeign && !willReplaceForeign && foreignStats.total >= 3) {
+      if (nextTotalForeign > 3) {
+        isSelectingRef.current = false;
         alert('【違規限制】14人登錄名單洋將總計不得超過 3 名！');
         return;
       }
 
+      const currentTarget = currentStarters[starterIndex];
       const benchIdx = currentBench.findIndex((p) => p.player_name === player.player_name);
       if (benchIdx !== -1) {
         if (currentTarget) {
@@ -573,7 +687,16 @@ export default function MatchupPage() {
         setBenchB(currentBench);
       }
     } else if (type === 'bench') {
+      const alreadySelected =
+        currentStarters.some((p) => p?.player_name === player.player_name) ||
+        currentBench.some((p) => p.player_name === player.player_name);
+      if (alreadySelected) {
+        setActivePicker(null);
+        return;
+      }
+
       if (isForeign && foreignStats.total >= 3) {
+        isSelectingRef.current = false;
         alert('【違規限制】14人登錄名單洋將總計不得超過 3 名！');
         return;
       }
@@ -618,22 +741,16 @@ export default function MatchupPage() {
     const currentBench = side === 'A' ? benchA : benchB;
     const foreignStats = side === 'A' ? foreignStatsA : foreignStatsB;
 
-    if (type === 'starter') {
-      const currentTarget = starterIndex !== undefined ? currentStarters[starterIndex] : null;
-      const willReplaceForeign = currentTarget?.identity === '洋將';
-      const isFromBench = currentBench.some((bp) => bp.player_name === p.player_name);
-
-      const nextStartersForeign = foreignStats.starters - (willReplaceForeign ? 1 : 0) + 1;
-      if (nextStartersForeign > 2) return true;
-
-      if (!isFromBench && !willReplaceForeign && foreignStats.total >= 3) {
-        return true;
-      }
-
-      return false;
-    } else {
-      return foreignStats.total >= 3;
+    if (type === 'starter' && starterIndex !== undefined) {
+      const { nextStartersForeign, nextTotalForeign } = calcNextForeignCounts(
+        currentStarters,
+        currentBench,
+        starterIndex,
+        p
+      );
+      return nextStartersForeign > 2 || nextTotalForeign > 3;
     }
+    return foreignStats.total >= 3;
   };
 
   return (
@@ -774,53 +891,27 @@ export default function MatchupPage() {
 
           {/* 頂部四維數據直接呈現 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-[#21262D]">
-            <div className="bg-[#0E1117] p-2.5 rounded-lg border border-[#21262D]">
-              <div className="text-[11px] text-gray-400 font-medium">投籃效率 (eFG%)</div>
-              <div className="flex justify-between text-xs font-mono font-bold mt-1">
-                <span className="text-[#FF9100]">{aggA.efg}%</span>
-                <span className="text-[#2979FF]">{aggB.efg}%</span>
-              </div>
-              <div className="w-full h-1.5 bg-[#21262D] rounded-full overflow-hidden flex mt-1">
-                <div style={{ width: `${(aggA.efg / Math.max(1, aggA.efg + aggB.efg)) * 100}%` }} className="bg-[#FF9100]"></div>
-                <div style={{ width: `${(aggB.efg / Math.max(1, aggA.efg + aggB.efg)) * 100}%` }} className="bg-[#2979FF]"></div>
-              </div>
-            </div>
-
-            <div className="bg-[#0E1117] p-2.5 rounded-lg border border-[#21262D]">
-              <div className="text-[11px] text-gray-400 font-medium">全隊籃板 (14人整場)</div>
-              <div className="flex justify-between text-xs font-mono font-bold mt-1">
-                <span className="text-[#FF9100]">{aggA.totalReb}</span>
-                <span className="text-[#2979FF]">{aggB.totalReb}</span>
-              </div>
-              <div className="w-full h-1.5 bg-[#21262D] rounded-full overflow-hidden flex mt-1">
-                <div style={{ width: `${(aggA.totalReb / Math.max(1, aggA.totalReb + aggB.totalReb)) * 100}%` }} className="bg-[#FF9100]"></div>
-                <div style={{ width: `${(aggB.totalReb / Math.max(1, aggA.totalReb + aggB.totalReb)) * 100}%` }} className="bg-[#2979FF]"></div>
-              </div>
-            </div>
-
-            <div className="bg-[#0E1117] p-2.5 rounded-lg border border-[#21262D]">
-              <div className="text-[11px] text-gray-400 font-medium">全隊助攻 (14人整場)</div>
-              <div className="flex justify-between text-xs font-mono font-bold mt-1">
-                <span className="text-[#FF9100]">{aggA.totalAst}</span>
-                <span className="text-[#2979FF]">{aggB.totalAst}</span>
-              </div>
-              <div className="w-full h-1.5 bg-[#21262D] rounded-full overflow-hidden flex mt-1">
-                <div style={{ width: `${(aggA.totalAst / Math.max(1, aggA.totalAst + aggB.totalAst)) * 100}%` }} className="bg-[#FF9100]"></div>
-                <div style={{ width: `${(aggB.totalAst / Math.max(1, aggA.totalAst + aggB.totalAst)) * 100}%` }} className="bg-[#2979FF]"></div>
-              </div>
-            </div>
-
-            <div className="bg-[#0E1117] p-2.5 rounded-lg border border-[#21262D]">
-              <div className="text-[11px] text-gray-400 font-medium">防守壓迫 (STL+BLK)</div>
-              <div className="flex justify-between text-xs font-mono font-bold mt-1">
-                <span className="text-[#FF9100]">{aggA.totalStocks}</span>
-                <span className="text-[#2979FF]">{aggB.totalStocks}</span>
-              </div>
-              <div className="w-full h-1.5 bg-[#21262D] rounded-full overflow-hidden flex mt-1">
-                <div style={{ width: `${(aggA.totalStocks / Math.max(1, aggA.totalStocks + aggB.totalStocks)) * 100}%` }} className="bg-[#FF9100]"></div>
-                <div style={{ width: `${(aggB.totalStocks / Math.max(1, aggA.totalStocks + aggB.totalStocks)) * 100}%` }} className="bg-[#2979FF]"></div>
-              </div>
-            </div>
+            {[
+              { label: '投籃效率 (eFG%)', valA: aggA.efg, valB: aggB.efg, suffix: '%' },
+              { label: '全隊籃板 (14人整場)', valA: aggA.totalReb, valB: aggB.totalReb, suffix: '' },
+              { label: '全隊助攻 (14人整場)', valA: aggA.totalAst, valB: aggB.totalAst, suffix: '' },
+              { label: '防守壓迫 (STL+BLK)', valA: aggA.totalStocks, valB: aggB.totalStocks, suffix: '' },
+            ].map((item) => {
+              const [widthA, widthB] = calcDualBarWidths(item.valA, item.valB);
+              return (
+                <div key={item.label} className="bg-[#0E1117] p-2.5 rounded-lg border border-[#21262D]">
+                  <div className="text-[11px] text-gray-400 font-medium">{item.label}</div>
+                  <div className="flex justify-between text-xs font-mono font-bold mt-1">
+                    <span className="text-[#FF9100]">{item.valA}{item.suffix}</span>
+                    <span className="text-[#2979FF]">{item.valB}{item.suffix}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-[#21262D] rounded-full overflow-hidden flex mt-1">
+                    <div style={{ width: `${widthA}%` }} className="bg-[#FF9100]"></div>
+                    <div style={{ width: `${widthB}%` }} className="bg-[#2979FF]"></div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

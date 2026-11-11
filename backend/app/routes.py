@@ -1,14 +1,16 @@
 import os
 import re
 import json
-from datetime import timedelta, time
+import math
+from contextlib import contextmanager
+from datetime import datetime, timedelta, time
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 import openpyxl
 
-from app.database import get_db_connection
+from app.database import get_db_connection, db_session
 
 router = APIRouter(prefix="/api", tags=["TPBL Analytics API"])
 
@@ -67,70 +69,125 @@ def get_team_search_keywords(raw_team_name: str) -> List[str]:
     return [cleaned, short_fallback]
 
 
+INVALID_TOKENS = {
+    "", "—", "-", "–", "−", "none", "nan", "null", "n/a",
+    "#n/a", "#div/0!", "#value!", "dnp", "na", "inf", "-inf", "+inf",
+}
+
+
+@contextmanager
+def open_workbook(path: Path):
+    """安全開啟 openpyxl Workbook 並確保於 finally 關閉句柄"""
+    wb = openpyxl.load_workbook(path, data_only=True)
+    try:
+        yield wb
+    finally:
+        wb.close()
+
+
+def _is_skip_player_row(p_name: str) -> bool:
+    """精確判定總計列、空列與 DNP 佔位列，避免子字串 'nan' 誤殺正常球員姓氏"""
+    s = str(p_name or "").strip()
+    if not s or s.lower() in {"none", "nan", "dnp", "total", "null"}:
+        return True
+    return any(k in s for k in ("總計", "合計", "全隊", "平均", "球員名稱", "球員名"))
+
+
 def parse_time_to_seconds(val, default_sec: int = 0) -> int:
-    """穩健時間轉換器 (支援 timedelta, time, '1 day, 4:12:00', '15:30')"""
-    if val is None:
+    """穩健時間轉換器 (支援 timedelta, datetime, time, '1 day, 4:12:00', '15:30', NaN/Inf 防護)"""
+    if val is None or isinstance(val, bool):
         return default_sec
     if isinstance(val, (int, float)):
+        if not math.isfinite(val) or val < 0:
+            return default_sec
         if 0 < val <= 60:
-            return int(val * 60)
-        return int(val)
+            return int(round(val * 60))
+        return int(round(val))
     if isinstance(val, timedelta):
-        return int(val.total_seconds())
+        return max(0, int(round(val.total_seconds())))
+    if isinstance(val, datetime):
+        if val.year in (1899, 1900):
+            base = datetime(1899, 12, 30) if val.year == 1899 else datetime(1900, 1, 1)
+            extra = 86400 if val.year == 1900 else 0
+            return max(0, int(round((val - base).total_seconds())) + extra)
+        return val.hour * 3600 + val.minute * 60 + val.second
     if isinstance(val, time):
         return val.hour * 3600 + val.minute * 60 + val.second
 
     s = str(val).strip()
-    if not s or s in ["—", "-", "None", "nan", "0", "00:00"]:
+    if s.lower() in INVALID_TOKENS or s in {"0", "00:00"}:
         return default_sec
 
-    if "day" in s:
-        s = s.split(",")[-1].strip()
+    extra_days = 0
+    day_match = re.match(r"^(-?\d+)\s*days?,?\s*(.+)$", s, re.IGNORECASE)
+    if day_match:
+        extra_days = int(day_match.group(1))
+        if extra_days < 0:
+            return default_sec
+        s = day_match.group(2).strip()
 
     if ":" in s:
         parts = s.split(":")
         try:
             if len(parts) == 3:
-                return int(float(parts[0])) * 3600 + int(float(parts[1])) * 60 + int(float(parts[2]))
+                return max(0, extra_days * 86400 + int(float(parts[0])) * 3600 + int(float(parts[1])) * 60 + int(float(parts[2])))
             elif len(parts) == 2:
-                return int(float(parts[0])) * 60 + int(float(parts[1]))
+                return max(0, extra_days * 86400 + int(float(parts[0])) * 60 + int(float(parts[1])))
         except Exception:
             return default_sec
 
     try:
         f_val = float(s)
+        if not math.isfinite(f_val) or f_val < 0:
+            return default_sec
         if 0 < f_val <= 60:
-            return int(f_val * 60)
-        return int(f_val)
+            return int(round(f_val * 60))
+        return int(round(f_val))
     except Exception:
         return default_sec
 
 
-def clean_val_num(val, default=0.0):
-    if val is None or str(val).strip() in ["—", "-", "None", "", "nan"]:
+def clean_val_num(val, default: float = 0.0) -> float:
+    if val is None or isinstance(val, bool):
         return default
     if isinstance(val, (int, float)):
-        return float(val)
-    if isinstance(val, (timedelta, time)):
+        return float(val) if math.isfinite(val) else default
+    if isinstance(val, (datetime, timedelta, time)):
         sec = parse_time_to_seconds(val)
         return round(sec / 60.0, 1)
 
-    s = str(val).replace("%", "").strip()
+    s = str(val).strip().replace("%", "").replace(",", "")
+    s = s.replace("−", "-").replace("–", "-")
+    if s.lower() in INVALID_TOKENS:
+        return default
+    if s.startswith("(") and s.endswith(")"):
+        s = "-" + s[1:-1].strip()
     try:
-        return float(s)
+        f_val = float(s)
+        return f_val if math.isfinite(f_val) else default
     except Exception:
-        if ":" in s or "day" in s:
+        if ":" in s or "day" in s.lower():
             sec = parse_time_to_seconds(s)
             return round(sec / 60.0, 1)
         return default
+
+
+def normalize_pct(val: Any, default: float = 0.0, scale_to_100: bool = True) -> float:
+    """統一百分比量綱：支援小數 (0.548) 與百分比 (54.8)，並濾除 NaN/Inf"""
+    num = clean_val_num(val, default)
+    if not math.isfinite(num):
+        return default
+    if scale_to_100:
+        return round(num * 100.0 if (0.0 < num <= 1.0) else num, 1)
+    return round(num / 100.0 if num > 1.5 else num, 3)
 
 
 # =====================================================================
 # 象限判定核心：自動相容小數 (0.548) 與百分比 (54.8)
 # =====================================================================
 def get_quadrant(usg_pct: float, ts_pct: float):
-    real_ts = ts_pct * 100.0 if (0 < ts_pct <= 1.0) else ts_pct
-    real_usg = usg_pct * 100.0 if (0 < usg_pct <= 1.0) else usg_pct
+    real_ts = normalize_pct(ts_pct, 0.0, scale_to_100=True)
+    real_usg = normalize_pct(usg_pct, 0.0, scale_to_100=True)
 
     if real_usg >= 20.0 and real_ts >= 52.0:
         return "Q1", "第一象限：高球權・高效率 (核心進攻支柱)"
@@ -233,184 +290,184 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
         return [], [], [], []
 
     try:
-        wb = openpyxl.load_workbook(excel_path, data_only=True)
+        with open_workbook(excel_path) as wb:
+            target_ws = None
+            alias_codes = [game_code.upper()]
+            for off_id, g_alias in OFFICIAL_ID_MAP.items():
+                if g_alias == game_code.upper():
+                    alias_codes.append(off_id)
+
+            for sname in wb.sheetnames:
+                if any(code in sname.upper() for code in alias_codes):
+                    target_ws = wb[sname]
+                    break
+
+            if not target_ws:
+                return [], [], [], []
+
+            h_row = None
+            for r in range(1, 8):
+                c2 = str(target_ws.cell(row=r, column=2).value or "").strip()
+                if c2 in ["球員名", "球員"]:
+                    h_row = r
+                    break
+
+            players_box = []
+            if h_row:
+                for r in range(h_row + 1, (target_ws.max_row or h_row) + 1):
+                    p_name = str(target_ws.cell(row=r, column=2).value or "").strip()
+                    if _is_skip_player_row(p_name):
+                        continue
+                    clean_name = p_name.split(" ")[0].split("(")[0].strip()
+                    raw_time = target_ws.cell(row=r, column=7).value
+                    sec = parse_time_to_seconds(raw_time, default_sec=0)
+                    if sec <= 0:
+                        continue
+
+                    pts = int(round(clean_val_num(target_ws.cell(row=r, column=8).value, 0)))
+                    fgm = int(round(clean_val_num(target_ws.cell(row=r, column=9).value, 0)))
+                    fga = int(round(clean_val_num(target_ws.cell(row=r, column=10).value, 0)))
+                    p3m = int(round(clean_val_num(target_ws.cell(row=r, column=15).value, 0)))
+                    p3a = int(round(clean_val_num(target_ws.cell(row=r, column=16).value, 0)))
+                    ftm = int(round(clean_val_num(target_ws.cell(row=r, column=18).value, 0)))
+                    fta = int(round(clean_val_num(target_ws.cell(row=r, column=19).value, 0)))
+                    orb = int(round(clean_val_num(target_ws.cell(row=r, column=21).value, 0)))
+                    drb = int(round(clean_val_num(target_ws.cell(row=r, column=22).value, 0)))
+                    reb = int(round(clean_val_num(target_ws.cell(row=r, column=23).value, 0)))
+                    ast = int(round(clean_val_num(target_ws.cell(row=r, column=24).value, 0)))
+                    stl = int(round(clean_val_num(target_ws.cell(row=r, column=25).value, 0)))
+                    blk = int(round(clean_val_num(target_ws.cell(row=r, column=26).value, 0)))
+                    tov = int(round(clean_val_num(target_ws.cell(row=r, column=27).value, 0)))
+                    pf = int(round(clean_val_num(target_ws.cell(row=r, column=28).value, 0)))
+                    pm = int(round(clean_val_num(target_ws.cell(row=r, column=30).value, 0)))
+
+                    efg_val = normalize_pct(target_ws.cell(row=r, column=31).value, 0.0, scale_to_100=True)
+                    ts_val = normalize_pct(target_ws.cell(row=r, column=32).value, 0.0, scale_to_100=True)
+                    reb_contrib = (0.7 * orb + 0.3 * drb) if (orb > 0 or drb > 0 or reb == 0) else (0.4 * reb)
+                    gmsc_val = round(
+                        pts + 0.4 * fgm - 0.7 * fga - 0.4 * max(0, fta - ftm)
+                        + reb_contrib + stl + 0.7 * ast + 0.7 * blk - 0.4 * pf - tov,
+                        1,
+                    )
+
+                    p_ortg = round(105.0 + (gmsc_val - 10.0) * 0.8, 1)
+                    p_drtg = round(105.0 - (stl + blk) * 2.0, 1)
+                    p_netrtg = round(p_ortg - p_drtg, 1)
+                    minutes_formatted = f"{sec // 60:02d}:{sec % 60:02d}"
+
+                    players_box.append({
+                        "jersey_number": str(target_ws.cell(row=r, column=1).value or "").replace(".0", ""),
+                        "player_name": clean_name,
+                        "position": str(target_ws.cell(row=r, column=4).value or ""),
+                        "identity": str(target_ws.cell(row=r, column=3).value or "本土"),
+                        "minutes": minutes_formatted,
+                        "seconds": sec,
+                        "pts": pts,
+                        "fgm": fgm,
+                        "fga": fga,
+                        "fg_pct": normalize_pct(target_ws.cell(row=r, column=11).value, 0.0, scale_to_100=True),
+                        "tpm": p3m,
+                        "tpa": p3a,
+                        "tp_pct": normalize_pct(target_ws.cell(row=r, column=17).value, 0.0, scale_to_100=True),
+                        "ftm": ftm,
+                        "fta": fta,
+                        "ft_pct": normalize_pct(target_ws.cell(row=r, column=20).value, 0.0, scale_to_100=True),
+                        "orb": orb,
+                        "drb": drb,
+                        "reb": reb,
+                        "ast": ast,
+                        "stl": stl,
+                        "blk": blk,
+                        "tov": tov,
+                        "pf": pf,
+                        "plus_minus": pm,
+                        "efg_pct": efg_val,
+                        "ts_pct": ts_val,
+                        "usg_pct": 20.0,
+                        "gmsc": gmsc_val,
+                        "ortg": p_ortg,
+                        "drtg": p_drtg,
+                        "netrtg": p_netrtg,
+                    })
+
+            on_off_players = []
+            for r in range(5, 25):
+                name = str(target_ws.cell(row=r, column=37).value or "").strip()
+                raw_t = target_ws.cell(row=r, column=38).value
+                if not name or name.lower() in ["none", "nan"] or name == "球員名":
+                    continue
+
+                sec_on = parse_time_to_seconds(raw_t, default_sec=0)
+                minutes_formatted = f"{sec_on // 60:02d}:{sec_on % 60:02d}"
+
+                on_off_players.append({
+                    "player_name": name,
+                    "minutes_on": minutes_formatted,
+                    "seconds_on": sec_on,
+                    "on_ortg": clean_val_num(target_ws.cell(row=r, column=39).value, 0.0),
+                    "on_drtg": clean_val_num(target_ws.cell(row=r, column=40).value, 0.0),
+                    "on_netrtg": clean_val_num(target_ws.cell(row=r, column=41).value, 0.0),
+                    "off_netrtg": clean_val_num(target_ws.cell(row=r, column=42).value, 0.0),
+                    "diff_netrtg": clean_val_num(target_ws.cell(row=r, column=43).value, 0.0),
+                })
+
+            real_lineups = []
+            real_pairs = []
+
+            lineup_title_row, lineup_col = None, None
+            for r in range(1, 45):
+                for c in range(1, 60):
+                    val = str(target_ws.cell(row=r, column=c).value or "").strip()
+                    if "單場最佳陣容與搭檔效益" in val or "陣容組合 / 搭檔" in val or "陣容組合/搭檔" in val:
+                        lineup_title_row, lineup_col = r, c
+                        break
+                if lineup_title_row is not None:
+                    break
+
+            if lineup_title_row is not None and lineup_col is not None:
+                curr_section = "lineups"
+                for r in range(lineup_title_row + 1, lineup_title_row + 25):
+                    val_col1 = str(target_ws.cell(row=r, column=lineup_col).value or "").strip()
+                    if not val_col1 or val_col1.lower() in ["none", "nan"]:
+                        continue
+                    if "陣容組合" in val_col1:
+                        continue
+                    if "核心搭檔" in val_col1 or "Key Pairs" in val_col1:
+                        curr_section = "pairs"
+                        continue
+
+                    raw_time = target_ws.cell(row=r, column=lineup_col + 1).value
+                    sec = parse_time_to_seconds(raw_time, default_sec=0)
+                    mins_str = f"{sec // 60:02d}:{sec % 60:02d}"
+
+                    pm = int(round(clean_val_num(target_ws.cell(row=r, column=lineup_col + 2).value, 0)))
+                    ortg = clean_val_num(target_ws.cell(row=r, column=lineup_col + 3).value, 0.0)
+                    drtg = clean_val_num(target_ws.cell(row=r, column=lineup_col + 4).value, 0.0)
+                    netrtg = clean_val_num(target_ws.cell(row=r, column=lineup_col + 5).value, 0.0)
+
+                    display_name = val_col1.replace("-", " / ") if curr_section == "lineups" else val_col1
+
+                    item = {
+                        "id": r,
+                        "lineup_name": display_name,
+                        "minutes": mins_str,
+                        "plus_minus": pm,
+                        "ortg": ortg,
+                        "drtg": drtg,
+                        "netrtg": netrtg,
+                        "lineup_ortg": ortg,
+                        "lineup_drtg": drtg,
+                        "lineup_netrtg": netrtg,
+                    }
+
+                    if curr_section == "lineups":
+                        real_lineups.append(item)
+                    else:
+                        real_pairs.append(item)
+
+            return players_box, on_off_players, real_lineups, real_pairs
     except Exception:
         return [], [], [], []
-
-    target_ws = None
-    alias_codes = [game_code.upper()]
-    for off_id, g_alias in OFFICIAL_ID_MAP.items():
-        if g_alias == game_code.upper():
-            alias_codes.append(off_id)
-
-    for sname in wb.sheetnames:
-        if any(code in sname.upper() for code in alias_codes):
-            target_ws = wb[sname]
-            break
-
-    if not target_ws:
-        return [], [], [], []
-
-    h_row = None
-    for r in range(1, 8):
-        c2 = str(target_ws.cell(row=r, column=2).value or "").strip()
-        if c2 in ["球員名", "球員"]:
-            h_row = r
-            break
-
-    players_box = []
-    if h_row:
-        for r in range(h_row + 1, target_ws.max_row + 1):
-            p_name = str(target_ws.cell(row=r, column=2).value or "").strip()
-            if not p_name or any(k in p_name for k in ["總計", "合計", "DNP", "None", "nan"]):
-                continue
-            clean_name = p_name.split(" ")[0].split("(")[0].strip()
-            raw_time = target_ws.cell(row=r, column=7).value
-            time_str = str(raw_time or "00:00").strip()
-            if time_str in ["00:00", "0", "—", "-", "nan"]:
-                continue
-
-            sec = parse_time_to_seconds(raw_time, default_sec=0)
-            if sec == 0:
-                continue
-
-            pts = int(clean_val_num(target_ws.cell(row=r, column=8).value, 0))
-            fgm = int(clean_val_num(target_ws.cell(row=r, column=9).value, 0))
-            fga = int(clean_val_num(target_ws.cell(row=r, column=10).value, 0))
-            p3m = int(clean_val_num(target_ws.cell(row=r, column=15).value, 0))
-            p3a = int(clean_val_num(target_ws.cell(row=r, column=16).value, 0))
-            ftm = int(clean_val_num(target_ws.cell(row=r, column=18).value, 0))
-            fta = int(clean_val_num(target_ws.cell(row=r, column=19).value, 0))
-            orb = int(clean_val_num(target_ws.cell(row=r, column=21).value, 0))
-            drb = int(clean_val_num(target_ws.cell(row=r, column=22).value, 0))
-            reb = int(clean_val_num(target_ws.cell(row=r, column=23).value, 0))
-            ast = int(clean_val_num(target_ws.cell(row=r, column=24).value, 0))
-            stl = int(clean_val_num(target_ws.cell(row=r, column=25).value, 0))
-            blk = int(clean_val_num(target_ws.cell(row=r, column=26).value, 0))
-            tov = int(clean_val_num(target_ws.cell(row=r, column=27).value, 0))
-            pf = int(clean_val_num(target_ws.cell(row=r, column=28).value, 0))
-            pm = int(clean_val_num(target_ws.cell(row=r, column=30).value, 0))
-
-            efg_val = clean_val_num(target_ws.cell(row=r, column=31).value, 0.0)
-            ts_val = clean_val_num(target_ws.cell(row=r, column=32).value, 0.0)
-            gmsc_val = round(pts + 0.4 * fgm - 0.7 * fga - 0.4 * (fta - ftm) + 0.7 * reb + stl + 0.7 * ast + 0.7 * blk - 0.4 * pf - tov, 1)
-
-            p_ortg = round(105.0 + (gmsc_val - 10.0) * 0.8, 1)
-            p_drtg = round(105.0 - (stl + blk) * 2.0, 1)
-            p_netrtg = round(p_ortg - p_drtg, 1)
-            minutes_formatted = f"{sec // 60:02d}:{sec % 60:02d}"
-
-            players_box.append({
-                "jersey_number": str(target_ws.cell(row=r, column=1).value or "").replace(".0", ""),
-                "player_name": clean_name,
-                "position": str(target_ws.cell(row=r, column=4).value or ""),
-                "identity": str(target_ws.cell(row=r, column=3).value or "本土"),
-                "minutes": minutes_formatted,
-                "seconds": sec,
-                "pts": pts,
-                "fgm": fgm,
-                "fga": fga,
-                "fg_pct": clean_val_num(target_ws.cell(row=r, column=11).value, 0.0),
-                "tpm": p3m,
-                "tpa": p3a,
-                "tp_pct": clean_val_num(target_ws.cell(row=r, column=17).value, 0.0),
-                "ftm": ftm,
-                "fta": fta,
-                "ft_pct": clean_val_num(target_ws.cell(row=r, column=20).value, 0.0),
-                "orb": orb,
-                "drb": drb,
-                "reb": reb,
-                "ast": ast,
-                "stl": stl,
-                "blk": blk,
-                "tov": tov,
-                "pf": pf,
-                "plus_minus": pm,
-                "efg_pct": efg_val,
-                "ts_pct": ts_val,
-                "usg_pct": 20.0,
-                "gmsc": gmsc_val,
-                "ortg": p_ortg,
-                "drtg": p_drtg,
-                "netrtg": p_netrtg,
-            })
-
-    on_off_players = []
-    for r in range(5, 25):
-        name = str(target_ws.cell(row=r, column=37).value or "").strip()
-        raw_t = target_ws.cell(row=r, column=38).value
-        if not name or name in ["None", "nan", "球員名"]:
-            continue
-
-        sec_on = parse_time_to_seconds(raw_t, default_sec=0)
-        minutes_formatted = f"{sec_on // 60:02d}:{sec_on % 60:02d}"
-
-        on_off_players.append({
-            "player_name": name,
-            "minutes_on": minutes_formatted,
-            "seconds_on": sec_on,
-            "on_ortg": clean_val_num(target_ws.cell(row=r, column=39).value, 0.0),
-            "on_drtg": clean_val_num(target_ws.cell(row=r, column=40).value, 0.0),
-            "on_netrtg": clean_val_num(target_ws.cell(row=r, column=41).value, 0.0),
-            "off_netrtg": clean_val_num(target_ws.cell(row=r, column=42).value, 0.0),
-            "diff_netrtg": clean_val_num(target_ws.cell(row=r, column=43).value, 0.0),
-        })
-
-    real_lineups = []
-    real_pairs = []
-
-    lineup_title_row, lineup_col = None, None
-    for r in range(1, 45):
-        for c in range(1, 60):
-            val = str(target_ws.cell(row=r, column=c).value or "").strip()
-            if "單場最佳陣容與搭檔效益" in val or "陣容組合 / 搭檔" in val or "陣容組合/搭檔" in val:
-                lineup_title_row, lineup_col = r, c
-                break
-        if lineup_title_row is not None:
-            break
-
-    if lineup_title_row is not None and lineup_col is not None:
-        curr_section = "lineups"
-        for r in range(lineup_title_row + 1, lineup_title_row + 25):
-            val_col1 = str(target_ws.cell(row=r, column=lineup_col).value or "").strip()
-            if not val_col1 or val_col1 in ["None", "nan"]:
-                continue
-            if "陣容組合" in val_col1:
-                continue
-            if "核心搭檔" in val_col1 or "Key Pairs" in val_col1:
-                curr_section = "pairs"
-                continue
-
-            raw_time = target_ws.cell(row=r, column=lineup_col + 1).value
-            sec = parse_time_to_seconds(raw_time, default_sec=0)
-            mins_str = f"{sec // 60:02d}:{sec % 60:02d}" if sec > 0 else str(raw_time or "00:00").strip()
-
-            pm = int(clean_val_num(target_ws.cell(row=r, column=lineup_col + 2).value, 0))
-            ortg = clean_val_num(target_ws.cell(row=r, column=lineup_col + 3).value, 0.0)
-            drtg = clean_val_num(target_ws.cell(row=r, column=lineup_col + 4).value, 0.0)
-            netrtg = clean_val_num(target_ws.cell(row=r, column=lineup_col + 5).value, 0.0)
-
-            display_name = val_col1.replace("-", " / ") if curr_section == "lineups" else val_col1
-
-            item = {
-                "id": r,
-                "lineup_name": display_name,
-                "minutes": mins_str,
-                "plus_minus": pm,
-                "ortg": ortg,
-                "drtg": drtg,
-                "netrtg": netrtg,
-                "lineup_ortg": ortg,
-                "lineup_drtg": drtg,
-                "lineup_netrtg": netrtg,
-            }
-
-            if curr_section == "lineups":
-                real_lineups.append(item)
-            else:
-                real_pairs.append(item)
-
-    return players_box, on_off_players, real_lineups, real_pairs
 
 
 def _parse_season_pbp_from_excel(excel_path: Path):
@@ -418,108 +475,107 @@ def _parse_season_pbp_from_excel(excel_path: Path):
         return [], []
 
     try:
-        wb = openpyxl.load_workbook(excel_path, data_only=True)
+        with open_workbook(excel_path) as wb:
+            if "平均數據" not in wb.sheetnames:
+                return [], []
+
+            ws = wb["平均數據"]
+            five_man_lineups = []
+            foreign_duos = []
+
+            col_5m = None
+            row_5m = None
+            for r in range(1, 10):
+                for c in range(35, 60):
+                    val = str(ws.cell(row=r, column=c).value or "")
+                    if "最佳五人" in val or "五人陣容" in val:
+                        row_5m, col_5m = r, c
+                        break
+                if row_5m:
+                    break
+
+            if row_5m and col_5m:
+                start_r = row_5m + 2 if "陣容" in str(ws.cell(row=row_5m + 1, column=col_5m).value or "") else row_5m + 1
+                for r in range(start_r, start_r + 15):
+                    name_val = str(ws.cell(row=r, column=col_5m).value or "").strip()
+                    if not name_val or name_val.lower() in ["none", "nan"] or name_val == "五人陣容組合":
+                        continue
+
+                    raw_time = ws.cell(row=r, column=col_5m + 1).value
+                    sec = parse_time_to_seconds(raw_time, default_sec=0)
+                    mins_str = f"{sec // 60:02d}:{sec % 60:02d}"
+
+                    pm = int(round(clean_val_num(ws.cell(row=r, column=col_5m + 2).value, 0)))
+                    ortg = clean_val_num(ws.cell(row=r, column=col_5m + 3).value, 0.0)
+                    drtg = clean_val_num(ws.cell(row=r, column=col_5m + 4).value, 0.0)
+                    netrtg = clean_val_num(ws.cell(row=r, column=col_5m + 5).value, 0.0)
+
+                    display_name = name_val.replace("-", " / ")
+
+                    five_man_lineups.append({
+                        "lineup_name": display_name,
+                        "name": display_name,
+                        "total_time": mins_str,
+                        "minutes": mins_str,
+                        "plus_minus": pm,
+                        "pm": pm,
+                        "ortg": ortg,
+                        "drtg": drtg,
+                        "netrtg": netrtg,
+                        "lineup_ortg": ortg,
+                        "lineup_drtg": drtg,
+                        "lineup_netrtg": netrtg,
+                    })
+
+            col_duo = None
+            row_duo = None
+            for r in range(1, 10):
+                for c in range(45, 65):
+                    val = str(ws.cell(row=r, column=c).value or "")
+                    if "雙洋將" in val:
+                        row_duo, col_duo = r, c
+                        break
+                if row_duo:
+                    break
+
+            if row_duo and col_duo:
+                start_r = row_duo + 2 if "搭檔" in str(ws.cell(row=row_duo + 1, column=col_duo).value or "") else row_duo + 1
+                for r in range(start_r, start_r + 15):
+                    name_val = str(ws.cell(row=r, column=col_duo).value or "").strip()
+                    if not name_val or name_val.lower() in ["none", "nan"] or name_val == "洋將搭檔組合":
+                        continue
+
+                    raw_time = ws.cell(row=r, column=col_duo + 1).value
+                    sec = parse_time_to_seconds(raw_time, default_sec=0)
+                    mins_str = f"{sec // 60:02d}:{sec % 60:02d}"
+
+                    pm = int(round(clean_val_num(ws.cell(row=r, column=col_duo + 2).value, 0)))
+                    ortg = clean_val_num(ws.cell(row=r, column=col_duo + 3).value, 0.0)
+                    drtg = clean_val_num(ws.cell(row=r, column=col_duo + 4).value, 0.0)
+                    netrtg = clean_val_num(ws.cell(row=r, column=col_duo + 5).value, 0.0)
+                    advice = str(ws.cell(row=r, column=col_duo + 6).value or "").strip()
+                    if advice.lower() in ["none", "nan"]:
+                        advice = ""
+
+                    foreign_duos.append({
+                        "duo_name": name_val,
+                        "name": name_val,
+                        "total_time": mins_str,
+                        "minutes": mins_str,
+                        "plus_minus": pm,
+                        "pm": pm,
+                        "ortg": ortg,
+                        "drtg": drtg,
+                        "netrtg": netrtg,
+                        "lineup_ortg": ortg,
+                        "lineup_drtg": drtg,
+                        "lineup_netrtg": netrtg,
+                        "features_and_advice": advice,
+                    })
+
+            return five_man_lineups, foreign_duos
     except Exception:
         return [], []
-
-    if "平均數據" not in wb.sheetnames:
-        return [], []
-
-    ws = wb["平均數據"]
-    five_man_lineups = []
-    foreign_duos = []
-
-    col_5m = None
-    row_5m = None
-    for r in range(1, 10):
-        for c in range(35, 60):
-            val = str(ws.cell(row=r, column=c).value or "")
-            if "最佳五人" in val or "五人陣容" in val:
-                row_5m, col_5m = r, c
-                break
-        if row_5m:
-            break
-
-    if row_5m and col_5m:
-        start_r = row_5m + 2 if "陣容" in str(ws.cell(row=row_5m + 1, column=col_5m).value or "") else row_5m + 1
-        for r in range(start_r, start_r + 15):
-            name_val = str(ws.cell(row=r, column=col_5m).value or "").strip()
-            if not name_val or name_val in ["None", "nan", "五人陣容組合"]:
-                continue
-
-            raw_time = ws.cell(row=r, column=col_5m + 1).value
-            sec = parse_time_to_seconds(raw_time, default_sec=0)
-            mins_str = f"{sec // 60:02d}:{sec % 60:02d}" if sec > 0 else str(raw_time or "00:00").strip()
-
-            pm = int(clean_val_num(ws.cell(row=r, column=col_5m + 2).value, 0))
-            ortg = clean_val_num(ws.cell(row=r, column=col_5m + 3).value, 0.0)
-            drtg = clean_val_num(ws.cell(row=r, column=col_5m + 4).value, 0.0)
-            netrtg = clean_val_num(ws.cell(row=r, column=col_5m + 5).value, 0.0)
-
-            display_name = name_val.replace("-", " / ")
-
-            five_man_lineups.append({
-                "lineup_name": display_name,
-                "name": display_name,
-                "total_time": mins_str,
-                "minutes": mins_str,
-                "plus_minus": pm,
-                "pm": pm,
-                "ortg": ortg,
-                "drtg": drtg,
-                "netrtg": netrtg,
-                "lineup_ortg": ortg,
-                "lineup_drtg": drtg,
-                "lineup_netrtg": netrtg,
-            })
-
-    col_duo = None
-    row_duo = None
-    for r in range(1, 10):
-        for c in range(45, 65):
-            val = str(ws.cell(row=r, column=c).value or "")
-            if "雙洋將" in val:
-                row_duo, col_duo = r, c
-                break
-        if row_duo:
-            break
-
-    if row_duo and col_duo:
-        start_r = row_duo + 2 if "搭檔" in str(ws.cell(row=row_duo + 1, column=col_duo).value or "") else row_duo + 1
-        for r in range(start_r, start_r + 15):
-            name_val = str(ws.cell(row=r, column=col_duo).value or "").strip()
-            if not name_val or name_val in ["None", "nan", "洋將搭檔組合"]:
-                continue
-
-            raw_time = ws.cell(row=r, column=col_duo + 1).value
-            sec = parse_time_to_seconds(raw_time, default_sec=0)
-            mins_str = f"{sec // 60:02d}:{sec % 60:02d}" if sec > 0 else str(raw_time or "00:00").strip()
-
-            pm = int(clean_val_num(ws.cell(row=r, column=col_duo + 2).value, 0))
-            ortg = clean_val_num(ws.cell(row=r, column=col_duo + 3).value, 0.0)
-            drtg = clean_val_num(ws.cell(row=r, column=col_duo + 4).value, 0.0)
-            netrtg = clean_val_num(ws.cell(row=r, column=col_duo + 5).value, 0.0)
-            advice = str(ws.cell(row=r, column=col_duo + 6).value or "").strip()
-            if advice in ["None", "nan"]:
-                advice = ""
-
-            foreign_duos.append({
-                "duo_name": name_val,
-                "name": name_val,
-                "total_time": mins_str,
-                "minutes": mins_str,
-                "plus_minus": pm,
-                "pm": pm,
-                "ortg": ortg,
-                "drtg": drtg,
-                "netrtg": netrtg,
-                "lineup_ortg": ortg,
-                "lineup_drtg": drtg,
-                "lineup_netrtg": netrtg,
-                "features_and_advice": advice,
-            })
-
-    return five_man_lineups, foreign_duos
 
 
 # =====================================================================
@@ -527,14 +583,13 @@ def _parse_season_pbp_from_excel(excel_path: Path):
 # =====================================================================
 @router.get("/stages", summary="取得所有可用賽季階段清單")
 def get_stages():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT DISTINCT season_stage FROM team_summary
-        WHERE season_stage IS NOT NULL AND season_stage != ''
-    """)
-    raw_db_stages = [row["season_stage"] for row in cur.fetchall()]
-    conn.close()
+    with db_session() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT DISTINCT season_stage FROM team_summary
+            WHERE season_stage IS NOT NULL AND season_stage != ''
+        """)
+        raw_db_stages = [row["season_stage"] for row in cur.fetchall()]
 
     normalized_db = {s.replace("季前熱身賽", "熱身賽") for s in raw_db_stages}
     ordered_master_list = [
@@ -571,42 +626,41 @@ def get_stages():
 # =====================================================================
 @router.get("/teams/summary", summary="取得指定賽季階段 7 隊四要素戰力榜")
 def get_team_summary(stage: str = Query("2026-2027 例行賽", description="賽季階段名稱")):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT team_name, games_played, record, pace, ortg, drtg, net_rtg,
-               efg_pct, three_par, tov_pct, orb_pct, ftr,
-               high_usg_core, high_eff_finisher, system_notes
-        FROM team_summary
-        WHERE season_stage = ?
-          AND team_name NOT LIKE '【%'
-          AND team_name != '球隊名稱'
-          AND team_name != 'nan'
-        ORDER BY net_rtg DESC, ortg DESC
-    """, (stage,))
-    rows = cur.fetchall()
-    conn.close()
+    with db_session() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT team_name, games_played, record, pace, ortg, drtg, net_rtg,
+                   efg_pct, three_par, tov_pct, orb_pct, ftr,
+                   high_usg_core, high_eff_finisher, system_notes
+            FROM team_summary
+            WHERE season_stage = ?
+              AND team_name NOT LIKE '【%'
+              AND team_name != '球隊名稱'
+              AND team_name != 'nan'
+            ORDER BY net_rtg DESC, ortg DESC
+        """, (stage,))
+        rows = cur.fetchall()
 
     teams = []
     for idx, r in enumerate(rows):
         teams.append({
             "team_name": r["team_name"],
-            "games_played": r["games_played"] or 0,
+            "games_played": int(r["games_played"] or 0),
             "record": r["record"] or "0勝-0敗",
             "total_time": 0,
             "pts": 0,
             "fga": 0,
             "fg_pct": 0.0,
-            "three_par": round(float(r["three_par"] or 0.0), 1),
-            "efg_pct": round(float(r["efg_pct"] or 0.0), 1),
+            "three_par": normalize_pct(r["three_par"], 0.0, scale_to_100=True),
+            "efg_pct": normalize_pct(r["efg_pct"], 0.0, scale_to_100=True),
             "possessions": 0,
-            "pace": round(float(r["pace"] or 0.0), 1),
-            "ortg": round(float(r["ortg"] or 0.0), 1),
-            "drtg": round(float(r["drtg"] or 0.0), 1),
-            "net_rtg": round(float(r["net_rtg"] or 0.0), 1),
-            "tov_pct": round(float(r["tov_pct"] or 0.0), 1),
-            "orb_pct": round(float(r["orb_pct"] or 0.0), 1),
-            "ftr": round(float(r["ftr"] or 0.0), 1),
+            "pace": round(clean_val_num(r["pace"], 0.0), 1),
+            "ortg": round(clean_val_num(r["ortg"], 0.0), 1),
+            "drtg": round(clean_val_num(r["drtg"], 0.0), 1),
+            "net_rtg": round(clean_val_num(r["net_rtg"], 0.0), 1),
+            "tov_pct": normalize_pct(r["tov_pct"], 0.0, scale_to_100=True),
+            "orb_pct": normalize_pct(r["orb_pct"], 0.0, scale_to_100=True),
+            "ftr": normalize_pct(r["ftr"], 0.0, scale_to_100=True),
             "high_usg_core": r["high_usg_core"] or "",
             "high_eff_finisher": r["high_eff_finisher"] or "",
             "system_notes": r["system_notes"] or "",
@@ -631,91 +685,87 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
             if "summary" in f.name.lower() or "總表" in f.name:
                 continue
             try:
-                wb = openpyxl.load_workbook(f, data_only=True)
-                if "平均數據" in wb.sheetnames:
-                    ws = wb["平均數據"]
-                    h_row = None
-                    for r in range(1, 8):
-                        c2 = str(ws.cell(row=r, column=2).value or "").strip()
-                        if c2 in ["球員名", "球員"]:
-                            h_row = r
-                            break
-                    if h_row:
-                        for r in range(h_row + 1, ws.max_row + 1):
-                            p_name = str(ws.cell(row=r, column=2).value or "").strip()
-                            if not p_name or any(k in p_name for k in ["總計", "合計", "DNP", "None", "nan"]):
-                                continue
-                            clean_name = p_name.split(" ")[0].split("(")[0].strip()
-                            excel_player_map[clean_name] = {
-                                "fgm": clean_val_num(ws.cell(row=r, column=9).value, 0.0),
-                                "fga": clean_val_num(ws.cell(row=r, column=10).value, 0.0),
-                                "fg_pct": clean_val_num(ws.cell(row=r, column=11).value, 0.0),
-                                "p3m": clean_val_num(ws.cell(row=r, column=15).value, 0.0),
-                                "p3a": clean_val_num(ws.cell(row=r, column=16).value, 0.0),
-                                "p3_pct": clean_val_num(ws.cell(row=r, column=17).value, 0.0),
-                                "ftm": clean_val_num(ws.cell(row=r, column=18).value, 0.0),
-                                "fta": clean_val_num(ws.cell(row=r, column=19).value, 0.0),
-                                "ft_pct": clean_val_num(ws.cell(row=r, column=20).value, 0.0),
-                                "orb": clean_val_num(ws.cell(row=r, column=21).value, 0.0),
-                                "drb": clean_val_num(ws.cell(row=r, column=22).value, 0.0),
-                                "tov": clean_val_num(ws.cell(row=r, column=27).value, 0.0),
-                                "pf": clean_val_num(ws.cell(row=r, column=28).value, 0.0),
-                            }
+                with open_workbook(f) as wb:
+                    if "平均數據" in wb.sheetnames:
+                        ws = wb["平均數據"]
+                        h_row = None
+                        for r in range(1, 8):
+                            c2 = str(ws.cell(row=r, column=2).value or "").strip()
+                            if c2 in ["球員名", "球員"]:
+                                h_row = r
+                                break
+                        if h_row:
+                            for r in range(h_row + 1, (ws.max_row or h_row) + 1):
+                                p_name = str(ws.cell(row=r, column=2).value or "").strip()
+                                if _is_skip_player_row(p_name):
+                                    continue
+                                clean_name = p_name.split(" ")[0].split("(")[0].strip()
+                                excel_player_map[clean_name] = {
+                                    "fgm": clean_val_num(ws.cell(row=r, column=9).value, 0.0),
+                                    "fga": clean_val_num(ws.cell(row=r, column=10).value, 0.0),
+                                    "fg_pct": normalize_pct(ws.cell(row=r, column=11).value, 0.0, scale_to_100=True),
+                                    "p3m": clean_val_num(ws.cell(row=r, column=15).value, 0.0),
+                                    "p3a": clean_val_num(ws.cell(row=r, column=16).value, 0.0),
+                                    "p3_pct": normalize_pct(ws.cell(row=r, column=17).value, 0.0, scale_to_100=True),
+                                    "ftm": clean_val_num(ws.cell(row=r, column=18).value, 0.0),
+                                    "fta": clean_val_num(ws.cell(row=r, column=19).value, 0.0),
+                                    "ft_pct": normalize_pct(ws.cell(row=r, column=20).value, 0.0, scale_to_100=True),
+                                    "orb": clean_val_num(ws.cell(row=r, column=21).value, 0.0),
+                                    "drb": clean_val_num(ws.cell(row=r, column=22).value, 0.0),
+                                    "tov": clean_val_num(ws.cell(row=r, column=27).value, 0.0),
+                                    "pf": clean_val_num(ws.cell(row=r, column=28).value, 0.0),
+                                }
             except Exception:
                 pass
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with db_session() as conn:
+        cur = conn.cursor()
 
-    query = """
-        SELECT player_name, team_name, jersey_number, position, identity,
-               games_played, mpg, ppg, rpg, apg, spg, bpg, efg_pct, ts_pct, usg_pct, gmsc,
-               shot_chart_review, performance_review
-        FROM player_stats
-        WHERE season_stage = ? AND ppg >= ?
-    """
-    params = [stage, min_ppg]
+        query = """
+            SELECT player_name, team_name, jersey_number, position, identity,
+                   games_played, mpg, ppg, rpg, apg, spg, bpg, efg_pct, ts_pct, usg_pct, gmsc,
+                   shot_chart_review, performance_review
+            FROM player_stats
+            WHERE season_stage = ? AND ppg >= ?
+        """
+        params = [stage, min_ppg]
 
-    if identity in ["本土", "洋將"]:
-        query += " AND identity = ?"
-        params.append(identity)
+        if identity in ["本土", "洋將"]:
+            query += " AND identity = ?"
+            params.append(identity)
 
-    query += " ORDER BY gmsc DESC, ppg DESC"
-    cur.execute(query, tuple(params))
-    rows = cur.fetchall()
-    conn.close()
+        query += " ORDER BY gmsc DESC, ppg DESC"
+        cur.execute(query, tuple(params))
+        rows = cur.fetchall()
 
     players = []
     for r in rows:
         p_name = r["player_name"]
-        raw_usg = float(r["usg_pct"] or 0.0)
-        raw_ts = float(r["ts_pct"] or 0.0)
-        raw_efg = float(r["efg_pct"] or 0.0)
+        disp_ts = normalize_pct(r["ts_pct"], 0.0, scale_to_100=True)
+        disp_usg = normalize_pct(r["usg_pct"], 0.0, scale_to_100=True)
+        disp_efg = normalize_pct(r["efg_pct"], 0.0, scale_to_100=True)
 
-        disp_ts = round(raw_ts * 100.0 if (0 < raw_ts <= 1.0) else raw_ts, 1)
-        disp_usg = round(raw_usg * 100.0 if (0 < raw_usg <= 1.0) else raw_usg, 1)
-        disp_efg = round(raw_efg * 100.0 if (0 < raw_efg <= 1.0) else raw_efg, 1)
-
-        mpg = round(float(r["mpg"] or 0.0), 1)
-        ppg = round(float(r["ppg"] or 0.0), 1)
-        rpg = round(float(r["rpg"] or 0.0), 1)
-        apg = round(float(r["apg"] or 0.0), 1)
-        spg = round(float(r["spg"] or 0.0), 1)
-        bpg = round(float(r["bpg"] or 0.0), 1)
+        mpg = max(0.0, round(clean_val_num(r["mpg"], 0.0), 1))
+        ppg = max(0.0, round(clean_val_num(r["ppg"], 0.0), 1))
+        rpg = max(0.0, round(clean_val_num(r["rpg"], 0.0), 1))
+        apg = max(0.0, round(clean_val_num(r["apg"], 0.0), 1))
+        spg = max(0.0, round(clean_val_num(r["spg"], 0.0), 1))
+        bpg = max(0.0, round(clean_val_num(r["bpg"], 0.0), 1))
+        gmsc = round(clean_val_num(r["gmsc"], 0.0), 1)
 
         q, q_label = get_quadrant(disp_usg, disp_ts)
-        minutes_str = f"{int(mpg)}:{int((mpg % 1) * 60):02d}"
+        minutes_str = f"{int(mpg)}:{int(round((mpg % 1) * 60)) % 60:02d}"
 
         ex = excel_player_map.get(p_name, {})
         fgm = ex.get("fgm", round(ppg * 0.38, 1))
         fga = ex.get("fga", round(ppg * 0.85, 1))
-        fg_pct = ex.get("fg_pct", round(45.0, 1))
+        fg_pct = ex.get("fg_pct", 45.0)
         p3m = ex.get("p3m", round(ppg * 0.15, 1))
         p3a = ex.get("p3a", round(ppg * 0.42, 1))
-        p3_pct = ex.get("p3_pct", round(35.0, 1))
+        p3_pct = ex.get("p3_pct", 35.0)
         ftm = ex.get("ftm", round(ppg * 0.12, 1))
         fta = ex.get("fta", round(ppg * 0.16, 1))
-        ft_pct = ex.get("ft_pct", round(75.0, 1))
+        ft_pct = ex.get("ft_pct", 75.0)
         tpg = ex.get("tov", 1.5)
 
         three_par = round((p3a / fga * 100.0), 1) if fga > 0 else 0.0
@@ -727,7 +777,7 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
             "jersey_number": r["jersey_number"] or "",
             "identity": r["identity"] or "本土",
             "position": r["position"] or "",
-            "games_played": r["games_played"] or 0,
+            "games_played": int(r["games_played"] or 0),
             "minutes_str": minutes_str,
             "mpg": mpg,
             "ppg": ppg,
@@ -745,7 +795,7 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
             "spg": spg,
             "bpg": bpg,
             "tpg": tpg,
-            "plus_minus": round(float(r["gmsc"] or 0.0) - 10.0, 1),
+            "plus_minus": round(gmsc - 10.0, 1),
             "three_par": three_par,
             "ftr": ftr,
             "usg_pct": disp_usg,
@@ -753,7 +803,7 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
             "tov_pct": 12.0,
             "ts_pct": disp_ts,
             "efg_pct": disp_efg,
-            "gmsc": round(float(r["gmsc"] or 0.0), 1),
+            "gmsc": gmsc,
             "quadrant": q,
             "quadrant_label": q_label,
             "shot_chart_desc": r["shot_chart_review"] or "",
@@ -772,68 +822,92 @@ def get_players_scatter(stage: str = Query("2026-2027 例行賽"), min_ppg: floa
     return _fetch_advanced_players(stage, min_ppg, identity)
 
 
+def _clamp_radar(val: float) -> float:
+    return max(0.0, min(100.0, round(val, 1)))
+
+
 @router.get("/players/{player_name}/card", summary="取得球員戰力卡六維雷達與深度評語")
 def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽")):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM player_stats WHERE player_name LIKE ? AND season_stage = ? LIMIT 1", (f"%{player_name.strip()}%", stage))
-    r = cur.fetchone()
-    conn.close()
+    with db_session() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM player_stats WHERE player_name LIKE ? AND season_stage = ? LIMIT 1", (f"%{player_name.strip()}%", stage))
+        r = cur.fetchone()
 
     if not r:
         raise HTTPException(status_code=404, detail="找不到該球員數據")
 
-    raw_usg = float(r["usg_pct"] or 0.0)
-    raw_ts = float(r["ts_pct"] or 0.0)
-    raw_efg = float(r["efg_pct"] or 0.0)
+    disp_ts = normalize_pct(r["ts_pct"], 0.0, scale_to_100=True)
+    disp_usg = normalize_pct(r["usg_pct"], 0.0, scale_to_100=True)
+    disp_efg = normalize_pct(r["efg_pct"], 0.0, scale_to_100=True)
 
-    disp_ts = round(raw_ts * 100.0 if (0 < raw_ts <= 1.0) else raw_ts, 1)
-    disp_usg = round(raw_usg * 100.0 if (0 < raw_usg <= 1.0) else raw_usg, 1)
-    disp_efg = round(raw_efg * 100.0 if (0 < raw_efg <= 1.0) else raw_efg, 1)
-
-    mpg = round(float(r["mpg"] or 0.0), 1)
-    ppg = round(float(r["ppg"] or 0.0), 1)
-    rpg = round(float(r["rpg"] or 0.0), 1)
-    apg = round(float(r["apg"] or 0.0), 1)
-    spg = round(float(r["spg"] or 0.0), 1)
-    bpg = round(float(r["bpg"] or 0.0), 1)
-    gmsc = round(float(r["gmsc"] or 0.0), 1)
+    gp = int(r["games_played"] or 0)
+    mpg = max(0.0, round(clean_val_num(r["mpg"], 0.0), 1))
+    ppg = max(0.0, round(clean_val_num(r["ppg"], 0.0), 1))
+    rpg = max(0.0, round(clean_val_num(r["rpg"], 0.0), 1))
+    apg = max(0.0, round(clean_val_num(r["apg"], 0.0), 1))
+    spg = max(0.0, round(clean_val_num(r["spg"], 0.0), 1))
+    bpg = max(0.0, round(clean_val_num(r["bpg"], 0.0), 1))
+    gmsc = round(clean_val_num(r["gmsc"], 0.0), 1)
 
     q, q_label = get_quadrant(disp_usg, disp_ts)
 
     # -------------------------------------------------------------
     # 關鍵時刻 (Clutch Time) 與 第4節全節 (Q4) 演算推導模型
     # -------------------------------------------------------------
-    q4_ppg = round(ppg * 0.28, 1)
-    q4_ts = round(disp_ts * 0.98, 1)
-    q4_usg = round(disp_usg * 1.05, 1)
-    q4_ast = round(apg * 0.26, 1)
-    q4_reb = round(rpg * 0.27, 1)
+    ts_safe = max(0.0, disp_ts)
+    usg_safe = max(0.0, min(100.0, disp_usg))
+    has_valid_sample = (gp > 0 and mpg >= 5.0)
 
-    is_closer = (disp_usg >= 22.0 or gmsc >= 13.0)
-    clutch_usg_multiplier = 1.25 if is_closer else 0.80
-    clutch_usg = round(disp_usg * clutch_usg_multiplier, 1)
-    
-    clutch_ts_diff = 1.5 if (disp_ts >= 54.0 and is_closer) else -2.5
-    clutch_ts = round(max(30.0, min(80.0, disp_ts + clutch_ts_diff)), 1)
-    
-    clutch_ppg_5min = round((ppg / max(mpg, 1.0)) * 5.0 * (clutch_usg / max(disp_usg, 1.0)) * (clutch_ts / max(disp_ts, 1.0)), 1)
-
-    clutch_ft_pct = 82.0 if (disp_ts >= 55.0 and ppg >= 14.0) else (62.0 if (rpg >= 8.0 and ppg < 12.0) else 74.0)
-    clutch_tov_rate = 14.5 if clutch_usg >= 28.0 else 10.5
-
-    if clutch_ft_pct < 65.0 and clutch_usg >= 20.0:
-        clutch_tag = "⚠️ 讀秒避險點 (罰球疑慮)"
-        clutch_desc = "在關鍵讀秒階段易成為對手「駭客/犯規戰術」針對目標，最後 2 分鐘需謹慎安排上場時機。"
-    elif is_closer and clutch_ts >= 53.0:
-        clutch_tag = "🎯 大心臟決勝點 (Go-to Guy)"
-        clutch_desc = "球隊末節關鍵時刻絕對進攻發動機，具備極強的抗壓出手信心與單打拆炸彈能力。"
-    elif spg + bpg >= 2.0:
-        clutch_tag = "🧊 決勝防守鐵閘 (Closing Stopper)"
-        clutch_desc = "專職封鎖對手持球王牌，關鍵時刻失誤少、犯規控制極佳，為閉門陣容的防守基石。"
+    if not has_valid_sample:
+        q4_ppg, q4_ts, q4_usg, q4_ast, q4_reb = 0.0, 0.0, 0.0, 0.0, 0.0
+        clutch_usg = 0.0
+        clutch_ts = 0.0
+        clutch_ppg_5min = 0.0
+        clutch_ft_pct = 0.0
+        clutch_tov_rate = 0.0
+        ts_diff = 0.0
+        clutch_tag = "⏳ 樣本不足 (低輪替/未出賽)"
+        clutch_desc = "本賽季場均出賽時間不足 5 分鐘或尚未登錄出賽，缺乏足夠關鍵時刻樣本進行高壓推演。"
+        q4_summary = "本賽季出賽樣本不足，暫不推估第 4 節常規輪替數據。"
     else:
-        clutch_tag = "⚖️ 戰術體系支援者"
-        clutch_desc = "關鍵時刻以弱側牽制、拉開空間與衝搶保護籃板為主，扮演穩定的二線終結支援點。"
+        q4_ppg = round(ppg * 0.28, 1)
+        q4_ts = round(min(100.0, ts_safe * 0.98), 1)
+        q4_usg = round(min(100.0, usg_safe * 1.05), 1)
+        q4_ast = round(apg * 0.26, 1)
+        q4_reb = round(rpg * 0.27, 1)
+        q4_summary = f"第 4 節常規提供約 {q4_ppg} 分進攻支援，球權使用率為 {q4_usg}%，維持穩定的攻守節奏。"
+
+        is_closer = (mpg >= 18.0) and (usg_safe >= 22.0 or gmsc >= 13.0)
+        clutch_usg_multiplier = 1.25 if is_closer else 0.80
+        clutch_usg = round(min(100.0, usg_safe * clutch_usg_multiplier), 1)
+
+        clutch_ts_diff = 1.5 if (ts_safe >= 54.0 and is_closer) else -2.5
+        if ts_safe == 0.0:
+            clutch_ts = 0.0
+        else:
+            clutch_ts = round(max(0.0, min(80.0, ts_safe + clutch_ts_diff)), 1)
+
+        ts_ratio = (clutch_ts / ts_safe) if ts_safe >= 20.0 else 1.0
+        usg_ratio = (clutch_usg / usg_safe) if usg_safe >= 5.0 else 1.0
+        raw_ppg_5min = (ppg / max(mpg, 5.0)) * 5.0 * usg_ratio * ts_ratio
+        clutch_ppg_5min = round(max(0.0, min(15.0, raw_ppg_5min)), 1)
+
+        clutch_ft_pct = 82.0 if (ts_safe >= 55.0 and ppg >= 14.0) else (62.0 if (rpg >= 8.0 and ppg < 12.0) else 74.0)
+        clutch_tov_rate = 14.5 if clutch_usg >= 28.0 else 10.5
+        ts_diff = round(clutch_ts - ts_safe, 1)
+
+        if clutch_ft_pct < 65.0 and clutch_usg >= 20.0:
+            clutch_tag = "⚠️ 讀秒避險點 (罰球疑慮)"
+            clutch_desc = "在關鍵讀秒階段易成為對手「駭客/犯規戰術」針對目標，最後 2 分鐘需謹慎安排上場時機。"
+        elif is_closer and clutch_ts >= 53.0:
+            clutch_tag = "🎯 大心臟決勝點 (Go-to Guy)"
+            clutch_desc = "球隊末節關鍵時刻絕對進攻發動機，具備極強的抗壓出手信心與單打拆炸彈能力。"
+        elif spg + bpg >= 2.0:
+            clutch_tag = "🧊 決勝防守鐵閘 (Closing Stopper)"
+            clutch_desc = "專職封鎖對手持球王牌，關鍵時刻失誤少、犯規控制極佳，為閉門陣容的防守基石。"
+        else:
+            clutch_tag = "⚖️ 戰術體系支援者"
+            clutch_desc = "關鍵時刻以弱側牽制、拉開空間與衝搶保護籃板為主，扮演穩定的二線終結支援點。"
 
     clutch_profile = {
         "q4_stats": {
@@ -843,7 +917,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
             "usg_pct": q4_usg,
             "reb": q4_reb,
             "ast": q4_ast,
-            "summary": f"第 4 節常規提供約 {q4_ppg} 分進攻支援，球權使用率為 {q4_usg}%，維持穩定的攻守節奏。"
+            "summary": q4_summary,
         },
         "clutch_stats": {
             "title": "⚡ 關鍵最後 5 分鐘 (分差 5 分內高壓時刻)",
@@ -854,7 +928,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
             "tov_pct": clutch_tov_rate,
             "tag": clutch_tag,
             "description": clutch_desc,
-            "ts_diff": round(clutch_ts - disp_ts, 1),
+            "ts_diff": ts_diff,
         }
     }
 
@@ -865,7 +939,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
             "jersey_number": str(r["jersey_number"] or "0"),
             "identity": r["identity"] or "本土",
             "position": r["position"] or "",
-            "games_played": r["games_played"] or 0,
+            "games_played": gp,
             "mpg": mpg,
             "ppg": ppg,
             "rpg": rpg,
@@ -885,12 +959,12 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
         },
         "clutch_profile": clutch_profile,
         "radar": {
-            "scoring": min(100.0, round((ppg / 30.0) * 100, 1)),
-            "shooting": min(100.0, round(disp_ts, 1)),
-            "playmaking": min(100.0, round((apg / 10.0) * 100, 1)),
-            "rebounding": min(100.0, round((rpg / 15.0) * 100, 1)),
-            "defense": min(100.0, round(((spg + bpg) / 4.0) * 100, 1)),
-            "efficiency": min(100.0, round((gmsc / 25.0) * 100, 1)),
+            "scoring": _clamp_radar((ppg / 30.0) * 100),
+            "shooting": _clamp_radar(disp_ts),
+            "playmaking": _clamp_radar((apg / 10.0) * 100),
+            "rebounding": _clamp_radar((rpg / 15.0) * 100),
+            "defense": _clamp_radar(((spg + bpg) / 4.0) * 100),
+            "efficiency": _clamp_radar((gmsc / 25.0) * 100),
         },
         "player_name": r["player_name"],
         "team": r["team_name"],
@@ -939,14 +1013,13 @@ def _find_db_game(cur, game_id: str):
 
 @router.get("/games", summary="取得賽程清單")
 def get_games(stage: Optional[str] = None):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    if stage:
-        cur.execute("SELECT * FROM games WHERE stage = ? ORDER BY date DESC, id DESC", (stage,))
-    else:
-        cur.execute("SELECT * FROM games ORDER BY date DESC, id DESC")
-    rows = cur.fetchall()
-    conn.close()
+    with db_session() as conn:
+        cur = conn.cursor()
+        if stage:
+            cur.execute("SELECT * FROM games WHERE stage = ? ORDER BY date DESC, id DESC", (stage,))
+        else:
+            cur.execute("SELECT * FROM games ORDER BY date DESC, id DESC")
+        rows = cur.fetchall()
 
     return [
         {
@@ -968,20 +1041,18 @@ def _fetch_real_matchups(stage: str, game_id: str, home_team: str, away_team: st
     gid_match = re.search(r"(G\d+)", str(game_id), re.IGNORECASE)
     game_code = gid_match.group(1).upper() if gid_match else str(game_id)
 
-    conn = get_db_connection()
-    cur = conn.cursor()
     try:
-        cur.execute("""
-            SELECT id, team_name, scenario_item, tactical_desc
-            FROM game_matchups
-            WHERE stage = ? AND game_code = ?
-            ORDER BY id ASC
-        """, (stage, game_code))
-        m_rows = cur.fetchall()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, team_name, scenario_item, tactical_desc
+                FROM game_matchups
+                WHERE stage = ? AND game_code = ?
+                ORDER BY id ASC
+            """, (stage, game_code))
+            m_rows = cur.fetchall()
     except Exception:
         m_rows = []
-    finally:
-        conn.close()
 
     home_list, away_list = [], []
     for idx, m in enumerate(m_rows):
@@ -1008,10 +1079,9 @@ def _fetch_real_matchups(stage: str, game_id: str, home_team: str, away_team: st
 
 @router.get("/games/{game_id}", summary="取得單場比賽詳細資訊與球員統計 (DetailedGameData)")
 def get_game_detail(game_id: str):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    g = _find_db_game(cur, game_id)
-    conn.close()
+    with db_session() as conn:
+        cur = conn.cursor()
+        g = _find_db_game(cur, game_id)
 
     if not g:
         raise HTTPException(status_code=404, detail=f"找不到比賽 {game_id}")
@@ -1032,62 +1102,66 @@ def get_game_detail(game_id: str):
     away_box, away_on_off, away_l, away_p = _parse_real_excel_game(away_excel, game_code)
 
     if not home_box or not away_box:
-        conn = get_db_connection()
-        cur = conn.cursor()
         home_aliases = get_team_search_keywords(home_team)
         away_aliases = get_team_search_keywords(away_team)
         all_team_aliases = list(set(home_aliases + away_aliases))
         placeholders = ",".join(["?"] * len(all_team_aliases))
 
-        cur.execute(f"""
-            SELECT * FROM player_stats
-            WHERE season_stage = ? AND team_name IN ({placeholders})
-            ORDER BY mpg DESC
-        """, [stage] + all_team_aliases)
-        p_rows = cur.fetchall()
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute(f"""
+                SELECT * FROM player_stats
+                WHERE season_stage = ? AND team_name IN ({placeholders})
+                ORDER BY mpg DESC
+            """, [stage] + all_team_aliases)
+            p_rows = cur.fetchall()
 
         fb_home, fb_away = [], []
-        for p in p_rows:
-            t_name = p["team_name"]
+        for p_row in p_rows:
+            p = dict(p_row)
+            t_name = str(p.get("team_name") or "")
             is_h = any(h in t_name or t_name in h for h in home_aliases)
-            mpg = round(float(p["mpg"] or 0.0), 1)
-            ppg = round(float(p["ppg"] or 0.0), 1)
-            rpg = round(float(p["rpg"] or 0.0), 1) if "rpg" in p else 0.0
-            apg = round(float(p["apg"] or 0.0), 1)
-            spg = round(float(p["spg"] or 0.0), 1)
-            bpg = round(float(p["bpg"] or 0.0), 1)
-            gmsc = round(float(p["gmsc"] or 0.0), 1)
+            mpg = max(0.0, round(clean_val_num(p.get("mpg"), 0.0), 1))
+            ppg = max(0.0, round(clean_val_num(p.get("ppg"), 0.0), 1))
+            rpg = max(0.0, round(clean_val_num(p.get("rpg"), 0.0), 1))
+            apg = max(0.0, round(clean_val_num(p.get("apg"), 0.0), 1))
+            spg = max(0.0, round(clean_val_num(p.get("spg"), 0.0), 1))
+            bpg = max(0.0, round(clean_val_num(p.get("bpg"), 0.0), 1))
+            gmsc = round(clean_val_num(p.get("gmsc"), 0.0), 1)
+
+            efg_100 = normalize_pct(p.get("efg_pct"), 0.0, scale_to_100=True)
+            ts_100 = normalize_pct(p.get("ts_pct"), 0.0, scale_to_100=True)
+            usg_100 = normalize_pct(p.get("usg_pct"), 0.0, scale_to_100=True)
 
             item = {
-                "jersey_number": p["jersey_number"] or "",
-                "player_name": p["player_name"],
-                "position": p["position"] or "",
-                "identity": p["identity"] or "本土",
-                "minutes": f"{int(mpg)}:{int((mpg % 1) * 60):02d}",
-                "seconds": int(mpg * 60),
-                "pts": int(ppg),
-                "fgm": int(ppg * 0.38),
-                "fga": max(1, int(ppg * 0.85)),
-                "fg_pct": 45.0,
-                "tpm": int(ppg * 0.15),
-                "tpa": max(1, int(ppg * 0.42)),
-                "tp_pct": 35.0,
-                "ftm": int(ppg * 0.12),
-                "fta": max(1, int(ppg * 0.16)),
-                "ft_pct": 75.0,
-                "orb": int((p.get("rpg") or 0) * 0.3),
-                "drb": int((p.get("rpg") or 0) * 0.7),
-                "reb": int(p.get("rpg") or 0),
-                "ast": int(apg),
-                "stl": int(spg),
-                "blk": int(bpg),
-                "tov": 2,
-                "pf": 3,
-                "plus_minus": int(gmsc - 10),
-                "efg_pct": round(float(p["efg_pct"] or 0.0) / 100.0, 3),
-                "ts_pct": round(float(p["ts_pct"] or 0.0) / 100.0, 3),
-                "usg_pct": round(float(p["usg_pct"] or 0.0), 1),
+                "jersey_number": p.get("jersey_number") or "",
+                "player_name": p.get("player_name") or "",
+                "position": p.get("position") or "",
+                "identity": p.get("identity") or "本土",
+                "minutes": f"{int(mpg)}:{int(round((mpg % 1) * 60)) % 60:02d}",
+                "seconds": int(round(mpg * 60)),
+                "pts": int(round(ppg)),
+                "fgm": int(round(ppg * 0.38)),
+                "fga": max(1, int(round(ppg * 0.85))) if ppg > 0 else 0,
+                "fg_pct": 45.0 if ppg > 0 else 0.0,
+                "tpm": int(round(ppg * 0.15)),
+                "tpa": max(1, int(round(ppg * 0.42))) if ppg > 0 else 0,
+                "tp_pct": 35.0 if ppg > 0 else 0.0,
+                "ftm": int(round(ppg * 0.12)),
+                "fta": max(1, int(round(ppg * 0.16))) if ppg > 0 else 0,
+                "ft_pct": 75.0 if ppg > 0 else 0.0,
+                "orb": int(round(rpg * 0.3)),
+                "drb": int(round(rpg * 0.7)),
+                "reb": int(round(rpg)),
+                "ast": int(round(apg)),
+                "stl": int(round(spg)),
+                "blk": int(round(bpg)),
+                "tov": 2 if mpg > 0 else 0,
+                "pf": 3 if mpg > 0 else 0,
+                "plus_minus": int(round(gmsc - 10)),
+                "efg_pct": round(efg_100 / 100.0, 3),
+                "ts_pct": round(ts_100 / 100.0, 3),
+                "usg_pct": usg_100,
                 "gmsc": gmsc,
                 "ortg": round(105.0 + (gmsc - 10.0) * 0.8, 1),
                 "drtg": round(105.0 - (spg + bpg) * 2.0, 1),
@@ -1156,6 +1230,8 @@ def get_game_detail(game_id: str):
     }
 
     home_wowy, away_wowy = _fetch_real_matchups(stage, real_db_id, home_team, away_team)
+    h_score = int(g["home_score"] or 0)
+    a_score = int(g["away_score"] or 0)
 
     return {
         "id": g["id"],
@@ -1163,13 +1239,13 @@ def get_game_detail(game_id: str):
         "stage": g["stage"],
         "home_team": home_team,
         "away_team": away_team,
-        "home_score": g["home_score"],
-        "away_score": g["away_score"],
+        "home_score": h_score,
+        "away_score": a_score,
         "status": g["status"] or "FINAL",
         "venue": "TPBL 聯盟官方球場",
         "quarter_scores": {
-            "away": [int(g["away_score"] * 0.26), int(g["away_score"] * 0.24), int(g["away_score"] * 0.27), g["away_score"] - int(g["away_score"] * 0.77)],
-            "home": [int(g["home_score"] * 0.25), int(g["home_score"] * 0.25), int(g["home_score"] * 0.26), g["home_score"] - int(g["home_score"] * 0.76)],
+            "away": [int(a_score * 0.26), int(a_score * 0.24), int(a_score * 0.27), a_score - int(a_score * 0.77)],
+            "home": [int(h_score * 0.25), int(h_score * 0.25), int(h_score * 0.26), h_score - int(h_score * 0.76)],
         },
         "player_onoff": player_onoff,
         "tactics_wowy": {
@@ -1202,10 +1278,9 @@ def get_game_detail(game_id: str):
 
 @router.get("/games/{game_id}/tactics", summary="取得單場焦點對位與戰術交鋒 (TacticsDetail)")
 def get_game_tactics(game_id: str):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    g = _find_db_game(cur, game_id)
-    conn.close()
+    with db_session() as conn:
+        cur = conn.cursor()
+        g = _find_db_game(cur, game_id)
 
     if not g:
         raise HTTPException(status_code=404, detail="找不到該場賽事")
@@ -1270,28 +1345,28 @@ def get_glossary():
 
 def _fetch_team_players(team_name: str, stage: str):
     db_player_meta = {}
+    clean_team = team_name.strip()
+    for kw in ["攻城獅", "夢想家", "雲豹", "海神", "特攻", "戰神", "國王"]:
+        if kw in clean_team:
+            clean_team = kw
+            break
+
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        clean_team = team_name.strip()
-        for kw in ["攻城獅", "夢想家", "雲豹", "海神", "特攻", "戰神", "國王"]:
-            if kw in clean_team:
-                clean_team = kw
-                break
-        cur.execute("""
-            SELECT player_name, games_played, mpg, identity, position, jersey_number
-            FROM player_stats
-            WHERE team_name LIKE ? AND season_stage = ?
-        """, (f"%{clean_team}%", stage))
-        for row in cur.fetchall():
-            db_player_meta[row["player_name"]] = {
-                "games_played": int(row["games_played"] or 0),
-                "mpg": float(row["mpg"] or 0.0),
-                "identity": row["identity"],
-                "position": row["position"],
-                "jersey_number": str(row["jersey_number"] or ""),
-            }
-        conn.close()
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT player_name, games_played, mpg, identity, position, jersey_number
+                FROM player_stats
+                WHERE team_name LIKE ? AND season_stage = ?
+            """, (f"%{clean_team}%", stage))
+            for row in cur.fetchall():
+                db_player_meta[row["player_name"]] = {
+                    "games_played": int(row["games_played"] or 0),
+                    "mpg": max(0.0, clean_val_num(row["mpg"], 0.0)),
+                    "identity": row["identity"],
+                    "position": row["position"],
+                    "jersey_number": str(row["jersey_number"] or ""),
+                }
     except Exception:
         pass
 
@@ -1300,183 +1375,165 @@ def _fetch_team_players(team_name: str, stage: str):
 
     if team_excel and team_excel.exists():
         try:
-            wb = openpyxl.load_workbook(team_excel, data_only=True)
-            if "平均數據" in wb.sheetnames:
-                ws = wb["平均數據"]
-                h_row = None
-                for r in range(1, 8):
-                    c2 = str(ws.cell(row=r, column=2).value or "").strip()
-                    if c2 in ["球員名", "球員"]:
-                        h_row = r
-                        break
+            with open_workbook(team_excel) as wb:
+                if "平均數據" in wb.sheetnames:
+                    ws = wb["平均數據"]
+                    h_row = None
+                    for r in range(1, 8):
+                        c2 = str(ws.cell(row=r, column=2).value or "").strip()
+                        if c2 in ["球員名", "球員"]:
+                            h_row = r
+                            break
 
-                if h_row:
-                    excel_players = []
-                    for r in range(h_row + 1, ws.max_row + 1):
-                        p_name = str(ws.cell(row=r, column=2).value or "").strip()
-                        if not p_name or any(k in p_name for k in ["總計", "合計", "DNP", "None", "nan"]):
-                            continue
-                        clean_name = p_name.split(" ")[0].split("(")[0].strip()
+                    if h_row:
+                        excel_players = []
+                        for r in range(h_row + 1, (ws.max_row or h_row) + 1):
+                            p_name = str(ws.cell(row=r, column=2).value or "").strip()
+                            if _is_skip_player_row(p_name):
+                                continue
+                            clean_name = p_name.split(" ")[0].split("(")[0].strip()
 
-                        db_meta = db_player_meta.get(clean_name, {})
+                            db_meta = db_player_meta.get(clean_name, {})
 
-                        v_col5 = ws.cell(row=r, column=5).value
-                        v_col6 = ws.cell(row=r, column=6).value
-                        v_col7 = ws.cell(row=r, column=7).value
+                            v_col5 = ws.cell(row=r, column=5).value
+                            v_col6 = ws.cell(row=r, column=6).value
+                            v_col7 = ws.cell(row=r, column=7).value
 
-                        gp = 0
-                        raw_time = None
+                            gp = 0
+                            raw_time = None
+                            time_explicit = False
 
-                        time_candidate = None
-                        for val in [v_col7, v_col6, v_col5]:
-                            if val is not None and isinstance(val, (time, timedelta)):
-                                time_candidate = val
-                                break
-                            if val is not None and ":" in str(val):
-                                time_candidate = str(val).strip()
-                                break
-
-                        if time_candidate is not None:
-                            raw_time = time_candidate
-                            num_cands = [clean_val_num(x, 0.0) for x in [v_col5, v_col6] if x != time_candidate and x is not None]
-                            for n in num_cands:
-                                if 0 < n <= 82 and n.is_integer():
-                                    gp = int(n)
+                            time_candidate = None
+                            for val in [v_col7, v_col6, v_col5]:
+                                if val is not None and isinstance(val, (datetime, time, timedelta)):
+                                    time_candidate = val
                                     break
-                        else:
-                            n5 = clean_val_num(v_col5, 0.0)
-                            n6 = clean_val_num(v_col6, 0.0)
-                            n7 = clean_val_num(v_col7, 0.0)
-
-                            min_cand = None
-                            for n in [n7, n6, n5]:
-                                if 5.0 <= n <= 48.0:
-                                    min_cand = n
+                                if val is not None and (":" in str(val) or "day" in str(val).lower()):
+                                    time_candidate = str(val).strip()
                                     break
 
-                            if min_cand is not None:
-                                raw_time = f"{int(min_cand)}:{int(round((min_cand % 1) * 60)):02d}"
-                                for n in [n5, n6, n7]:
-                                    if n != min_cand and 0 < n <= 82 and n.is_integer():
+                            if time_candidate is not None:
+                                raw_time = time_candidate
+                                time_explicit = True
+                                num_cands = [clean_val_num(x, 0.0) for x in [v_col6, v_col5] if x != time_candidate and x is not None]
+                                for n in num_cands:
+                                    if 0 < n <= 82 and float(n).is_integer():
                                         gp = int(n)
                                         break
                             else:
-                                raw_time = v_col6 or v_col7 or "00:00"
-                                gp = int(clean_val_num(v_col5, 0))
+                                raw_time = v_col7
+                                time_explicit = (v_col7 is not None and str(v_col7).strip() != "")
+                                gp = int(round(clean_val_num(v_col6, 0))) or int(round(clean_val_num(v_col5, 0)))
 
-                        if gp <= 0:
-                            gp = db_meta.get("games_played", 0)
+                            if gp <= 0:
+                                gp = db_meta.get("games_played", 0)
 
-                        sec = parse_time_to_seconds(raw_time, default_sec=0)
-                        if sec == 0 and db_meta.get("mpg", 0) > 0:
-                            db_mpg = db_meta["mpg"]
-                            sec = int(db_mpg * 60)
-                            mins_str = f"{int(db_mpg)}:{int(round((db_mpg % 1) * 60)):02d}"
-                        else:
-                            mins_str = f"{sec // 60:02d}:{sec % 60:02d}" if sec > 0 else "00:00"
+                            sec = parse_time_to_seconds(raw_time, default_sec=0)
+                            if sec == 0 and not time_explicit and db_meta.get("mpg", 0) > 0:
+                                db_mpg = db_meta["mpg"]
+                                sec = int(round(db_mpg * 60))
+                                mins_str = f"{int(db_mpg)}:{int(round((db_mpg % 1) * 60)) % 60:02d}"
+                            else:
+                                mins_str = f"{sec // 60:02d}:{sec % 60:02d}" if sec > 0 else "00:00"
 
-                        pts = clean_val_num(ws.cell(row=r, column=8).value, 0.0)
-                        fgm = clean_val_num(ws.cell(row=r, column=9).value, 0.0)
-                        fga = clean_val_num(ws.cell(row=r, column=10).value, 0.0)
-                        p3m = clean_val_num(ws.cell(row=r, column=15).value, 0.0)
-                        p3a = clean_val_num(ws.cell(row=r, column=16).value, 0.0)
-                        ftm = clean_val_num(ws.cell(row=r, column=18).value, 0.0)
-                        fta = clean_val_num(ws.cell(row=r, column=19).value, 0.0)
-                        orb = clean_val_num(ws.cell(row=r, column=21).value, 0.0)
-                        drb = clean_val_num(ws.cell(row=r, column=22).value, 0.0)
-                        reb = clean_val_num(ws.cell(row=r, column=23).value, 0.0)
-                        ast = clean_val_num(ws.cell(row=r, column=24).value, 0.0)
-                        stl = clean_val_num(ws.cell(row=r, column=25).value, 0.0)
-                        blk = clean_val_num(ws.cell(row=r, column=26).value, 0.0)
-                        tov = clean_val_num(ws.cell(row=r, column=27).value, 0.0)
-                        pf = clean_val_num(ws.cell(row=r, column=28).value, 0.0)
-                        pm = int(clean_val_num(ws.cell(row=r, column=30).value, 0))
+                            pts = clean_val_num(ws.cell(row=r, column=8).value, 0.0)
+                            fgm = clean_val_num(ws.cell(row=r, column=9).value, 0.0)
+                            fga = clean_val_num(ws.cell(row=r, column=10).value, 0.0)
+                            p3m = clean_val_num(ws.cell(row=r, column=15).value, 0.0)
+                            p3a = clean_val_num(ws.cell(row=r, column=16).value, 0.0)
+                            ftm = clean_val_num(ws.cell(row=r, column=18).value, 0.0)
+                            fta = clean_val_num(ws.cell(row=r, column=19).value, 0.0)
+                            orb = clean_val_num(ws.cell(row=r, column=21).value, 0.0)
+                            drb = clean_val_num(ws.cell(row=r, column=22).value, 0.0)
+                            reb = clean_val_num(ws.cell(row=r, column=23).value, 0.0)
+                            ast = clean_val_num(ws.cell(row=r, column=24).value, 0.0)
+                            stl = clean_val_num(ws.cell(row=r, column=25).value, 0.0)
+                            blk = clean_val_num(ws.cell(row=r, column=26).value, 0.0)
+                            tov = clean_val_num(ws.cell(row=r, column=27).value, 0.0)
+                            pf = clean_val_num(ws.cell(row=r, column=28).value, 0.0)
+                            pm = int(round(clean_val_num(ws.cell(row=r, column=30).value, 0)))
 
-                        efg_val = clean_val_num(ws.cell(row=r, column=31).value, 0.0)
-                        ts_val = clean_val_num(ws.cell(row=r, column=32).value, 0.0)
-                        gmsc_val = round(pts + 0.4 * fgm - 0.7 * fga - 0.4 * (fta - ftm) + 0.7 * reb + stl + 0.7 * ast + 0.7 * blk - 0.4 * pf - tov, 1)
+                            efg_100 = normalize_pct(ws.cell(row=r, column=31).value, 0.0, scale_to_100=True)
+                            ts_100 = normalize_pct(ws.cell(row=r, column=32).value, 0.0, scale_to_100=True)
+                            reb_contrib = (0.7 * orb + 0.3 * drb) if (orb > 0 or drb > 0 or reb == 0) else (0.4 * reb)
+                            gmsc_val = round(
+                                pts + 0.4 * fgm - 0.7 * fga - 0.4 * max(0.0, fta - ftm)
+                                + reb_contrib + stl + 0.7 * ast + 0.7 * blk - 0.4 * pf - tov,
+                                1,
+                            )
 
-                        p_ortg = round(105.0 + (gmsc_val - 10.0) * 0.8, 1)
-                        p_drtg = round(105.0 - (stl + blk) * 2.0, 1)
-                        p_netrtg = round(p_ortg - p_drtg, 1)
+                            p_ortg = round(105.0 + (gmsc_val - 10.0) * 0.8, 1)
+                            p_drtg = round(105.0 - (stl + blk) * 2.0, 1)
+                            p_netrtg = round(p_ortg - p_drtg, 1)
 
-                        jersey_num = str(ws.cell(row=r, column=1).value or "").replace(".0", "").strip()
-                        if not jersey_num and db_meta.get("jersey_number"):
-                            jersey_num = db_meta["jersey_number"]
+                            jersey_num = str(ws.cell(row=r, column=1).value or "").replace(".0", "").strip()
+                            if not jersey_num and db_meta.get("jersey_number"):
+                                jersey_num = db_meta["jersey_number"]
 
-                        pos = str(ws.cell(row=r, column=4).value or "").strip()
-                        if not pos and db_meta.get("position"):
-                            pos = db_meta["position"]
+                            pos = str(ws.cell(row=r, column=4).value or "").strip()
+                            if not pos and db_meta.get("position"):
+                                pos = db_meta["position"]
 
-                        ident = str(ws.cell(row=r, column=3).value or "").strip()
-                        if not ident or ident == "None":
-                            ident = db_meta.get("identity", "本土")
+                            ident = str(ws.cell(row=r, column=3).value or "").strip()
+                            if not ident or ident.lower() == "none":
+                                ident = db_meta.get("identity", "本土")
 
-                        excel_players.append({
-                            "id": r,
-                            "player_name": clean_name,
-                            "jersey_number": jersey_num,
-                            "identity": ident,
-                            "position": pos,
-                            "is_starter": bool(len(excel_players) < 5),
-                            "games_played": gp,
-                            "minutes": mins_str,
-                            "seconds": sec,
-                            "pts": pts,
-                            "fgm": fgm,
-                            "fga": fga,
-                            "tpm": p3m,
-                            "tpa": p3a,
-                            "ftm": ftm,
-                            "fta": fta,
-                            "orb": orb,
-                            "drb": drb,
-                            "reb": reb,
-                            "ast": ast,
-                            "stl": stl,
-                            "blk": blk,
-                            "tov": tov,
-                            "pf": pf,
-                            "plus_minus": pm,
-                            "efg_pct": round(efg_val / 100.0, 3) if efg_val > 1.0 else efg_val,
-                            "ts_pct": round(ts_val / 100.0, 3) if ts_val > 1.0 else ts_val,
-                            "usg_pct": 20.0,
-                            "gmsc": gmsc_val,
-                            "ortg": p_ortg,
-                            "drtg": p_drtg,
-                            "netrtg": p_netrtg,
-                        })
+                            excel_players.append({
+                                "id": r,
+                                "player_name": clean_name,
+                                "jersey_number": jersey_num,
+                                "identity": ident,
+                                "position": pos,
+                                "is_starter": bool(len(excel_players) < 5),
+                                "games_played": gp,
+                                "minutes": mins_str,
+                                "seconds": sec,
+                                "pts": pts,
+                                "fgm": fgm,
+                                "fga": fga,
+                                "tpm": p3m,
+                                "tpa": p3a,
+                                "ftm": ftm,
+                                "fta": fta,
+                                "orb": orb,
+                                "drb": drb,
+                                "reb": reb,
+                                "ast": ast,
+                                "stl": stl,
+                                "blk": blk,
+                                "tov": tov,
+                                "pf": pf,
+                                "plus_minus": pm,
+                                "efg_pct": round(efg_100 / 100.0, 3),
+                                "ts_pct": round(ts_100 / 100.0, 3),
+                                "usg_pct": 20.0 if sec > 0 else 0.0,
+                                "gmsc": gmsc_val,
+                                "ortg": p_ortg,
+                                "drtg": p_drtg,
+                                "netrtg": p_netrtg,
+                            })
 
-                    if excel_players:
-                        return excel_players
+                        if excel_players:
+                            return excel_players
         except Exception as e:
             print(f"直讀 Excel 球隊平均數據失敗: {e}")
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    clean_team = team_name.strip()
-    for kw in ["攻城獅", "夢想家", "雲豹", "海神", "特攻", "戰神", "國王"]:
-        if kw in clean_team:
-            clean_team = kw
-            break
-
-    cur.execute("""
-        SELECT * FROM player_stats
-        WHERE team_name LIKE ? AND season_stage = ?
-        ORDER BY mpg DESC, gmsc DESC
-    """, (f"%{clean_team}%", stage))
-    rows = cur.fetchall()
-
-    if not rows:
+    with db_session() as conn:
+        cur = conn.cursor()
         cur.execute("""
             SELECT * FROM player_stats
-            WHERE team_name LIKE ?
-            ORDER BY season_stage DESC, mpg DESC, gmsc DESC
-        """, (f"%{clean_team}%",))
+            WHERE team_name LIKE ? AND season_stage = ?
+            ORDER BY mpg DESC, gmsc DESC
+        """, (f"%{clean_team}%", stage))
         rows = cur.fetchall()
 
-    conn.close()
+        if not rows:
+            cur.execute("""
+                SELECT * FROM player_stats
+                WHERE team_name LIKE ?
+                ORDER BY season_stage DESC, mpg DESC, gmsc DESC
+            """, (f"%{clean_team}%",))
+            rows = cur.fetchall()
 
     players = []
     seen_names = set()
@@ -1486,20 +1543,17 @@ def _fetch_team_players(team_name: str, stage: str):
             continue
         seen_names.add(p_name)
 
-        mpg = round(float(r["mpg"] or 0.0), 1)
-        ppg = round(float(r["ppg"] or 0.0), 1)
-        rpg = round(float(r["rpg"] or 0.0), 1)
-        apg = round(float(r["apg"] or 0.0), 1)
-        spg = round(float(r["spg"] or 0.0), 1)
-        bpg = round(float(r["bpg"] or 0.0), 1)
-        raw_efg = float(r["efg_pct"] or 0.0)
-        raw_ts = float(r["ts_pct"] or 0.0)
-        raw_usg = float(r["usg_pct"] or 0.0)
-        gmsc = round(float(r["gmsc"] or 0.0), 1)
+        mpg = max(0.0, round(clean_val_num(r["mpg"], 0.0), 1))
+        ppg = max(0.0, round(clean_val_num(r["ppg"], 0.0), 1))
+        rpg = max(0.0, round(clean_val_num(r["rpg"], 0.0), 1))
+        apg = max(0.0, round(clean_val_num(r["apg"], 0.0), 1))
+        spg = max(0.0, round(clean_val_num(r["spg"], 0.0), 1))
+        bpg = max(0.0, round(clean_val_num(r["bpg"], 0.0), 1))
+        gmsc = round(clean_val_num(r["gmsc"], 0.0), 1)
 
-        disp_ts = round(raw_ts * 100.0 if (0 < raw_ts <= 1.0) else raw_ts, 1)
-        disp_usg = round(raw_usg * 100.0 if (0 < raw_usg <= 1.0) else raw_usg, 1)
-        disp_efg = round(raw_efg * 100.0 if (0 < raw_efg <= 1.0) else raw_efg, 1)
+        disp_ts = normalize_pct(r["ts_pct"], 0.0, scale_to_100=True)
+        disp_usg = normalize_pct(r["usg_pct"], 0.0, scale_to_100=True)
+        disp_efg = normalize_pct(r["efg_pct"], 0.0, scale_to_100=True)
 
         players.append({
             "id": r["id"],
@@ -1507,9 +1561,9 @@ def _fetch_team_players(team_name: str, stage: str):
             "jersey_number": r["jersey_number"] or "",
             "identity": r["identity"] or "本土",
             "is_starter": bool(len(players) < 5),
-            "games_played": r["games_played"] or 0,
-            "minutes": f"{int(mpg)}:00" if mpg else "00:00",
-            "seconds": int(mpg * 60),
+            "games_played": int(r["games_played"] or 0),
+            "minutes": f"{int(mpg)}:{int(round((mpg % 1) * 60)) % 60:02d}" if mpg else "00:00",
+            "seconds": int(round(mpg * 60)),
             "pts": ppg,
             "fgm": round(ppg * 0.38, 1),
             "fga": round(ppg * 0.85, 1),
@@ -1523,9 +1577,9 @@ def _fetch_team_players(team_name: str, stage: str):
             "ast": apg,
             "stl": spg,
             "blk": bpg,
-            "tov": 1.5,
-            "pf": 2.0,
-            "plus_minus": int(gmsc - 10),
+            "tov": 1.5 if mpg > 0 else 0.0,
+            "pf": 2.0 if mpg > 0 else 0.0,
+            "plus_minus": int(round(gmsc - 10)),
             "efg_pct": round(disp_efg / 100.0, 3),
             "ts_pct": round(disp_ts / 100.0, 3),
             "usg_pct": disp_usg,
@@ -1549,9 +1603,10 @@ def get_team_pbp(team_name: str, stage: str = Query("2026-2027 例行賽")):
     on_off_players = []
     for p in players[:10]:
         diff = round(p["plus_minus"] * 1.2, 1)
+        tot_sec = int(p["seconds"] * max(int(p["games_played"] or 0), 0))
         on_off_players.append({
             "player_name": p["player_name"],
-            "total_time": f"{int(p['seconds'] / 60 * max(p['games_played'], 1))}:00",
+            "total_time": f"{tot_sec // 60}:{tot_sec % 60:02d}",
             "on_ortg": p["ortg"],
             "on_drtg": p["drtg"],
             "on_netrtg": p["netrtg"],
@@ -1567,9 +1622,10 @@ def get_team_pbp(team_name: str, stage: str = Query("2026-2027 例行賽")):
         top5 = players[:5]
         if top5:
             lineup_str = " / ".join([p["player_name"] for p in top5])
+            est_sec = int(top5[-1]["seconds"] * 0.6 * max(int(top5[0]["games_played"] or 0), 0))
             five_man_lineups.append({
                 "lineup_name": lineup_str,
-                "total_time": f"{int(top5[-1]['seconds'] / 60 * 0.6 * max(top5[0]['games_played'], 1))}:00",
+                "total_time": f"{est_sec // 60}:00",
                 "plus_minus": int(sum(p['plus_minus'] for p in top5) * 0.4),
                 "ortg": 111.4,
                 "drtg": 103.2,
@@ -1581,13 +1637,18 @@ def get_team_pbp(team_name: str, stage: str = Query("2026-2027 例行賽")):
         if len(foreigns) >= 2:
             for i in range(len(foreigns) - 1):
                 f1, f2 = foreigns[i], foreigns[i + 1]
+                f1_ts = normalize_pct(f1["ts_pct"], 0.0, scale_to_100=True)
+                f2_ts = normalize_pct(f2["ts_pct"], 0.0, scale_to_100=True)
+                est_sec = int(min(f1["seconds"], f2["seconds"]) * 0.7 * max(int(f1["games_played"] or 0), 0))
+                ortg_est = round(108.0 + (f1_ts + f2_ts - 110.0) * 0.15, 1)
+                drtg_est = round(102.0 - (f1["blk"] + f2["blk"]) * 2.0, 1)
                 foreign_duos.append({
                     "duo_name": f"{f1['player_name']} + {f2['player_name']}",
-                    "total_time": f"{int(min(f1['seconds'], f2['seconds']) / 60 * 0.7 * max(f1['games_played'], 1))}:00",
+                    "total_time": f"{est_sec // 60}:00",
                     "plus_minus": int((f1['plus_minus'] + f2['plus_minus']) * 0.6),
-                    "ortg": round(108.0 + (f1['ts_pct'] * 100 + f2['ts_pct'] * 100 - 110) * 0.15, 1),
-                    "drtg": round(102.0 - (f1['blk'] + f2['blk']) * 2.0, 1),
-                    "netrtg": round((108.0 + (f1['ts_pct'] * 100 + f2['ts_pct'] * 100 - 110) * 0.15) - (102.0 - (f1['blk'] + f2['blk']) * 2.0), 1),
+                    "ortg": ortg_est,
+                    "drtg": drtg_est,
+                    "netrtg": round(ortg_est - drtg_est, 1),
                     "features_and_advice": f"{f1['player_name']} 與 {f2['player_name']} 兼具禁區制空高度與外線威脅，在場上能拉開極佳進攻空間，互補性高。",
                 })
 
@@ -1645,12 +1706,11 @@ def admin_update_qualitative(req: UpdateQualitativeRequest):
 
 @router.post("/admin/delete-game", summary="後台刪除單場賽事")
 def admin_delete_game(req: DeleteGameRequest):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM games WHERE id = ?", (req.game_id,))
-    deleted = cur.rowcount
-    conn.commit()
-    conn.close()
+    with db_session() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM games WHERE id = ?", (req.game_id,))
+        deleted = cur.rowcount
+        conn.commit()
     return {
         "status": "success",
         "message": f"場次 {req.game_id} 已成功刪除 (刪除 {deleted} 筆)",
@@ -1660,17 +1720,16 @@ def admin_delete_game(req: DeleteGameRequest):
 
 @router.post("/admin/reset-stage", summary="後台重置指定賽季資料")
 def admin_reset_stage(req: ResetStageRequest):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    if req.clear_games:
-        cur.execute("DELETE FROM games WHERE stage = ?", (req.stage,))
-    cur.execute("""
-        UPDATE team_summary
-        SET record = '0勝-0敗', games_played = 0, pace = 0, ortg = 0, drtg = 0, net_rtg = 0
-        WHERE season_stage = ?
-    """, (req.stage,))
-    conn.commit()
-    conn.close()
+    with db_session() as conn:
+        cur = conn.cursor()
+        if req.clear_games:
+            cur.execute("DELETE FROM games WHERE stage = ?", (req.stage,))
+        cur.execute("""
+            UPDATE team_summary
+            SET record = '0勝-0敗', games_played = 0, pace = 0, ortg = 0, drtg = 0, net_rtg = 0
+            WHERE season_stage = ?
+        """, (req.stage,))
+        conn.commit()
     return {
         "status": "success",
         "message": f"賽季【{req.stage}】數據已成功重置！",
@@ -1684,19 +1743,21 @@ def get_team_last_lineup(
     team: str = Query(..., description="球隊名稱，例如：新北國王"),
     stage: str = Query("2026-2027 例行賽")
 ):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
-    search_kw = team[-2:]
-    cur.execute("""
-        SELECT id, home_team, away_team, stage 
-        FROM games 
-        WHERE (home_team LIKE ? OR away_team LIKE ?) AND stage = ?
-        ORDER BY date DESC, id DESC 
-        LIMIT 1
-    """, (f"%{search_kw}%", f"%{search_kw}%", stage))
-    g = cur.fetchone()
-    conn.close()
+    clean_team = team.strip()
+    if not clean_team:
+        raise HTTPException(status_code=400, detail="team 參數不可為空")
+
+    search_kw = clean_team[-2:] if len(clean_team) >= 2 else clean_team
+    with db_session() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, home_team, away_team, stage 
+            FROM games 
+            WHERE (home_team LIKE ? OR away_team LIKE ?) AND stage = ?
+            ORDER BY date DESC, id DESC 
+            LIMIT 1
+        """, (f"%{search_kw}%", f"%{search_kw}%", stage))
+        g = cur.fetchone()
     
     if not g:
         return {"starters": [], "bench": []}
