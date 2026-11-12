@@ -29,6 +29,7 @@ interface AdvancedPlayer {
   team_name: string;
   jersey_number?: string;
   identity: string;
+  identity_group?: 'local' | 'import';
   position: string;
   games_played: number;
   minutes_str?: string;
@@ -83,10 +84,15 @@ const fixPct = (val: unknown): number => {
   return Number(n.toFixed(1));
 };
 
-const classifyQuadrant = (usg: number, ts: number): 'Q1' | 'Q2' | 'Q3' | 'Q4' => {
-  if (usg >= 20.0 && ts >= 52.0) return 'Q1';
-  if (usg < 20.0 && ts >= 52.0) return 'Q2';
-  if (usg < 20.0 && ts < 52.0) return 'Q3';
+const classifyQuadrant = (
+  usg: number,
+  ts: number,
+  refUsg = 20.0,
+  refTs = 52.0
+): 'Q1' | 'Q2' | 'Q3' | 'Q4' => {
+  if (usg >= refUsg && ts >= refTs) return 'Q1';
+  if (usg < refUsg && ts >= refTs) return 'Q2';
+  if (usg < refUsg && ts < refTs) return 'Q3';
   return 'Q4';
 };
 
@@ -170,13 +176,14 @@ export default function ScatterPage() {
       const matchPpg = p.ppg >= minPpg;
       const ident = p.identity ?? '';
       const isForeign =
+        p.identity_group === 'import' ||
         ident.includes('洋將') ||
         ident.includes('外籍生') ||
         ident.includes('歸化');
 
       let matchIdentity = true;
       if (identityFilter === '本土') {
-        matchIdentity = !isForeign && (ident === '本土' || ident.includes('本土'));
+        matchIdentity = p.identity_group === 'local' || !isForeign;
       } else if (identityFilter === '洋將') {
         matchIdentity = isForeign;
       }
@@ -194,13 +201,38 @@ export default function ScatterPage() {
     );
   }, [selectedPlayer, filteredPlayers]);
 
-  // 3. 象限判定核心：全站統一標準（絕對同步繪圖座標與標籤）
-  const getPlayerQuadrant = (p: AdvancedPlayer): 'Q1' | 'Q2' | 'Q3' | 'Q4' =>
-    classifyQuadrant(safeNum(p.usg_pct, 0), safeNum(p.ts_pct, 0));
+  // 3. 象限分割基準線：全聯盟採聯盟公認標竿 (20.0% / 52.0%)；切換至僅本土/僅洋將時動態重算該族群平均均線
+  const { baselineUsg, baselineTs, baselineModeLabel } = useMemo(() => {
+    if (identityFilter === '全部' || filteredPlayers.length === 0) {
+      return {
+        baselineUsg: 20.0,
+        baselineTs: 52.0,
+        baselineModeLabel: '聯盟標竿',
+      };
+    }
 
-  // 象限分割基準線：以聯盟進階數據公認基準 (20% / 52%) 為基準十字線
-  const baselineUsg = 20.0;
-  const baselineTs = 52.0;
+    const validUsg = filteredPlayers.map((p) => safeNum(p.usg_pct, NaN)).filter(Number.isFinite);
+    const validTs = filteredPlayers.map((p) => safeNum(p.ts_pct, NaN)).filter(Number.isFinite);
+
+    const avgUsg =
+      validUsg.length > 0
+        ? Number((validUsg.reduce((acc, v) => acc + v, 0) / validUsg.length).toFixed(1))
+        : 20.0;
+    const avgTs =
+      validTs.length > 0
+        ? Number((validTs.reduce((acc, v) => acc + v, 0) / validTs.length).toFixed(1))
+        : 52.0;
+
+    return {
+      baselineUsg: avgUsg,
+      baselineTs: avgTs,
+      baselineModeLabel: identityFilter === '本土' ? '本土均線' : '洋將均線',
+    };
+  }, [identityFilter, filteredPlayers]);
+
+  // 象限判定核心：全站統一標準（絕對同步繪圖座標、動態均線與標籤）
+  const getPlayerQuadrant = (p: AdvancedPlayer): 'Q1' | 'Q2' | 'Q3' | 'Q4' =>
+    classifyQuadrant(safeNum(p.usg_pct, 0), safeNum(p.ts_pct, 0), baselineUsg, baselineTs);
 
   // 4. 動態自適應座標軸邊界與刻度（防護 NaN 與極端少數點 max === min 除以零）
   const { minUsg, maxUsg, minTs, maxTs, xTicks, yTicks } = useMemo(() => {
@@ -241,7 +273,7 @@ export default function ScatterPage() {
     }
 
     return { minUsg: minU, maxUsg: maxU, minTs: minT, maxTs: maxT, xTicks: xT, yTicks: yT };
-  }, [filteredPlayers]);
+  }, [filteredPlayers, baselineUsg, baselineTs]);
 
   const width = 800;
   const height = 520;
@@ -369,7 +401,9 @@ export default function ScatterPage() {
               🎯 主力球員效率象限圖 (USG% vs TS%)
             </h1>
             <p className="text-gray-300 text-sm max-w-2xl leading-relaxed">
-              橫軸為球權使用率 (USG%)，縱軸為真實命中率 (TS%)，基準線採聯盟標竿 (USG 20.0%, TS 52.0%)。點擊圓圈可直接展開下方數據表並自動定位。
+              橫軸為球權使用率 (USG%)，縱軸為真實命中率 (TS%)，目前基準線採
+              <span className="font-semibold text-[#00E676] mx-1">{baselineModeLabel}</span>
+              (USG {baselineUsg.toFixed(1)}%, TS {baselineTs.toFixed(1)}%)。點擊圓圈可直接展開下方數據表並自動定位。
             </p>
           </div>
 
@@ -397,17 +431,21 @@ export default function ScatterPage() {
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs text-gray-400 font-semibold">球員身分:</span>
               <div className="inline-flex p-0.5 rounded-lg bg-[#161B22] border border-[#30363D]">
-                {['全部', '本土', '洋將'].map((id) => (
+                {[
+                  { value: '全部', label: '全聯盟' },
+                  { value: '本土', label: '僅本土' },
+                  { value: '洋將', label: '僅洋將' },
+                ].map((opt) => (
                   <button
-                    key={id}
-                    onClick={() => setIdentityFilter(id)}
+                    key={opt.value}
+                    onClick={() => setIdentityFilter(opt.value)}
                     className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
-                      identityFilter === id
+                      identityFilter === opt.value
                         ? 'bg-[#00E676] text-slate-950 shadow'
                         : 'text-gray-400 hover:text-white'
                     }`}
                   >
-                    {id}
+                    {opt.label}
                   </button>
                 ))}
               </div>
@@ -511,22 +549,22 @@ export default function ScatterPage() {
 
             {/* 基準線文字標註 */}
             <text
-              x={Math.min(width - padding.right - 135, splitX + 6)}
+              x={Math.min(width - padding.right - 165, splitX + 6)}
               y={padding.top + 16}
               fill="#94A3B8"
               fontSize="11"
               fontWeight="bold"
             >
-              核心球權門檻 ({baselineUsg.toFixed(1)}%)
+              {baselineModeLabel} USG ({baselineUsg.toFixed(1)}%)
             </text>
             <text
-              x={width - padding.right - 145}
+              x={width - padding.right - 165}
               y={Math.max(padding.top + 14, splitY - 6)}
               fill="#94A3B8"
               fontSize="11"
               fontWeight="bold"
             >
-              高效命中門檻 ({baselineTs.toFixed(1)}%)
+              {baselineModeLabel} TS% ({baselineTs.toFixed(1)}%)
             </text>
 
             {/* X 軸刻度與標籤 */}

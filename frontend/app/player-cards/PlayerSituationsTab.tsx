@@ -58,9 +58,47 @@ export interface PlayerSituationsData {
   };
 }
 
+export interface SituationalPRBadges {
+  paint_ppg?: number;
+  three_pt_ppg?: number;
+  mid_range_ppg?: number;
+  free_throw_ppg?: number;
+  fast_break_ppg?: number;
+  second_chance_ppg?: number;
+  points_off_tov_ppg?: number;
+  jump_shot_fg_pct?: number;
+  layup_fg_pct?: number;
+  self_created_fga?: number;
+  q4_ppg?: number;
+  q4_ts_pct?: number;
+  q4_pm?: number;
+  q4_tov?: number;
+  clutch_ppg?: number;
+  clutch_ts?: number;
+  clutch_ft?: number;
+  clutch_tov?: number;
+}
+
 interface Props {
   activeTab: 'scoring' | 'q4';
   data?: PlayerSituationsData;
+  prBadges?: SituationalPRBadges;
+  prPrefix?: string;
+}
+
+function InlinePRTag({ pr, prefix }: { pr?: number; prefix?: string }) {
+  if (pr === undefined || pr === null || !Number.isFinite(pr)) return null;
+  let color = 'bg-slate-700/60 text-slate-300 border-slate-600/40';
+  if (pr >= 90) color = 'bg-amber-500/20 text-amber-300 border-amber-500/50';
+  else if (pr >= 75) color = 'bg-blue-500/20 text-blue-300 border-blue-500/50';
+  else if (pr >= 50) color = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50';
+  else if (pr < 25) color = 'bg-rose-500/15 text-rose-300 border-rose-500/30';
+
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold border whitespace-nowrap ${color}`}>
+      {prefix ? `${prefix} ` : ''}PR {pr}
+    </span>
+  );
 }
 
 const safeN = (val: unknown, fallback = 0): number => {
@@ -73,7 +111,7 @@ const clampPctBar = (val: unknown): number => {
   return Math.max(0, Math.min(100, n));
 };
 
-export default function PlayerSituationsTab({ activeTab, data }: Props) {
+export default function PlayerSituationsTab({ activeTab, data, prBadges, prPrefix }: Props) {
   // 末節內部子模式切換：'q4_full' (第4節全節 12分鐘) | 'clutch_5min' (最後5分鐘高壓時刻)
   const [subMode, setSubMode] = useState<'q4_full' | 'clutch_5min'>('clutch_5min');
 
@@ -180,36 +218,48 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
-              <div className="flex items-center gap-1.5 text-amber-400 font-semibold mb-1 text-[11px]">
-                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                禁區 (Paint)
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <div className="flex items-center gap-1.5 text-amber-400 font-semibold text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                  禁區 (Paint)
+                </div>
+                <InlinePRTag pr={prBadges?.paint_ppg} prefix={prPrefix} />
               </div>
               <div className="text-sm font-bold text-gray-100">{paintPpg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
               <div className="text-[10px] text-gray-400 mt-0.5">{paintPct}% 總得分比</div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
-              <div className="flex items-center gap-1.5 text-sky-400 font-semibold mb-1 text-[11px]">
-                <span className="w-2 h-2 rounded-full bg-sky-400"></span>
-                三分 (3-Point)
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <div className="flex items-center gap-1.5 text-sky-400 font-semibold text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+                  三分 (3-Point)
+                </div>
+                <InlinePRTag pr={prBadges?.three_pt_ppg} prefix={prPrefix} />
               </div>
               <div className="text-sm font-bold text-gray-100">{threePtPpg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
               <div className="text-[10px] text-gray-400 mt-0.5">{threePtPct}% 總得分比</div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
-              <div className="flex items-center gap-1.5 text-purple-400 font-semibold mb-1 text-[11px]">
-                <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-                中距離 (Mid)
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <div className="flex items-center gap-1.5 text-purple-400 font-semibold text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                  中距離 (Mid)
+                </div>
+                <InlinePRTag pr={prBadges?.mid_range_ppg} prefix={prPrefix} />
               </div>
               <div className="text-sm font-bold text-gray-100">{midRangePpg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
               <div className="text-[10px] text-gray-400 mt-0.5">{midRangePct}% 總得分比</div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-semibold mb-1 text-[11px]">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                罰球 (FT)
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  罰球 (FT)
+                </div>
+                <InlinePRTag pr={prBadges?.free_throw_ppg} prefix={prPrefix} />
               </div>
               <div className="text-sm font-bold text-gray-100">{ftPpg} <span className="text-[10px] font-normal text-gray-500">分</span></div>
               <div className="text-[10px] text-gray-400 mt-0.5">{ftPctShare}% 總得分比</div>
@@ -222,19 +272,28 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
           <div className="text-xs font-bold text-gray-300 tracking-wider mb-2.5">⚡ 戰術推進與反擊情境</div>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
-              <div className="text-gray-400 text-[11px] mb-0.5">快攻轉換 (Fast Break)</div>
+              <div className="flex items-center justify-between gap-1 mb-0.5">
+                <div className="text-gray-400 text-[11px]">快攻轉換 (Fast Break)</div>
+                <InlinePRTag pr={prBadges?.fast_break_ppg} prefix={prPrefix} />
+              </div>
               <div className="text-sm font-bold text-cyan-400">{safeN(tac?.fast_break?.ppg, 0)} <span className="text-[10px] font-normal text-gray-500">PPG</span></div>
               <div className="text-[10px] text-gray-500 mt-0.5">命中率: <span className="text-gray-300 font-medium">{safeN(tac?.fast_break?.fg_pct, 0)}%</span></div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
-              <div className="text-gray-400 text-[11px] mb-0.5">二次進攻 (2nd Chance)</div>
+              <div className="flex items-center justify-between gap-1 mb-0.5">
+                <div className="text-gray-400 text-[11px]">二次進攻 (2nd Chance)</div>
+                <InlinePRTag pr={prBadges?.second_chance_ppg} prefix={prPrefix} />
+              </div>
               <div className="text-sm font-bold text-emerald-400">{safeN(tac?.second_chance?.ppg, 0)} <span className="text-[10px] font-normal text-gray-500">PPG</span></div>
               <div className="text-[10px] text-gray-500 mt-0.5">命中率: <span className="text-gray-300 font-medium">{safeN(tac?.second_chance?.fg_pct, 0)}%</span></div>
             </div>
 
             <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80">
-              <div className="text-gray-400 text-[11px] mb-0.5">抓失誤反擊 (Off TOV)</div>
+              <div className="flex items-center justify-between gap-1 mb-0.5">
+                <div className="text-gray-400 text-[11px]">抓失誤反擊 (Off TOV)</div>
+                <InlinePRTag pr={prBadges?.points_off_tov_ppg} prefix={prPrefix} />
+              </div>
               <div className="text-sm font-bold text-purple-400">{safeN(tac?.points_off_tov?.ppg, 0)} <span className="text-[10px] font-normal text-gray-500">PPG</span></div>
               <div className="text-[10px] text-gray-500 mt-0.5">佔比: <span className="text-gray-300 font-medium">{safeN(tac?.points_off_tov?.share_pct, 0)}%</span></div>
             </div>
@@ -271,8 +330,9 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <div className="text-blue-300 text-[11px] font-bold">總跳投合計 (Total JS)</div>
                 <div className="text-sm font-bold text-white">{safeN(fin?.jump_shot_total?.fgm, 0)}/{safeN(fin?.jump_shot_total?.fga, 0)}</div>
               </div>
-              <div className="text-right">
+              <div className="text-right flex flex-col items-end gap-0.5">
                 <span className="text-xs font-black text-blue-400">{safeN(fin?.jump_shot_total?.fg_pct, 0)}%</span>
+                <InlinePRTag pr={prBadges?.jump_shot_fg_pct} prefix={prPrefix} />
               </div>
             </div>
 
@@ -281,8 +341,9 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <div className="text-emerald-400 text-[11px] font-semibold">突破 / 上籃 (Layup)</div>
                 <div className="text-sm font-bold text-gray-100">{safeN(fin?.layup?.fgm, 0)}/{safeN(fin?.layup?.fga, 0)}</div>
               </div>
-              <div className="text-right">
+              <div className="text-right flex flex-col items-end gap-0.5">
                 <span className="text-xs font-bold text-emerald-400">{safeN(fin?.layup?.fg_pct, 0)}%</span>
+                <InlinePRTag pr={prBadges?.layup_fg_pct} prefix={prPrefix} />
               </div>
             </div>
 
@@ -301,8 +362,9 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <div className="text-rose-400 text-[11px] font-semibold">單打自創 (Pull-up/Fade)</div>
                 <div className="text-sm font-bold text-gray-100">{safeN(fin?.self_created?.fgm, 0)}/{safeN(fin?.self_created?.fga, 0)}</div>
               </div>
-              <div className="text-right">
+              <div className="text-right flex flex-col items-end gap-0.5">
                 <span className="text-xs font-bold text-rose-400">{safeN(fin?.self_created?.fg_pct, 0)}%</span>
+                <InlinePRTag pr={prBadges?.self_created_fga} prefix={prPrefix} />
               </div>
             </div>
           </div>
@@ -377,12 +439,18 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
               <div className="bg-[#0e1117] p-3 rounded-lg border border-amber-500/30 text-center">
                 <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider mb-0.5">5分鐘預期得分</div>
                 <div className="text-lg font-black text-white font-mono">{clutchPpg} <span className="text-xs font-normal text-gray-500">PTS</span></div>
+                <div className="mt-1 flex items-center justify-center">
+                  <InlinePRTag pr={prBadges?.clutch_ppg} prefix={prPrefix} />
+                </div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">球權負荷: {clutchUsg}%</div>
               </div>
 
               <div className="bg-[#0e1117] p-3 rounded-lg border border-amber-500/30 text-center">
                 <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-0.5">關鍵 TS%</div>
                 <div className="text-lg font-black text-emerald-400 font-mono">{clutchTs}%</div>
+                <div className="mt-1 flex items-center justify-center">
+                  <InlinePRTag pr={prBadges?.clutch_ts} prefix={prPrefix} />
+                </div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">常態: {q4Ts}%</div>
               </div>
 
@@ -390,6 +458,9 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <div className="text-[10px] text-sky-400 font-bold uppercase tracking-wider mb-0.5">關鍵罰球穩定度</div>
                 <div className={`text-lg font-black font-mono ${clutchFt >= 75 ? 'text-sky-400' : 'text-amber-400'}`}>
                   {clutchFt}%
+                </div>
+                <div className="mt-1 flex items-center justify-center">
+                  <InlinePRTag pr={prBadges?.clutch_ft} prefix={prPrefix} />
                 </div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
                   {!hasClutchSample ? '尚無樣本' : clutchFt >= 75 ? '把握度極佳' : '犯規戰術警戒'}
@@ -399,6 +470,9 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
               <div className="bg-[#0e1117] p-3 rounded-lg border border-amber-500/30 text-center">
                 <div className="text-[10px] text-purple-400 font-bold uppercase tracking-wider mb-0.5">關鍵失誤率 (TOV%)</div>
                 <div className="text-lg font-black text-gray-200 font-mono">{clutchTov}%</div>
+                <div className="mt-1 flex items-center justify-center">
+                  <InlinePRTag pr={prBadges?.clutch_tov} prefix={prPrefix} />
+                </div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">
                   {!hasClutchSample ? '尚無樣本' : clutchTov < 12 ? '護球極佳' : '防壓迫待加強'}
                 </div>
@@ -417,12 +491,18 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
               <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 text-center">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Q4 場均得分</div>
                 <div className="text-base font-bold text-amber-400 font-mono">{q4Ppg}</div>
+                <div className="mt-1 flex items-center justify-center">
+                  <InlinePRTag pr={prBadges?.q4_ppg} prefix={prPrefix} />
+                </div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">{q4Mpg} MIN/Q4</div>
               </div>
 
               <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 text-center">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Q4 真實命中率</div>
                 <div className="text-base font-bold text-emerald-400 font-mono">{q4Ts}%</div>
+                <div className="mt-1 flex items-center justify-center">
+                  <InlinePRTag pr={prBadges?.q4_ts_pct} prefix={prPrefix} />
+                </div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">FG: {q4Fg}%</div>
               </div>
 
@@ -431,12 +511,18 @@ export default function PlayerSituationsTab({ activeTab, data }: Props) {
                 <div className={`text-base font-bold font-mono ${q4Pm >= 0 ? 'text-cyan-400' : 'text-rose-400'}`}>
                   {q4Pm > 0 ? `+${q4Pm}` : q4Pm}
                 </div>
+                <div className="mt-1 flex items-center justify-center">
+                  <InlinePRTag pr={prBadges?.q4_pm} prefix={prPrefix} />
+                </div>
                 <div className="text-[10px] text-gray-500 mt-0.5">團隊淨勝分</div>
               </div>
 
               <div className="bg-[#0e1117] p-2.5 rounded-lg border border-gray-800/80 text-center">
                 <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Q4 失誤控管</div>
                 <div className="text-base font-bold text-gray-200 font-mono">{q4Tov}</div>
+                <div className="mt-1 flex items-center justify-center">
+                  <InlinePRTag pr={prBadges?.q4_tov} prefix={prPrefix} />
+                </div>
                 <div className="text-[10px] text-gray-500 mt-0.5 font-mono">TOV / 節</div>
               </div>
             </div>

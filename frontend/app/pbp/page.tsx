@@ -118,6 +118,7 @@ interface OnOffPlayer {
 interface FiveManLineup {
   lineup_name: string;
   total_time: string;
+  possessions?: number;
   plus_minus: number;
   ortg: number;
   drtg: number;
@@ -127,6 +128,7 @@ interface FiveManLineup {
 interface ForeignDuo {
   duo_name: string;
   total_time: string;
+  possessions?: number;
   plus_minus: number;
   ortg: number;
   drtg: number;
@@ -176,6 +178,9 @@ interface TeamBoxPlayer {
 interface PBPResponse {
   team_name: string;
   stage: string;
+  exclude_garbage_time?: boolean;
+  garbage_time_filter_supported?: boolean;
+  data_limitation_note?: string;
   on_off_players: OnOffPlayer[];
   five_man_lineups: FiveManLineup[];
   foreign_duos: ForeignDuo[];
@@ -219,6 +224,26 @@ const parseSeconds = (seconds?: number, minutesStr?: string): number => {
   return 0;
 };
 
+const isSmallSample = (totalTime?: string, possessions?: number): boolean => {
+  if (isNum(possessions) && possessions > 0) {
+    return possessions < 80;
+  }
+  const sec = parseSeconds(undefined, totalTime);
+  const minutes = sec / 60;
+  return minutes < 35;
+};
+
+function SmallSampleBadge() {
+  return (
+    <span
+      title="累計出賽時間未滿 35 分鐘（約 < 80 回合），樣本數偏低易受短期手感波動影響"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/40 text-[11px] font-bold cursor-help whitespace-nowrap"
+    >
+      ⚠️ 小樣本
+    </span>
+  );
+}
+
 const staticJsonFetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) return null;
@@ -261,15 +286,18 @@ function PBPContent() {
   // Box Score 專屬視圖切換：'traditional' (基礎攻守) | 'advanced' (進階效率)
   const [boxScoreView, setBoxScoreView] = useState<'traditional' | 'advanced'>('advanced');
 
+  // 排除垃圾時間開關
+  const [excludeGarbageTime, setExcludeGarbageTime] = useState<boolean>(false);
+
   // 排序狀態
   const [sortField, setSortField] = useState<string>('pts');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // 主要 PBP 數據
   const { data, isLoading } = useSWR<PBPResponse>(
-    `/api/teams/${encodeURIComponent(selectedTeam)}/pbp?stage=${encodeURIComponent(stage)}`,
+    `/api/teams/${encodeURIComponent(selectedTeam)}/pbp?stage=${encodeURIComponent(stage)}&exclude_garbage_time=${excludeGarbageTime}`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
+    { revalidateOnFocus: false, dedupingInterval: 60000, keepPreviousData: true }
   );
 
   // 獨立球員完整進階數據來源 (球隊專屬)
@@ -349,6 +377,7 @@ function PBPContent() {
   }, [rawPlayerList]);
 
   // 排序後的球員列表
+  const hasPlayerRtg = (teamPlayersData ?? []).some((q) => isNum(q.ortg) || isNum(q.drtg) || isNum(q.netrtg));
   const sortedPlayerList = useMemo(() => {
     if (!rawPlayerList || rawPlayerList.length === 0) return [];
 
@@ -584,55 +613,103 @@ function PBPContent() {
         </div>
       </div>
 
-      {/* 四大次級導航 Tab */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#21262D] pb-3">
-        <button
-          onClick={() => setActiveSubTab('duos')}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-            activeSubTab === 'duos'
-              ? 'bg-[#161B22] text-[#00E676] border border-[#00E676]/40 shadow-sm'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>雙洋將化學效應矩陣與搭配建議 ({data?.foreign_duos?.length ?? 0})</span>
-        </button>
+      {/* 四大次級導航 Tab + 垃圾時間過濾開關 */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#21262D] pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setActiveSubTab('duos')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeSubTab === 'duos'
+                ? 'bg-[#161B22] text-[#00E676] border border-[#00E676]/40 shadow-sm'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>雙洋將化學效應矩陣與搭配建議 ({data?.foreign_duos?.length ?? 0})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveSubTab('onoff')}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-            activeSubTab === 'onoff'
-              ? 'bg-[#161B22] text-[#FF9100] border border-[#FF9100]/40 shadow-sm'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <Zap className="w-4 h-4" />
-          <span>主力球員 On/Off 總榜 ({data?.on_off_players?.length ?? 0})</span>
-        </button>
+          <button
+            onClick={() => setActiveSubTab('onoff')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeSubTab === 'onoff'
+                ? 'bg-[#161B22] text-[#FF9100] border border-[#FF9100]/40 shadow-sm'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            <span>主力球員 On/Off 總榜 ({data?.on_off_players?.length ?? 0})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveSubTab('lineups')}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-            activeSubTab === 'lineups'
-              ? 'bg-[#161B22] text-sky-400 border border-sky-400/40 shadow-sm'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>最佳五人陣容組合 ({data?.five_man_lineups?.length ?? 0})</span>
-        </button>
+          <button
+            onClick={() => setActiveSubTab('lineups')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeSubTab === 'lineups'
+                ? 'bg-[#161B22] text-sky-400 border border-sky-400/40 shadow-sm'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>最佳五人陣容組合 ({data?.five_man_lineups?.length ?? 0})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveSubTab('boxscore')}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-            activeSubTab === 'boxscore'
-              ? 'bg-[#161B22] text-amber-400 border border-amber-400/40 shadow-sm'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <Table2 className="w-4 h-4" />
-          <span>完整球員數據庫 Box Score ({rawPlayerList.length})</span>
-        </button>
+          <button
+            onClick={() => setActiveSubTab('boxscore')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeSubTab === 'boxscore'
+                ? 'bg-[#161B22] text-amber-400 border border-amber-400/40 shadow-sm'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Table2 className="w-4 h-4" />
+            <span>完整球員數據庫 Box Score ({rawPlayerList.length})</span>
+          </button>
+        </div>
+
+        {/* 排除垃圾時間開關 (依後端支援狀態顯示可用或資料限制提示) */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={data?.garbage_time_filter_supported === false}
+            onClick={() => {
+              if (data?.garbage_time_filter_supported !== false) {
+                setExcludeGarbageTime((prev) => !prev);
+              }
+            }}
+            title={
+              data?.data_limitation_note ||
+              '過濾第 4 節或延長賽且分差 ≥ 20 分之回合'
+            }
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+              data?.garbage_time_filter_supported === false
+                ? 'bg-[#0E1117] border-[#30363D] text-gray-500 cursor-not-allowed opacity-80'
+                : excludeGarbageTime
+                ? 'bg-[#00E676]/15 border-[#00E676]/50 text-[#00E676]'
+                : 'bg-[#161B22] border-[#30363D] text-gray-300 hover:text-white'
+            }`}
+          >
+            <span
+              className={`w-7 h-4 rounded-full relative transition-colors ${
+                excludeGarbageTime && data?.garbage_time_filter_supported !== false
+                  ? 'bg-[#00E676]'
+                  : 'bg-[#30363D]'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
+                  excludeGarbageTime && data?.garbage_time_filter_supported !== false
+                    ? 'translate-x-3.5 left-0'
+                    : 'left-0.5'
+                }`}
+              />
+            </span>
+            <span>排除垃圾時間（Q4 分差 ≥ 20）</span>
+            {data?.garbage_time_filter_supported === false && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px]">
+                無逐回合比分
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -657,10 +734,11 @@ function PBPContent() {
                       className="p-6 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-xl hover:border-[#00E676]/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-6"
                     >
                       <div className="space-y-2 max-w-2xl">
-                        <div className="flex items-center space-x-3">
+                        <div className="flex flex-wrap items-center gap-2.5">
                           <span className="px-3 py-1 rounded-xl bg-[#00E676]/15 text-[#00E676] font-black text-sm border border-[#00E676]/30">
                             {duo.duo_name}
                           </span>
+                          {isSmallSample(duo.total_time, duo.possessions) && <SmallSampleBadge />}
                           <span className="flex items-center space-x-1 text-xs text-gray-400 font-mono">
                             <Clock className="w-3.5 h-3.5" />
                             <span>共同出賽: {duo.total_time}</span>
@@ -801,7 +879,10 @@ function PBPContent() {
                       data.five_man_lineups.map((l, idx) => (
                         <tr key={idx} className="hover:bg-[#21262D]/60 transition-colors">
                           <td className="py-3.5 px-4 font-sans font-bold text-gray-200">
-                            {l.lineup_name}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span>{l.lineup_name}</span>
+                              {isSmallSample(l.total_time, l.possessions) && <SmallSampleBadge />}
+                            </div>
                           </td>
                           <td className="py-3.5 px-4 text-center text-gray-300">{l.total_time}</td>
                           <td
@@ -846,7 +927,7 @@ function PBPContent() {
                   <span className="text-xs text-gray-400 font-mono">
                     {boxScoreView === 'traditional'
                       ? '基礎攻守：點擊任意表頭可快速排序，支援投射、籃板與攻守產出'
-                      : '進階效率：點擊任意表頭可快速排序，含 eFG%、TS%、3PAr、FTr、USG% 與 NetRtg'}
+                      : '進階效率：點擊任意表頭可快速排序，含 eFG%、TS%、3PAr、FTr、USG% 與真實 +/-'}
                   </span>
                 </div>
 
@@ -919,9 +1000,9 @@ function PBPContent() {
                           {renderSortableHeader('ftr', 'FTr')}
                           {renderSortableHeader('usg_pct', 'USG%', 'text-right text-[#00E676] font-black')}
                           {renderSortableHeader('gmsc', 'GmSc', 'text-right text-[#00E676]')}
-                          {renderSortableHeader('ortg', 'ORtg', 'text-right text-sky-400')}
-                          {renderSortableHeader('drtg', 'DRtg', 'text-right text-sky-400')}
-                          {renderSortableHeader('netrtg', 'NetRtg', 'text-right text-amber-300 font-bold')}
+                          {hasPlayerRtg && renderSortableHeader('ortg', 'ORtg', 'text-right text-sky-400')}
+                          {hasPlayerRtg && renderSortableHeader('drtg', 'DRtg', 'text-right text-sky-400')}
+                          {hasPlayerRtg && renderSortableHeader('netrtg', 'NetRtg', 'text-right text-amber-300 font-bold')}
                           {renderSortableHeader('plus_minus', '+/-')}
                         </tr>
                       )}
@@ -1009,7 +1090,7 @@ function PBPContent() {
                                   <td className="py-3 px-3 text-right text-gray-300">{p.tov ?? '-'}</td>
                                   <td className="py-3 px-3 text-right text-gray-300">{p.pf ?? '-'}</td>
                                   <td className={`py-3 px-3 text-right font-bold ${signColor(p.plus_minus)}`}>
-                                    {signed(p.plus_minus, 0)}
+                                    {signed(p.plus_minus, 1)}
                                   </td>
                                 </>
                               ) : (
@@ -1020,13 +1101,17 @@ function PBPContent() {
                                   <td className="py-3 px-3 text-right text-gray-300">{smartPctStr(calcFTr)}</td>
                                   <td className="py-3 px-3 text-right text-[#00E676] font-bold">{smartPctStr(finalUsg)}</td>
                                   <td className="py-3 px-3 text-right text-[#00E676] font-bold">{fx(p.gmsc)}</td>
-                                  <td className="py-3 px-3 text-right text-sky-400">{fx(p.ortg)}</td>
-                                  <td className="py-3 px-3 text-right text-sky-400">{fx(p.drtg)}</td>
-                                  <td className={`py-3 px-3 text-right font-bold ${signColor(p.netrtg)}`}>
-                                    {signed(p.netrtg)}
-                                  </td>
+                                  {hasPlayerRtg && (
+                                    <>
+                                      <td className="py-3 px-3 text-right text-sky-400">{fx(p.ortg)}</td>
+                                      <td className="py-3 px-3 text-right text-sky-400">{fx(p.drtg)}</td>
+                                      <td className={`py-3 px-3 text-right font-bold ${signColor(p.netrtg)}`}>
+                                        {signed(p.netrtg)}
+                                      </td>
+                                    </>
+                                  )}
                                   <td className={`py-3 px-3 text-right font-bold ${signColor(p.plus_minus)}`}>
-                                    {signed(p.plus_minus, 0)}
+                                    {signed(p.plus_minus, 1)}
                                   </td>
                                 </>
                               )}

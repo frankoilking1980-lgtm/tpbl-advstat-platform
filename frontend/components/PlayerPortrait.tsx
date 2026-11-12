@@ -6,6 +6,10 @@ interface PlayerPortraitProps {
   playerName?: string;
   stage?: string;
   isRightSide?: boolean;
+  overridePr?: number;
+  overrideMetricLabel?: string;
+  overridePrefix?: string;
+  poolLabel?: string;
 }
 
 interface PlayerPRData {
@@ -17,7 +21,15 @@ interface PlayerPRData {
   };
 }
 
-export function PlayerPortrait({ playerName, stage, isRightSide = false }: PlayerPortraitProps) {
+export function PlayerPortrait({
+  playerName,
+  stage,
+  isRightSide = false,
+  overridePr,
+  overrideMetricLabel,
+  overridePrefix,
+  poolLabel,
+}: PlayerPortraitProps) {
   const [hasError, setHasError] = useState(false);
   const [prData, setPrData] = useState<PlayerPRData | null>(null);
 
@@ -54,12 +66,21 @@ export function PlayerPortrait({ playerName, stage, isRightSide = false }: Playe
 
   if (!playerName) return null;
 
-  // 取得核心指標 (優先 GmSc，其次 PTS)
-  const coreMetric = prData?.badges?.['GmSC'] 
-    ? { label: 'GmSc', ...prData.badges['GmSC'] }
+  // 取得核心指標：優先採用外部動態重算之 overridePr (與 overrideMetricLabel、overridePrefix)
+  const defaultMetric = prData?.badges?.['GmSC'] 
+    ? { label: 'GMSC', pr: prData.badges['GmSC'].pr, prefix: '' }
     : prData?.badges?.['PTS']
-    ? { label: 'PTS', ...prData.badges['PTS'] }
+    ? { label: 'PTS', pr: prData.badges['PTS'].pr, prefix: '' }
     : null;
+
+  const coreMetric =
+    overridePr !== undefined && Number.isFinite(overridePr)
+      ? {
+          label: overrideMetricLabel || defaultMetric?.label || 'GMSC',
+          pr: overridePr,
+          prefix: overridePrefix !== undefined ? overridePrefix : defaultMetric?.prefix || '',
+        }
+      : defaultMetric;
 
   // PR 色彩與光暈樣式
   const getBadgeStyle = (pr: number) => {
@@ -83,12 +104,15 @@ export function PlayerPortrait({ playerName, stage, isRightSide = false }: Playe
     // 只有在當季有 PR 數值時才渲染，歷史賽季回傳佔位空 div 保持版面高度穩定
     if (!coreMetric) return <div className="h-7 mt-2" />;
 
+    const displayPrefix = coreMetric.prefix ? `${coreMetric.prefix} ` : '';
+    const poolDesc = poolLabel || (coreMetric.prefix ? `${coreMetric.prefix}輪替球員` : '聯盟輪替球員');
+
     return (
       <div className="relative mt-2 flex flex-col items-center group/tooltip cursor-help select-none">
         {/* 膠囊本體 */}
-        <div className={`px-4 py-1 rounded-full border backdrop-blur-md flex items-center gap-2 transition-transform duration-200 group-hover/tooltip:scale-105 ${getBadgeStyle(coreMetric.pr)}`}>
+        <div className={`px-4 py-1 rounded-full border backdrop-blur-md flex items-center gap-1.5 transition-transform duration-200 group-hover/tooltip:scale-105 whitespace-nowrap ${getBadgeStyle(coreMetric.pr)}`}>
           <span className="text-[11px] font-sans font-semibold opacity-75 uppercase tracking-wider">
-            {coreMetric.label}
+            {displayPrefix}{coreMetric.label}
           </span>
           <span className="text-sm font-mono font-extrabold tracking-tight">
             PR {coreMetric.pr}
@@ -99,11 +123,11 @@ export function PlayerPortrait({ playerName, stage, isRightSide = false }: Playe
         <div className="absolute bottom-full mb-2 hidden group-hover/tooltip:flex flex-col items-center z-50 pointer-events-none animate-fadeIn">
           <div className="bg-[#1C2128]/95 border border-white/15 text-gray-200 text-xs px-3 py-1.5 rounded-lg shadow-2xl backdrop-blur-md whitespace-nowrap text-center">
             <div className="font-semibold text-slate-100 flex items-center justify-center gap-1">
-              <span>{coreMetric.label}</span>
+              <span>{displayPrefix}{coreMetric.label}</span>
               <span className="text-amber-400">PR {coreMetric.pr}</span>
             </div>
             <p className="text-[11px] text-gray-400 mt-0.5 font-normal">
-              勝過聯盟 <span className="text-slate-200 font-bold">{coreMetric.pr}%</span> 的輪替球員
+              勝過{poolDesc} <span className="text-slate-200 font-bold">{coreMetric.pr}%</span> 的選手
             </p>
           </div>
           <div className="w-2 h-2 bg-[#1C2128] border-r border-b border-white/15 rotate-45 -mt-1" />

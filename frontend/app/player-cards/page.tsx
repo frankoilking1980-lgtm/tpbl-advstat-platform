@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useStage } from '@/context/StageContext';
 import { fetcher } from '@/lib/api';
 import { PlayerPortrait } from '@/components/PlayerPortrait';
-import PlayerSituationsTab, { PlayerSituationsData } from './PlayerSituationsTab';
+import PlayerSituationsTab, { PlayerSituationsData, SituationalPRBadges } from './PlayerSituationsTab';
 import PlayerSituationsLeaderboard, { LeaderboardMetric } from './PlayerSituationsLeaderboard';
 import {
   Users,
@@ -147,6 +147,7 @@ interface PlayerInfo {
   team_name: string;
   jersey_number?: string;
   identity: string;
+  identity_group?: 'local' | 'import';
   position: string;
   games_played: number;
   mpg: number;
@@ -283,7 +284,115 @@ const staticJsonFetcher = async (url: string) => {
   return res.json();
 };
 
-function PRTag({ pr }: { pr?: number }) {
+type PRPoolMode = 'all' | 'local' | 'import';
+
+const isImportIdentity = (identity?: string, identityGroup?: string): boolean => {
+  if (identityGroup === 'import') return true;
+  if (identityGroup === 'local') return false;
+  const ident = (identity || '').trim();
+  return ident.includes('洋將') || ident.includes('外籍生') || ident.includes('歸化');
+};
+
+const normalizePctVal = (val: unknown): number => {
+  const n = Number(val ?? 0);
+  if (!Number.isFinite(n)) return 0;
+  return n > 0 && n <= 1.0 ? n * 100 : n;
+};
+
+const getQualifiedCohortPool = (
+  list: PlayerInfo[] | undefined,
+  poolMode: PRPoolMode
+): PlayerInfo[] => {
+  if (!list || list.length === 0) return [];
+
+  const teamMaxGp: Record<string, number> = {};
+  for (const p of list) {
+    const t = p.team_name || '';
+    const gp = Number(p.games_played || 0);
+    if (t && gp > (teamMaxGp[t] ?? 0)) {
+      teamMaxGp[t] = gp;
+    }
+  }
+
+  const byIdentity = list.filter((p) => {
+    if (poolMode === 'local') return !isImportIdentity(p.identity, p.identity_group);
+    if (poolMode === 'import') return isImportIdentity(p.identity, p.identity_group);
+    return true;
+  });
+
+  const qualified = byIdentity.filter((p) => {
+    const gp = Number(p.games_played || 0);
+    const mpg = Number(p.mpg || 0);
+    if (mpg < 8.0 || gp <= 0) return false;
+    const teamTotal = teamMaxGp[p.team_name || ''] || gp;
+    if (teamTotal <= 2) return gp >= 1;
+    if (teamTotal <= 5) return gp >= 2;
+    return gp >= Math.max(3, Math.round(teamTotal * 0.4));
+  });
+
+  if (qualified.length > 0) return qualified;
+  return byIdentity.filter((p) => Number(p.games_played || 0) > 0);
+};
+
+const computeCohortPR = (
+  targetVal: number | undefined,
+  pool: PlayerInfo[],
+  getter: (p: PlayerInfo) => number,
+  lowerIsBetter = false
+): number | undefined => {
+  if (targetVal === undefined || !Number.isFinite(targetVal) || pool.length === 0) {
+    return undefined;
+  }
+  if (pool.length === 1) {
+    return 50;
+  }
+  let worse = 0;
+  let equal = 0;
+  let validCount = 0;
+  for (const p of pool) {
+    const v = getter(p);
+    if (!Number.isFinite(v)) continue;
+    validCount += 1;
+    if (v === targetVal) {
+      equal += 1;
+    } else if (lowerIsBetter ? v > targetVal : v < targetVal) {
+      worse += 1;
+    }
+  }
+  if (validCount <= 1) return 50;
+  const raw = ((worse + 0.5 * Math.max(0, equal - 1)) / validCount) * 100;
+  return Math.min(99, Math.max(1, Math.round(raw)));
+};
+
+const computeGenericPR = <T,>(
+  targetVal: number | undefined,
+  items: T[],
+  getter: (item: T) => number | undefined,
+  lowerIsBetter = false
+): number | undefined => {
+  if (targetVal === undefined || !Number.isFinite(targetVal) || items.length === 0) {
+    return undefined;
+  }
+  if (items.length === 1) return 50;
+  let worse = 0;
+  let equal = 0;
+  let validCount = 0;
+  for (const item of items) {
+    const v = getter(item);
+    if (v === undefined || !Number.isFinite(v)) continue;
+    validCount += 1;
+    if (v === targetVal) {
+      equal += 1;
+    } else if (lowerIsBetter ? v > targetVal : v < targetVal) {
+      worse += 1;
+    }
+  }
+  if (validCount <= 1) return 50;
+  const raw = ((worse + 0.5 * Math.max(0, equal - 1)) / validCount) * 100;
+  return Math.min(99, Math.max(1, Math.round(raw)));
+};
+
+function PRTag({ pr, prefix }: { pr?: number; prefix?: string }) {
   if (pr === undefined || pr === null) return null;
   let color = 'bg-slate-700/60 text-slate-300 border-slate-600/40';
   if (pr >= 90) color = 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/10';
@@ -292,8 +401,8 @@ function PRTag({ pr }: { pr?: number }) {
   else if (pr < 25) color = 'bg-rose-500/15 text-rose-300 border-rose-500/30';
 
   return (
-    <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border tracking-tight ${color}`}>
-      PR {pr}
+    <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border tracking-tight whitespace-nowrap ${color}`}>
+      {prefix ? `${prefix} ` : ''}PR {pr}
     </span>
   );
 }
@@ -362,6 +471,7 @@ function PlayerCardsContent() {
 
   const [cardTab, setCardTab] = useState<'overview' | 'scoring' | 'q4'>('overview');
   const [radarMode, setRadarMode] = useState<'traditional' | 'situational'>('traditional');
+  const [prPoolMode, setPrPoolMode] = useState<PRPoolMode>('all');
 
   const [isRankingsOpen, setIsRankingsOpen] = useState(false);
   const [focusedPlayer, setFocusedPlayer] = useState<string | null>(null);
@@ -387,27 +497,39 @@ function PlayerCardsContent() {
     fetcher
   );
 
+  const matchesPoolMode = (p: PlayerInfo, mode: PRPoolMode): boolean => {
+    if (mode === 'local') return !isImportIdentity(p.identity, p.identity_group);
+    if (mode === 'import') return isImportIdentity(p.identity, p.identity_group);
+    return true;
+  };
+
   const teamsA = useMemo(() => {
     if (!listA) return [];
-    return Array.from(new Set(listA.map((p) => p.team_name).filter(Boolean))).sort();
-  }, [listA]);
+    const matching = listA.filter((p) => matchesPoolMode(p, prPoolMode));
+    const source = matching.length > 0 ? matching : listA;
+    return Array.from(new Set(source.map((p) => p.team_name).filter(Boolean))).sort();
+  }, [listA, prPoolMode]);
 
   const teamsB = useMemo(() => {
     if (!listB) return [];
-    return Array.from(new Set(listB.map((p) => p.team_name).filter(Boolean))).sort();
-  }, [listB]);
+    const matching = listB.filter((p) => matchesPoolMode(p, prPoolMode));
+    const source = matching.length > 0 ? matching : listB;
+    return Array.from(new Set(source.map((p) => p.team_name).filter(Boolean))).sort();
+  }, [listB, prPoolMode]);
 
   const filteredPlayersA = useMemo(() => {
     if (!listA) return [];
-    if (!teamA || teamA === 'ALL') return listA;
-    return listA.filter((p) => (p.team_name || '').trim() === teamA.trim());
-  }, [listA, teamA]);
+    const byMode = listA.filter((p) => matchesPoolMode(p, prPoolMode));
+    if (!teamA || teamA === 'ALL') return byMode;
+    return byMode.filter((p) => (p.team_name || '').trim() === teamA.trim());
+  }, [listA, teamA, prPoolMode]);
 
   const filteredPlayersB = useMemo(() => {
     if (!listB) return [];
-    if (!teamB || teamB === 'ALL') return listB;
-    return listB.filter((p) => (p.team_name || '').trim() === teamB.trim());
-  }, [listB, teamB]);
+    const byMode = listB.filter((p) => matchesPoolMode(p, prPoolMode));
+    if (!teamB || teamB === 'ALL') return byMode;
+    return byMode.filter((p) => (p.team_name || '').trim() === teamB.trim());
+  }, [listB, teamB, prPoolMode]);
 
   useEffect(() => {
     if (queryStage) {
@@ -449,27 +571,34 @@ function PlayerCardsContent() {
   }, [listA, teamsA, normalizedQueryPlayer, normalizedQueryStage, teamA]);
 
   useEffect(() => {
-    if (!filteredPlayersA || filteredPlayersA.length === 0) {
-      if (listA && listA.length > 0) setPlayerA('');
+    if (!listA || listA.length === 0) return;
+    if (teamsA.length > 0 && !teamsA.includes(teamA)) {
+      setTeamA(teamsA[0]);
+      return;
+    }
+    if (filteredPlayersA.length === 0) {
+      setPlayerA('');
       return;
     }
     if (!playerA || !filteredPlayersA.some((p) => p.player_name === playerA)) {
       setPlayerA(filteredPlayersA[0].player_name);
     }
-  }, [filteredPlayersA, listA, playerA]);
+  }, [filteredPlayersA, listA, playerA, teamsA, teamA]);
 
   useEffect(() => {
     if (teamsB.length > 0 && !teamsB.includes(teamB)) {
       setTeamB(teamsB[0]);
     }
-  }, [teamsB]);
+  }, [teamsB, teamB]);
 
   useEffect(() => {
     if (!playerB) return;
     if (filteredPlayersB.length > 0 && !filteredPlayersB.some((p) => p.player_name === playerB)) {
+      setPlayerB(filteredPlayersB[0].player_name);
+    } else if (filteredPlayersB.length === 0) {
       setPlayerB('');
     }
-  }, [filteredPlayersB]);
+  }, [filteredPlayersB, playerB]);
 
   const { data: cardA } = useSWR<PlayerCardResponse>(
     playerA ? `/api/players/${encodeURIComponent(playerA)}/card?stage=${encodeURIComponent(stageA)}` : null,
@@ -564,13 +693,237 @@ function PlayerCardsContent() {
     return prPlayerB?.badges?.TOV?.pr ?? prPlayerB?.badges?.TPG?.pr ?? calcReverseTpgPr(realTpgB, listB);
   }, [prPlayerB, realTpgB, listB]);
 
-  const sitRadarA = useMemo(() => {
-    return calculateSituationalRadar(cardA?.player_info, sitPlayerA, realTpgA);
-  }, [cardA, sitPlayerA, realTpgA]);
+  const prPoolA = useMemo(() => getQualifiedCohortPool(listA, prPoolMode), [listA, prPoolMode]);
+  const prPoolB = useMemo(() => getQualifiedCohortPool(listB, prPoolMode), [listB, prPoolMode]);
+  const prPrefix = prPoolMode === 'local' ? '本土' : prPoolMode === 'import' ? '洋將' : '聯盟';
 
-  const sitRadarB = useMemo(() => {
-    return calculateSituationalRadar(cardB?.player_info, sitPlayerB, realTpgB);
-  }, [cardB, sitPlayerB, realTpgB]);
+  const buildCohortPRMap = (
+    info: PlayerInfo | undefined,
+    realTpg: number | undefined,
+    pool: PlayerInfo[],
+    basePrPlayer: PRPlayerItem | null,
+    basePrTpg: number | undefined
+  ) => {
+    if (!info) return {};
+    if (prPoolMode === 'all' && basePrPlayer?.badges) {
+      return {
+        PTS: basePrPlayer.badges.PTS?.pr,
+        'TS%': basePrPlayer.badges['TS%']?.pr,
+        'eFG%': basePrPlayer.badges['eFG%']?.pr,
+        'USG%': basePrPlayer.badges['USG%']?.pr,
+        REB: basePrPlayer.badges.REB?.pr,
+        AST: basePrPlayer.badges.AST?.pr,
+        STL: basePrPlayer.badges.STL?.pr,
+        BLK: basePrPlayer.badges.BLK?.pr,
+        TOV: basePrTpg,
+        GmSC: basePrPlayer.badges.GmSC?.pr,
+      };
+    }
+
+    return {
+      PTS: computeCohortPR(safeNum(info.ppg, 0), pool, (p) => safeNum(p.ppg, 0)),
+      'TS%': computeCohortPR(normalizePctVal(info.ts_pct), pool, (p) => normalizePctVal(p.ts_pct)),
+      'eFG%': computeCohortPR(normalizePctVal(info.efg_pct), pool, (p) => normalizePctVal(p.efg_pct)),
+      'USG%': computeCohortPR(normalizePctVal(info.usg_pct), pool, (p) => normalizePctVal(p.usg_pct)),
+      REB: computeCohortPR(safeNum(info.rpg, 0), pool, (p) => safeNum(p.rpg, 0)),
+      AST: computeCohortPR(safeNum(info.apg, 0), pool, (p) => safeNum(p.apg, 0)),
+      STL: computeCohortPR(safeNum(info.spg, 0), pool, (p) => safeNum(p.spg, 0)),
+      BLK: computeCohortPR(safeNum(info.bpg, 0), pool, (p) => safeNum(p.bpg, 0)),
+      TOV: computeCohortPR(realTpg, pool, (p) => safeNum(p.tpg ?? (p as any).tov ?? (p as any).topg, 1.5), true),
+      GmSC: computeCohortPR(safeNum(info.gmsc, 0), pool, (p) => safeNum(p.gmsc, 0)),
+    };
+  };
+
+  const cohortBadgesA = useMemo(
+    () => buildCohortPRMap(cardA?.player_info, realTpgA, prPoolA, prPlayerA, prTpgA),
+    [cardA, realTpgA, prPoolA, prPlayerA, prTpgA, prPoolMode]
+  );
+
+  const cohortBadgesB = useMemo(
+    () => buildCohortPRMap(cardB?.player_info, realTpgB, prPoolB, prPlayerB, prTpgB),
+    [cardB, realTpgB, prPoolB, prPlayerB, prTpgB, prPoolMode]
+  );
+
+  const buildCohortTraditionalRadar = (
+    info: PlayerInfo | undefined,
+    pool: PlayerInfo[],
+    fallbackRadar: Record<string, number> | undefined
+  ) => {
+    if (prPoolMode === 'all' || !info || pool.length === 0) {
+      return fallbackRadar;
+    }
+    return {
+      scoring: computeCohortPR(safeNum(info.ppg, 0), pool, (p) => safeNum(p.ppg, 0)) ?? 50,
+      shooting: computeCohortPR(normalizePctVal(info.ts_pct), pool, (p) => normalizePctVal(p.ts_pct)) ?? 50,
+      playmaking: computeCohortPR(safeNum(info.apg, 0), pool, (p) => safeNum(p.apg, 0)) ?? 50,
+      rebounding: computeCohortPR(safeNum(info.rpg, 0), pool, (p) => safeNum(p.rpg, 0)) ?? 50,
+      defense: computeCohortPR(
+        safeNum(info.spg, 0) + safeNum(info.bpg, 0),
+        pool,
+        (p) => safeNum(p.spg, 0) + safeNum(p.bpg, 0)
+      ) ?? 50,
+      efficiency: computeCohortPR(safeNum(info.gmsc, 0), pool, (p) => safeNum(p.gmsc, 0)) ?? 50,
+    };
+  };
+
+  const tradRadarA = useMemo(
+    () => buildCohortTraditionalRadar(cardA?.player_info, prPoolA, cardA?.radar as Record<string, number> | undefined),
+    [cardA, prPoolA, prPoolMode]
+  );
+
+  const tradRadarB = useMemo(
+    () => buildCohortTraditionalRadar(cardB?.player_info, prPoolB, cardB?.radar as Record<string, number> | undefined),
+    [cardB, prPoolB, prPoolMode]
+  );
+
+  const buildCohortSituationalRadar = (
+    info: PlayerInfo | undefined,
+    sit: PlayerSituationsData | undefined,
+    realTpg: number | undefined,
+    pool: PlayerInfo[],
+    stageName: string
+  ) => {
+    if (!info) {
+      return { iso: 50, transition: 50, clutch: 50, paint: 50, ftr: 50, tov_ctrl: 50 };
+    }
+    if (prPoolMode === 'all' || pool.length === 0) {
+      return calculateSituationalRadar(info, sit, realTpg);
+    }
+
+    const useSit = stageName === '2026-2027 例行賽';
+    const getSit = (name?: string) => (useSit && name ? situationsData[name.trim()] : undefined);
+
+    const getIsoVal = (p: PlayerInfo, s?: PlayerSituationsData) => {
+      const sc = s?.finishing_breakdown?.self_created?.fga;
+      if (sc !== undefined && Number.isFinite(Number(sc))) return Number(sc);
+      return normalizePctVal(p.usg_pct) * 0.55 + normalizePctVal(p.ts_pct) * 0.45;
+    };
+    const getTransVal = (p: PlayerInfo, s?: PlayerSituationsData) => {
+      const fb = s?.tactical_situations?.fast_break?.ppg;
+      if (fb !== undefined && Number.isFinite(Number(fb))) return Number(fb);
+      return safeNum(p.spg, 0);
+    };
+    const getClutchVal = (p: PlayerInfo, s?: PlayerSituationsData) => {
+      const q4p = s?.q4_crunch_time?.q4_ppg;
+      if (q4p !== undefined && Number.isFinite(Number(q4p))) return Number(q4p);
+      return safeNum(p.ppg, 0) * 0.25;
+    };
+    const getPaintVal = (p: PlayerInfo, s?: PlayerSituationsData) => {
+      const pp = s?.point_composition?.paint_ppg;
+      if (pp !== undefined && Number.isFinite(Number(pp))) return Number(pp);
+      return safeNum(p.rpg, 0);
+    };
+    const getFtrVal = (p: PlayerInfo, s?: PlayerSituationsData) => {
+      const ftp = s?.point_composition?.free_throw_ppg;
+      if (ftp !== undefined && Number.isFinite(Number(ftp))) return Number(ftp);
+      return safeNum(p.ppg, 0) * 0.2 + normalizePctVal(p.usg_pct) * 0.2;
+    };
+    const getTovVal = (p: PlayerInfo) =>
+      safeNum(p.tpg ?? (p as any).tov ?? (p as any).topg, 1.5);
+
+    return {
+      iso: computeCohortPR(getIsoVal(info, sit), pool, (p) => getIsoVal(p, getSit(p.player_name))) ?? 50,
+      transition: computeCohortPR(getTransVal(info, sit), pool, (p) => getTransVal(p, getSit(p.player_name))) ?? 50,
+      clutch: computeCohortPR(getClutchVal(info, sit), pool, (p) => getClutchVal(p, getSit(p.player_name))) ?? 50,
+      paint: computeCohortPR(getPaintVal(info, sit), pool, (p) => getPaintVal(p, getSit(p.player_name))) ?? 50,
+      ftr: computeCohortPR(getFtrVal(info, sit), pool, (p) => getFtrVal(p, getSit(p.player_name))) ?? 50,
+      tov_ctrl: computeCohortPR(realTpg ?? getTovVal(info), pool, getTovVal, true) ?? 50,
+    };
+  };
+
+  const sitRadarA = useMemo(
+    () => buildCohortSituationalRadar(cardA?.player_info, sitPlayerA, realTpgA, prPoolA, stageA),
+    [cardA, sitPlayerA, realTpgA, prPoolA, stageA, prPoolMode, situationsData]
+  );
+
+  const sitRadarB = useMemo(
+    () => buildCohortSituationalRadar(cardB?.player_info, sitPlayerB, realTpgB, prPoolB, stageB),
+    [cardB, sitPlayerB, realTpgB, prPoolB, stageB, prPoolMode, situationsData]
+  );
+
+  const buildSituationalPRBadges = (
+    targetSit: PlayerSituationsData | undefined,
+    pool: PlayerInfo[],
+    stageName: string
+  ): SituationalPRBadges | undefined => {
+    if (!targetSit || stageName !== '2026-2027 例行賽') return undefined;
+    const poolSitList: PlayerSituationsData[] =
+      pool.length > 0
+        ? pool
+            .map((p) => situationsData[p.player_name.trim()])
+            .filter((s): s is PlayerSituationsData => Boolean(s))
+        : Object.values(situationsData);
+
+    if (poolSitList.length === 0) return undefined;
+
+    const getClutchPpg = (s: PlayerSituationsData): number | undefined => {
+      const q4 = s.q4_crunch_time;
+      const q4g = safeNum(q4?.q4_games, 0);
+      const q4m = safeNum(q4?.q4_mpg, 0);
+      if (q4g <= 0 || q4m <= 0) return undefined;
+      const q4p = safeNum(q4?.q4_ppg, 0);
+      const isHigh = q4p >= 4.5 || safeNum(s.ppg, 0) >= 14.0;
+      return safeNum(q4?.clutch_ppg_5min, Number(((q4p / Math.max(1, q4m)) * 5.0 * (isHigh ? 1.15 : 0.9)).toFixed(1)));
+    };
+    const getClutchTs = (s: PlayerSituationsData): number | undefined => {
+      const q4 = s.q4_crunch_time;
+      const q4g = safeNum(q4?.q4_games, 0);
+      const q4m = safeNum(q4?.q4_mpg, 0);
+      if (q4g <= 0 || q4m <= 0) return undefined;
+      const q4p = safeNum(q4?.q4_ppg, 0);
+      const q4Ts = safeNum(q4?.q4_ts_pct, 0);
+      const isHigh = q4p >= 4.5 || safeNum(s.ppg, 0) >= 14.0;
+      return safeNum(q4?.clutch_ts_pct, q4Ts > 0 ? Number(Math.max(0, Math.min(80, q4Ts + (isHigh ? 1.5 : -2.0))).toFixed(1)) : 0);
+    };
+    const getClutchFt = (s: PlayerSituationsData): number | undefined => {
+      const q4 = s.q4_crunch_time;
+      const q4g = safeNum(q4?.q4_games, 0);
+      const q4m = safeNum(q4?.q4_mpg, 0);
+      if (q4g <= 0 || q4m <= 0) return undefined;
+      const ftShare = safeNum(s.point_composition?.free_throw_pct, 0);
+      return safeNum(q4?.clutch_ft_pct, ftShare >= 15.0 ? 81.5 : s.position?.includes('C') ? 62.0 : 74.5);
+    };
+    const getClutchTov = (s: PlayerSituationsData): number | undefined => {
+      const q4 = s.q4_crunch_time;
+      const q4g = safeNum(q4?.q4_games, 0);
+      const q4m = safeNum(q4?.q4_mpg, 0);
+      if (q4g <= 0 || q4m <= 0) return undefined;
+      const q4p = safeNum(q4?.q4_ppg, 0);
+      const isHigh = q4p >= 4.5 || safeNum(s.ppg, 0) >= 14.0;
+      return safeNum(q4?.clutch_tov_pct, isHigh ? 13.8 : 9.5);
+    };
+
+    return {
+      paint_ppg: computeGenericPR(safeNum(targetSit.point_composition?.paint_ppg, 0), poolSitList, (s) => safeNum(s.point_composition?.paint_ppg, 0)),
+      three_pt_ppg: computeGenericPR(safeNum(targetSit.point_composition?.three_pt_ppg, 0), poolSitList, (s) => safeNum(s.point_composition?.three_pt_ppg, 0)),
+      mid_range_ppg: computeGenericPR(safeNum(targetSit.point_composition?.mid_range_ppg, 0), poolSitList, (s) => safeNum(s.point_composition?.mid_range_ppg, 0)),
+      free_throw_ppg: computeGenericPR(safeNum(targetSit.point_composition?.free_throw_ppg, 0), poolSitList, (s) => safeNum(s.point_composition?.free_throw_ppg, 0)),
+      fast_break_ppg: computeGenericPR(safeNum(targetSit.tactical_situations?.fast_break?.ppg, 0), poolSitList, (s) => safeNum(s.tactical_situations?.fast_break?.ppg, 0)),
+      second_chance_ppg: computeGenericPR(safeNum(targetSit.tactical_situations?.second_chance?.ppg, 0), poolSitList, (s) => safeNum(s.tactical_situations?.second_chance?.ppg, 0)),
+      points_off_tov_ppg: computeGenericPR(safeNum(targetSit.tactical_situations?.points_off_tov?.ppg, 0), poolSitList, (s) => safeNum(s.tactical_situations?.points_off_tov?.ppg, 0)),
+      jump_shot_fg_pct: computeGenericPR(safeNum(targetSit.finishing_breakdown?.jump_shot_total?.fg_pct, 0), poolSitList, (s) => safeNum(s.finishing_breakdown?.jump_shot_total?.fg_pct, 0)),
+      layup_fg_pct: computeGenericPR(safeNum(targetSit.finishing_breakdown?.layup?.fg_pct, 0), poolSitList, (s) => safeNum(s.finishing_breakdown?.layup?.fg_pct, 0)),
+      self_created_fga: computeGenericPR(safeNum(targetSit.finishing_breakdown?.self_created?.fga, 0), poolSitList, (s) => safeNum(s.finishing_breakdown?.self_created?.fga, 0)),
+      q4_ppg: computeGenericPR(safeNum(targetSit.q4_crunch_time?.q4_ppg, 0), poolSitList, (s) => safeNum(s.q4_crunch_time?.q4_ppg, 0)),
+      q4_ts_pct: computeGenericPR(safeNum(targetSit.q4_crunch_time?.q4_ts_pct, 0), poolSitList, (s) => safeNum(s.q4_crunch_time?.q4_ts_pct, 0)),
+      q4_pm: computeGenericPR(safeNum(targetSit.q4_crunch_time?.q4_plus_minus_pg, 0), poolSitList, (s) => safeNum(s.q4_crunch_time?.q4_plus_minus_pg, 0)),
+      q4_tov: computeGenericPR(safeNum(targetSit.q4_crunch_time?.q4_tov_pg, 0), poolSitList, (s) => safeNum(s.q4_crunch_time?.q4_tov_pg, 0), true),
+      clutch_ppg: computeGenericPR(getClutchPpg(targetSit), poolSitList, getClutchPpg),
+      clutch_ts: computeGenericPR(getClutchTs(targetSit), poolSitList, getClutchTs),
+      clutch_ft: computeGenericPR(getClutchFt(targetSit), poolSitList, getClutchFt),
+      clutch_tov: computeGenericPR(getClutchTov(targetSit), poolSitList, getClutchTov, true),
+    };
+  };
+
+  const sitPrBadgesA = useMemo(
+    () => buildSituationalPRBadges(sitPlayerA, prPoolA, stageA),
+    [sitPlayerA, prPoolA, stageA, situationsData]
+  );
+
+  const sitPrBadgesB = useMemo(
+    () => buildSituationalPRBadges(sitPlayerB, prPoolB, stageB),
+    [sitPlayerB, prPoolB, stageB, situationsData]
+  );
 
   const scrollToPlayerInRankings = (name: string) => {
     if (!name) return;
@@ -673,61 +1026,140 @@ function PlayerCardsContent() {
 
   const polyA = useMemo(() => {
     if (radarMode === 'traditional') {
-      return buildRadarPolygon(traditionalDims, cardA?.radar as Record<string, number> | undefined);
+      return buildRadarPolygon(traditionalDims, tradRadarA);
     }
     return buildRadarPolygon(situationalDims, sitRadarA as Record<string, number>);
-  }, [cardA, radarMode, sitRadarA]);
+  }, [tradRadarA, radarMode, sitRadarA]);
 
   const polyB = useMemo(() => {
     if (!playerB) return '';
     if (radarMode === 'traditional') {
-      return buildRadarPolygon(traditionalDims, cardB?.radar as Record<string, number> | undefined);
+      return buildRadarPolygon(traditionalDims, tradRadarB);
     }
     return buildRadarPolygon(situationalDims, sitRadarB as Record<string, number>);
-  }, [cardB, playerB, radarMode, sitRadarB]);
+  }, [tradRadarB, playerB, radarMode, sitRadarB]);
 
   const compareList = [
-    { label: '場均得分', valA: cardA?.player_info.ppg, valB: cardB?.player_info.ppg, prA: prPlayerA?.badges?.PTS?.pr, prB: prPlayerB?.badges?.PTS?.pr, format: (v: number) => v.toFixed(1) },
-    { label: '真實命中率 (TS%)', valA: cardA?.player_info.ts_pct, valB: cardB?.player_info.ts_pct, prA: prPlayerA?.badges?.['TS%']?.pr, prB: prPlayerB?.badges?.['TS%']?.pr, format: (v: number) => `${v.toFixed(1)}%` },
-    { label: '有效命中率 (eFG%)', valA: cardA?.player_info.efg_pct, valB: cardB?.player_info.efg_pct, prA: prPlayerA?.badges?.['eFG%']?.pr, prB: prPlayerB?.badges?.['eFG%']?.pr, format: (v: number) => `${v.toFixed(1)}%` },
-    { label: '球權使用率 (USG%)', valA: cardA?.player_info.usg_pct, valB: cardB?.player_info.usg_pct, prA: prPlayerA?.badges?.['USG%']?.pr, prB: prPlayerB?.badges?.['USG%']?.pr, format: (v: number) => `${v.toFixed(1)}%` },
-    { label: '場均籃板 (RPG)', valA: cardA?.player_info.rpg, valB: cardB?.player_info.rpg, prA: prPlayerA?.badges?.REB?.pr, prB: prPlayerB?.badges?.REB?.pr, format: (v: number) => v.toFixed(1) },
-    { label: '場均助攻 (APG)', valA: cardA?.player_info.apg, valB: cardB?.player_info.apg, prA: prPlayerA?.badges?.AST?.pr, prB: prPlayerB?.badges?.AST?.pr, format: (v: number) => v.toFixed(1) },
-    { label: '場均抄截 (SPG)', valA: cardA?.player_info.spg, valB: cardB?.player_info.spg, prA: prPlayerA?.badges?.STL?.pr, prB: prPlayerB?.badges?.STL?.pr, format: (v: number) => v.toFixed(1) },
-    { label: '場均阻攻 (BPG)', valA: cardA?.player_info.bpg, valB: cardB?.player_info.bpg, prA: prPlayerA?.badges?.BLK?.pr, prB: prPlayerB?.badges?.BLK?.pr, format: (v: number) => v.toFixed(1) },
-    { label: '失誤次數 (TPG)', valA: realTpgA, valB: realTpgB, prA: prTpgA, prB: prTpgB, format: (v: number) => v.toFixed(1), lowerIsBetter: true },
-    { label: '單場表現 (GmSc)', valA: cardA?.player_info.gmsc, valB: cardB?.player_info.gmsc, prA: prPlayerA?.badges?.GmSC?.pr, prB: prPlayerB?.badges?.GmSC?.pr, format: (v: number) => v.toFixed(1) },
+    { label: '場均得分', valA: cardA?.player_info.ppg, valB: cardB?.player_info.ppg, prA: cohortBadgesA.PTS, prB: cohortBadgesB.PTS, format: (v: number) => v.toFixed(1) },
+    { label: '真實命中率 (TS%)', valA: cardA?.player_info.ts_pct, valB: cardB?.player_info.ts_pct, prA: cohortBadgesA['TS%'], prB: cohortBadgesB['TS%'], format: (v: number) => `${v.toFixed(1)}%` },
+    { label: '有效命中率 (eFG%)', valA: cardA?.player_info.efg_pct, valB: cardB?.player_info.efg_pct, prA: cohortBadgesA['eFG%'], prB: cohortBadgesB['eFG%'], format: (v: number) => `${v.toFixed(1)}%` },
+    { label: '球權使用率 (USG%)', valA: cardA?.player_info.usg_pct, valB: cardB?.player_info.usg_pct, prA: cohortBadgesA['USG%'], prB: cohortBadgesB['USG%'], format: (v: number) => `${v.toFixed(1)}%` },
+    { label: '場均籃板 (RPG)', valA: cardA?.player_info.rpg, valB: cardB?.player_info.rpg, prA: cohortBadgesA.REB, prB: cohortBadgesB.REB, format: (v: number) => v.toFixed(1) },
+    { label: '場均助攻 (APG)', valA: cardA?.player_info.apg, valB: cardB?.player_info.apg, prA: cohortBadgesA.AST, prB: cohortBadgesB.AST, format: (v: number) => v.toFixed(1) },
+    { label: '場均抄截 (SPG)', valA: cardA?.player_info.spg, valB: cardB?.player_info.spg, prA: cohortBadgesA.STL, prB: cohortBadgesB.STL, format: (v: number) => v.toFixed(1) },
+    { label: '場均阻攻 (BPG)', valA: cardA?.player_info.bpg, valB: cardB?.player_info.bpg, prA: cohortBadgesA.BLK, prB: cohortBadgesB.BLK, format: (v: number) => v.toFixed(1) },
+    { label: '失誤次數 (TPG)', valA: realTpgA, valB: realTpgB, prA: cohortBadgesA.TOV, prB: cohortBadgesB.TOV, format: (v: number) => v.toFixed(1), lowerIsBetter: true },
+    { label: '單場表現 (GmSc)', valA: cardA?.player_info.gmsc, valB: cardB?.player_info.gmsc, prA: cohortBadgesA.GmSC, prB: cohortBadgesB.GmSC, format: (v: number) => v.toFixed(1) },
   ];
 
-  const rankingList: PRPlayerItem[] = useMemo(() => {
-    if (prData?.rankings && prData.rankings.length > 0) {
-      return prData.rankings;
+  const identityMapForLeaderboard = useMemo(() => {
+    const map: Record<string, { identity?: string; identity_group?: string }> = {};
+    if (listA) {
+      for (const p of listA) {
+        map[p.player_name.trim()] = { identity: p.identity, identity_group: p.identity_group };
+      }
     }
-    const dict = prData?.players || (prData as any);
-    if (!dict) return [];
-    return Object.keys(dict).map((name, idx) => ({
-      rank: idx + 1,
-      name,
-      ...dict[name],
-    }));
-  }, [prData]);
+    if (prData?.players) {
+      for (const [name, item] of Object.entries(prData.players)) {
+        if (!map[name.trim()]) {
+          map[name.trim()] = { identity: item.identity };
+        }
+      }
+    }
+    return map;
+  }, [listA, prData]);
+
+  const rankingList: PRPlayerItem[] = useMemo(() => {
+    const rawList: PRPlayerItem[] =
+      prData?.rankings && prData.rankings.length > 0
+        ? prData.rankings
+        : (() => {
+            const dict = prData?.players || (prData as any);
+            if (!dict) return [];
+            return Object.keys(dict).map((name, idx) => ({
+              rank: idx + 1,
+              name,
+              ...dict[name],
+            }));
+          })();
+
+    if (prPoolMode === 'all') return rawList;
+
+    const filtered = rawList.filter((p) => {
+      const isImp = isImportIdentity(p.identity);
+      return prPoolMode === 'import' ? isImp : !isImp;
+    });
+
+    return filtered.map((p, idx) => {
+      const ptsPr = computeGenericPR(p.badges?.PTS?.val, filtered, (x) => x.badges?.PTS?.val);
+      const rebPr = computeGenericPR(p.badges?.REB?.val, filtered, (x) => x.badges?.REB?.val);
+      const astPr = computeGenericPR(p.badges?.AST?.val, filtered, (x) => x.badges?.AST?.val);
+      const tsPr = computeGenericPR(p.badges?.['TS%']?.val, filtered, (x) => x.badges?.['TS%']?.val);
+      const gmscPr = computeGenericPR(p.badges?.GmSC?.val, filtered, (x) => x.badges?.GmSC?.val);
+
+      return {
+        ...p,
+        rank: idx + 1,
+        badges: {
+          ...p.badges,
+          ...(p.badges?.PTS ? { PTS: { ...p.badges.PTS, pr: ptsPr ?? p.badges.PTS.pr } } : {}),
+          ...(p.badges?.REB ? { REB: { ...p.badges.REB, pr: rebPr ?? p.badges.REB.pr } } : {}),
+          ...(p.badges?.AST ? { AST: { ...p.badges.AST, pr: astPr ?? p.badges.AST.pr } } : {}),
+          ...(p.badges?.['TS%'] ? { 'TS%': { ...p.badges['TS%'], pr: tsPr ?? p.badges['TS%'].pr } } : {}),
+          ...(p.badges?.GmSC ? { GmSC: { ...p.badges.GmSC, pr: gmscPr ?? p.badges.GmSC.pr } } : {}),
+        },
+      };
+    });
+  }, [prData, prPoolMode]);
 
   return (
     <div className="space-y-10 pb-16">
       <div className="relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#161B22] p-6 sm:p-8 shadow-2xl space-y-6">
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <span className="px-3 py-1 rounded-full bg-[#FF9100]/15 text-[#FF9100] text-xs font-black uppercase tracking-wider border border-[#FF9100]/30">
-              跨賽季獨立對比
-            </span>
-            <span className="text-xs text-gray-400 font-medium">六維戰力雷達、情境拆解與末節關鍵分析</span>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="px-3 py-1 rounded-full bg-[#FF9100]/15 text-[#FF9100] text-xs font-black uppercase tracking-wider border border-[#FF9100]/30">
+                跨賽季獨立對比
+              </span>
+              <span className="text-xs text-gray-400 font-medium">六維戰力雷達、情境拆解與末節關鍵分析</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+              🃏 球員戰力卡與雙雄正面對決 (Head-to-Head)
+            </h1>
+            <p className="text-gray-300 text-sm max-w-3xl leading-relaxed">
+              支援跨賽季、跨隊伍任意球員比對。點擊球員姓名可直接展開下方對應排行榜並自動定位。
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-            🃏 球員戰力卡與雙雄正面對決 (Head-to-Head)
-          </h1>
-          <p className="text-gray-300 text-sm max-w-3xl leading-relaxed">
-            支援跨賽季、跨隊伍任意球員比對。點擊球員姓名可直接展開下方對應排行榜並自動定位。
-          </p>
+
+          <div className="flex flex-col items-start md:items-end gap-1.5 shrink-0">
+            <span className="text-[11px] font-bold text-gray-400">
+              PR 百分位與雷達基準池
+            </span>
+            <div className="inline-flex p-1 rounded-xl bg-[#0E1117] border border-[#30363D] shadow-md">
+              {[
+                { value: 'all' as const, label: '全聯盟' },
+                { value: 'local' as const, label: '僅本土' },
+                { value: 'import' as const, label: '僅洋將' },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setPrPoolMode(opt.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    prPoolMode === opt.value
+                      ? 'bg-[#00E676] text-slate-950 shadow font-black'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {prPoolMode !== 'all' && (
+              <span className="text-[10px] font-mono text-[#00E676]">
+                已切換為{prPrefix}輪替球員池重算 ({prPoolA.length} 人)
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-[#0E1117] p-4 sm:p-5 rounded-2xl border border-[#30363D]">
@@ -864,7 +1296,14 @@ function PlayerCardsContent() {
                 className="hidden xl:flex items-center justify-end w-56 2xl:w-64 shrink-0 cursor-pointer"
                 onClick={() => handlePlayerNameClick(playerAName)}
               >
-                <PlayerPortrait playerName={playerAName} stage={stageA} />
+                <PlayerPortrait
+                  playerName={playerAName}
+                  stage={stageA}
+                  overridePr={cohortBadgesA.GmSC}
+                  overrideMetricLabel="GMSC"
+                  overridePrefix={prPrefix}
+                  poolLabel={prPoolMode === 'local' ? '本土輪替球員' : prPoolMode === 'import' ? '洋將輪替球員' : '聯盟輪替球員'}
+                />
               </div>
 
               <div className="w-full sm:w-72 p-6 2xl:p-7 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-xl flex flex-col justify-between shrink-0">
@@ -916,7 +1355,7 @@ function PlayerCardsContent() {
                     <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
                     <div className="flex items-center">
                       <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{cardA?.player_info.ppg ?? '-'}</span>
-                      <PRTag pr={prPlayerA?.badges?.PTS?.pr} />
+                      <PRTag pr={cohortBadgesA.PTS} prefix={prPrefix} />
                     </div>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
@@ -925,14 +1364,14 @@ function PlayerCardsContent() {
                       <span className="text-amber-300 font-bold whitespace-nowrap">
                         {formatPct100(cardA?.player_info.ts_pct)}
                       </span>
-                      <PRTag pr={prPlayerA?.badges?.['TS%']?.pr} />
+                      <PRTag pr={cohortBadgesA['TS%']} prefix={prPrefix} />
                     </div>
                   </div>
                   <div className="flex justify-between items-center py-1.5">
                     <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
                     <div className="flex items-center">
                       <span className="text-white font-bold text-base whitespace-nowrap">{cardA?.player_info.gmsc ?? '-'}</span>
-                      <PRTag pr={prPlayerA?.badges?.GmSC?.pr} />
+                      <PRTag pr={cohortBadgesA.GmSC} prefix={prPrefix} />
                     </div>
                   </div>
                 </div>
@@ -1113,7 +1552,7 @@ function PlayerCardsContent() {
                     <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
                     <div className="flex items-center">
                       <span className="text-[#00E676] font-bold text-base whitespace-nowrap">{cardB?.player_info.ppg ?? '-'}</span>
-                      <PRTag pr={prPlayerB?.badges?.PTS?.pr} />
+                      <PRTag pr={cohortBadgesB.PTS} prefix={prPrefix} />
                     </div>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
@@ -1122,14 +1561,14 @@ function PlayerCardsContent() {
                       <span className="text-emerald-300 font-bold whitespace-nowrap">
                         {formatPct100(cardB?.player_info.ts_pct)}
                       </span>
-                      <PRTag pr={prPlayerB?.badges?.['TS%']?.pr} />
+                      <PRTag pr={cohortBadgesB['TS%']} prefix={prPrefix} />
                     </div>
                   </div>
                   <div className="flex justify-between items-center py-1.5">
                     <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
                     <div className="flex items-center">
                       <span className="text-white font-bold text-base whitespace-nowrap">{cardB?.player_info.gmsc ?? '-'}</span>
-                      <PRTag pr={prPlayerB?.badges?.GmSC?.pr} />
+                      <PRTag pr={cohortBadgesB.GmSC} prefix={prPrefix} />
                     </div>
                   </div>
                 </div>
@@ -1139,7 +1578,15 @@ function PlayerCardsContent() {
                 className="hidden xl:flex items-center justify-start w-56 2xl:w-64 shrink-0 cursor-pointer"
                 onClick={() => handlePlayerNameClick(playerBName)}
               >
-                <PlayerPortrait playerName={playerBName} stage={stageB} isRightSide />
+                <PlayerPortrait
+                  playerName={playerBName}
+                  stage={stageB}
+                  isRightSide
+                  overridePr={cohortBadgesB.GmSC}
+                  overrideMetricLabel="GMSC"
+                  overridePrefix={prPrefix}
+                  poolLabel={prPoolMode === 'local' ? '本土輪替球員' : prPoolMode === 'import' ? '洋將輪替球員' : '聯盟輪替球員'}
+                />
               </div>
             </div>
           ) : (
@@ -1148,7 +1595,14 @@ function PlayerCardsContent() {
                 className="flex-shrink-0 flex items-center justify-center cursor-pointer"
                 onClick={() => handlePlayerNameClick(playerAName)}
               >
-                <PlayerPortrait playerName={playerAName} stage={stageA} />
+                <PlayerPortrait
+                  playerName={playerAName}
+                  stage={stageA}
+                  overridePr={cohortBadgesA.GmSC}
+                  overrideMetricLabel="GMSC"
+                  overridePrefix={prPrefix}
+                  poolLabel={prPoolMode === 'local' ? '本土輪替球員' : prPoolMode === 'import' ? '洋將輪替球員' : '聯盟輪替球員'}
+                />
               </div>
 
               <div className="w-full lg:w-80 p-7 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-xl flex flex-col justify-between">
@@ -1200,7 +1654,7 @@ function PlayerCardsContent() {
                     <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
                     <div className="flex items-center">
                       <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{cardA?.player_info.ppg ?? '-'}</span>
-                      <PRTag pr={prPlayerA?.badges?.PTS?.pr} />
+                      <PRTag pr={cohortBadgesA.PTS} prefix={prPrefix} />
                     </div>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
@@ -1209,14 +1663,14 @@ function PlayerCardsContent() {
                       <span className="text-amber-300 font-bold whitespace-nowrap">
                         {formatPct100(cardA?.player_info.ts_pct)}
                       </span>
-                      <PRTag pr={prPlayerA?.badges?.['TS%']?.pr} />
+                      <PRTag pr={cohortBadgesA['TS%']} prefix={prPrefix} />
                     </div>
                   </div>
                   <div className="flex justify-between items-center py-1.5">
                     <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
                     <div className="flex items-center">
                       <span className="text-white font-bold text-base whitespace-nowrap">{cardA?.player_info.gmsc ?? '-'}</span>
-                      <PRTag pr={prPlayerA?.badges?.GmSC?.pr} />
+                      <PRTag pr={cohortBadgesA.GmSC} prefix={prPrefix} />
                     </div>
                   </div>
                 </div>
@@ -1347,7 +1801,7 @@ function PlayerCardsContent() {
                   </span>
                   <span className="text-xs text-amber-400 font-mono">({stageA})</span>
                 </div>
-                <PlayerSituationsTab activeTab={cardTab} data={sitPlayerA} />
+                <PlayerSituationsTab activeTab={cardTab} data={sitPlayerA} prBadges={sitPrBadgesA} prPrefix={prPrefix} />
               </div>
 
               <div className="space-y-3">
@@ -1362,7 +1816,7 @@ function PlayerCardsContent() {
                   </span>
                   <span className="text-xs text-emerald-400 font-mono">({stageB})</span>
                 </div>
-                <PlayerSituationsTab activeTab={cardTab} data={sitPlayerB} />
+                <PlayerSituationsTab activeTab={cardTab} data={sitPlayerB} prBadges={sitPrBadgesB} prPrefix={prPrefix} />
               </div>
             </div>
           ) : (
@@ -1383,7 +1837,7 @@ function PlayerCardsContent() {
                   {stageA}
                 </span>
               </div>
-              <PlayerSituationsTab activeTab={cardTab} data={sitPlayerA} />
+              <PlayerSituationsTab activeTab={cardTab} data={sitPlayerA} prBadges={sitPrBadgesA} prPrefix={prPrefix} />
             </div>
           )}
         </div>
@@ -1441,7 +1895,7 @@ function PlayerCardsContent() {
                         >
                           <span className="inline-flex items-center">
                             {hasA ? item.format(numA) : '-'}
-                            <PRTag pr={item.prA} />
+                            <PRTag pr={item.prA} prefix={prPrefix} />
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-gray-400 font-sans font-bold text-xs">
@@ -1454,7 +1908,7 @@ function PlayerCardsContent() {
                         >
                           <span className="inline-flex items-center">
                             {hasB ? item.format(numB) : '-'}
-                            <PRTag pr={item.prB} />
+                            <PRTag pr={item.prB} prefix={prPrefix} />
                           </span>
                         </td>
                       </tr>
@@ -1483,7 +1937,7 @@ function PlayerCardsContent() {
                           {item.valA !== undefined && item.valA !== null && Number.isFinite(Number(item.valA))
                             ? item.format(Number(item.valA))
                             : '-'}
-                          <PRTag pr={item.prA} />
+                          <PRTag pr={item.prA} prefix={prPrefix} />
                         </div>
                       </td>
                     </tr>
@@ -1581,6 +2035,9 @@ function PlayerCardsContent() {
             metric={situationsMetric}
             setMetric={setSituationsMetric}
             focusedPlayer={focusedSituationPlayer}
+            poolMode={prPoolMode}
+            identityMap={identityMapForLeaderboard}
+            stage={stageA}
             onSelectPlayer={(name, team) => {
               if (teamsA.includes(team)) {
                 setTeamA(team);
@@ -1603,7 +2060,7 @@ function PlayerCardsContent() {
               <span className="w-3 h-3 rounded-full bg-[#FF9100] animate-pulse" />
               <div className="flex items-center flex-wrap gap-2">
                 <h3 className="text-lg font-black text-white tracking-wide">
-                  全聯盟輪替球員 PR 排名總表 (Box Score)
+                  {prPoolMode === 'all' ? '全聯盟' : prPoolMode === 'local' ? '全聯盟本土' : '全聯盟洋將'}輪替球員 PR 排名總表 (Box Score)
                 </h3>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-gray-300 font-mono font-normal">
                   {rankingList.length > 0 ? `${rankingList.length} 位達標球員` : '載入中...'}

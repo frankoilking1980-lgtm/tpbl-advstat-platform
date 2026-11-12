@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import useSWR from 'swr';
-import { fetcher } from '@/lib/api';
 import {
   BookOpen,
   HelpCircle,
@@ -11,9 +9,7 @@ import {
   Zap,
   Target,
   Sparkles,
-  ChevronRight,
   Clock,
-  Crosshair,
   BarChart3,
   Layers,
   Swords,
@@ -42,22 +38,136 @@ interface GlossaryData {
   }>;
 }
 
+const STATIC_GLOSSARY_DATA: GlossaryData = {
+  four_factors: [
+    {
+      term: '有效命中率 (eFG%)',
+      formula: '(FGM + 0.5 * 3PM) / FGA',
+      description:
+        '衡量投籃真實效率的核心指標。因為三分球比兩分球多 1 分，公式將每記三分進球給予 0.5 倍額外加權，修正傳統命中率低估外線射手的盲點。',
+      benchmark: '全聯盟平均約 50.0%；高於 54.0% 為頂級投籃水準。',
+    },
+    {
+      term: '失誤率 (TOV%)',
+      formula: 'TOV / (FGA + 0.44 * FTA + TOV)',
+      description:
+        '衡量進攻球權保護能力，代表每 100 次進攻回合中，有多少比例最終以失誤收場而連出手機會都沒有。數值越低越好。',
+      benchmark: '全聯盟平均約 15.0%；低於 12.0% 代表球權保護極佳。',
+    },
+    {
+      term: '進攻籃板率 (ORB%)',
+      formula: 'ORB / (ORB + Opp_DRB)',
+      description:
+        '衡量二次進攻機會爭搶能力，代表己方投籃不進時，成功把進攻籃板搶回來延續攻勢的機率，不受比賽節奏快慢影響。',
+      benchmark: '全聯盟平均約 28.0%；高於 33.0% 代表禁區衝搶具備壓倒性優勢。',
+    },
+    {
+      term: '罰球率 (FTr)',
+      formula: 'FTA / FGA',
+      description:
+        '衡量球隊或球員進攻侵略性與製造犯規能力，代表每一次投籃出手能換取多少次罰球機會，是撕裂禁區防線的關鍵指標。',
+      benchmark: '全聯盟平均約 22.0%；高於 28.0% 代表具備強大油漆區殺傷力。',
+    },
+  ],
+  advanced_metrics: [
+    {
+      term: '真實命中率 (TS%)',
+      formula: 'PTS / (2 * (FGA + 0.44 * FTA))',
+      description:
+        '將兩分球、三分球與罰球全面納入計算的終極得分效率指標（分母 0.44 為估算「非技術犯規、非加罰」之純罰球佔用回合係數）。白話來說：同樣出手回合下，誰能換回最多分數，誰的 TS% 就越高。',
+      benchmark: '全聯盟平均約 53.0%；高於 60.0% 為頂級進攻終結者。',
+    },
+    {
+      term: '球權使用率 (USG%)',
+      formula: '100 * ((FGA + 0.44 * FTA + TOV) * (Tm_MP / 5)) / (MP * (Tm_FGA + 0.44 * Tm_FTA + Tm_TOV))',
+      description:
+        '衡量球員「在場期間」消化全隊進攻回合的比例（以投籃出手、走上罰球線或發生失誤作為球權終結）。白話來說：USG% 25% 代表該球員在場時，全隊每 4 波進攻就有 1 波由他負責收尾。',
+      benchmark: '20% 為平均先發水準；25% 以上為戰術核心；30% 以上為絕對持球大核。',
+    },
+    {
+      term: '比賽貢獻值 (GmSc)',
+      formula: 'PTS + 0.4*FGM - 0.7*FGA - 0.4*(FTA-FTM) + 0.7*ORB + 0.3*DRB + STL + 0.7*AST + 0.7*BLK - 0.4*PF - TOV',
+      description:
+        '由數據大師 John Hollinger 設計的單場全能綜合指標，將得分、進球效率、沒進扣分、進攻/防守籃板、抄截、助攻、阻攻、犯規與失誤加權彙整為單一分數，快速評估球員單場對比賽的實質正負貢獻。',
+      benchmark: '10 分為合格先發水準；20 分以上為明星級演出；30+ 為年度 MVP 級統治表現。',
+    },
+    {
+      term: '進攻效率值 (ORTG)',
+      formula: '100 * (PTS / Possessions)（每百回合團隊/個人產出得分估算模型）',
+      description:
+        '將球隊得分標準化為「每 100 個進攻回合能拿幾分」，徹底消除比賽節奏快慢（打快 vs 打慢）造成的得分通膨或低估；在個人端則估算球員每參與 100 次進攻回合所能產出的分數。',
+      benchmark: '團隊高於 110.0 為爭冠級進攻火力；低於 98.0 則進攻效率明顯落後。',
+    },
+    {
+      term: '防守效率值 (DRtg)',
+      formula: '100 * (Opp_PTS / Opp_Possessions)',
+      description:
+        '每 100 個防守回合讓對手拿到的分數，消除節奏快慢影響後客觀反映團隊整體防守壓迫力。數值越低代表防守越銅牆鐵壁。',
+      benchmark: '低於 100.0 為聯盟頂級防守鐵閘；高於 110.0 代表防線較容易被突破。',
+    },
+    {
+      term: '攻防淨評分 (Net Rating)',
+      formula: 'ORtg - DRtg',
+      description:
+        '每百回合團隊淨勝分（進攻效率減去防守效率），被公認為評估球隊真實戰力與季後賽爭冠含金量最客觀的黃金指標。',
+      benchmark: '大於 +5.0 為爭冠熱門強權；大於 +10.0 具備統治級實力。',
+    },
+  ],
+  pbp_wowy: [
+    {
+      term: '在場淨評分 (On NetRtg)',
+      description: '當該名球員在場上時，團隊每百回合淨勝分（ORtg - DRtg）。',
+      interpretation: '正值代表其在場時球隊處於淨領先優勢，為正向攻防回報組合。',
+    },
+    {
+      term: '不在場淨評分 (Off NetRtg)',
+      description: '當該名球員退場休息時，團隊每百回合淨勝分。',
+      interpretation: '若退場時團隊急遽由正轉負，顯示球隊對該球員存在高度戰術依賴。',
+    },
+    {
+      term: '淨影響力差值 (Diff NetRtg)',
+      description: '球員 On NetRtg 與 Off NetRtg 的差值 (On - Off)。',
+      interpretation: '排除球隊整體實力基底後，量化該球員個人對比賽勝負的實質邊際貢獻。',
+    },
+    {
+      term: '最佳五人陣容 (Five-Man Lineups)',
+      description: '追蹤同場五人搭檔組合之累計上場時間、正負值與攻防淨評分。',
+      interpretation: '協助教練團識別防守端最穩定之閉門決勝陣容。',
+    },
+  ],
+};
+
 export default function GlossaryPage() {
   const [activeTab, setActiveTab] = useState<'factors' | 'metrics' | 'tabs' | 'matchup' | 'pbp' | 'scout'>('factors');
-  const { data, isLoading } = useSWR<GlossaryData>('/api/glossary', fetcher);
+  const data = STATIC_GLOSSARY_DATA;
 
-  // 監聽網址 Hash 錨點 (例如從對決模擬器點擊「模型依據」直達 #matchup-model)
+  // 監聽網址 Hash 錨點 (例如從對決模擬器點擊「推演邏輯說明」直達 #matchup-logic)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const syncTabFromHash = () => {
+      if (typeof window === 'undefined') return;
       const hash = window.location.hash;
-      if (hash === '#matchup-model' || hash === '#matchup') {
+      if (hash === '#matchup-logic' || hash === '#matchup-model' || hash === '#matchup') {
         setActiveTab('matchup');
         setTimeout(() => {
-          const el = document.getElementById('matchup-model');
+          const el = document.getElementById('matchup-logic') || document.getElementById('matchup-model');
           if (el) el.scrollIntoView({ behavior: 'smooth' });
-        }, 150);
+        }, 120);
+      } else if (hash === '#metrics') {
+        setActiveTab('metrics');
+      } else if (hash === '#factors') {
+        setActiveTab('factors');
+      } else if (hash === '#pbp') {
+        setActiveTab('pbp');
+      } else if (hash === '#tabs') {
+        setActiveTab('tabs');
+      } else if (hash === '#scout') {
+        setActiveTab('scout');
       }
-    }
+    };
+
+    syncTabFromHash();
+    window.addEventListener('hashchange', syncTabFromHash);
+    return () => window.removeEventListener('hashchange', syncTabFromHash);
   }, []);
 
   return (
@@ -183,10 +293,10 @@ export default function GlossaryPage() {
         </div>
       )}
 
-      {/* 2. 專屬新增：球隊深度對決模擬器 (Matchup Simulator) 核心演算法 */}
+      {/* 2. 專屬新增：立體對決模擬器（Matchup Simulator）推演邏輯說明 */}
       {activeTab === 'matchup' && (
         <div id="matchup-model" className="space-y-8 scroll-mt-24">
-          <div className="p-6 sm:p-8 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-2xl space-y-4">
+          <div id="matchup-logic" className="p-6 sm:p-8 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-2xl space-y-6 scroll-mt-24">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#21262D]">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-[#FF9100]/15 border border-[#FF9100]/30 text-[#FF9100]">
@@ -194,21 +304,48 @@ export default function GlossaryPage() {
                 </div>
                 <div>
                   <h2 className="text-xl sm:text-2xl font-black text-white">
-                    球隊深度對決模擬器 (Head-to-Head Lineup Matchup) 核心演算法
+                    立體對決模擬器（Matchup Simulator）推演邏輯說明
                   </h2>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    基於真實攻防交互對衝、Dean Oliver 四要素加權與主力輪替分級之預測模型
+                    消除黑箱：公開 TPBL 洋將規章限制、球權負荷排擠懲罰與攻防壓制鏈之白話推演機制
                   </p>
                 </div>
               </div>
               <span className="text-xs px-3 py-1 rounded-full bg-[#FF9100]/10 text-[#FF9100] font-mono font-bold self-start sm:self-auto border border-[#FF9100]/30">
-                TPBL 2026-2027 專用模型
+                TPBL 賽季專用模型
               </span>
             </div>
 
             <p className="text-sm text-gray-300 leading-relaxed">
-              傳統陣容模擬最常見的致命錯誤是「將 5 名先發球員的場均得分簡單相加」，這會完全忽略球權排擠、輪替出場時間折算，以及最關鍵的<strong className="text-white">「對手防守壓迫（Opponent Defense）」</strong>。本平台對決模擬器採用自底向上的交叉對抗架構，確保所有數據指標前後邏輯一致，絕不憑空臆測。
+              傳統陣容模擬最常見的失真盲點是「將 5 名先發球員的場均得分簡單相加」，這會造成三個球在場上打的錯覺。本平台對決模擬器採用自底向上的立體對抗架構：從<strong className="text-white">聯賽洋將規章</strong>、<strong className="text-white">球權負荷排擠</strong>到<strong className="text-white">防守壓制與輪替深度</strong>層層校準，確保推演結果貼近真實職籃賽場。
             </p>
+
+            {/* 三大核心白話規則摘要卡片 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-[#0E1117] p-5 rounded-2xl border border-purple-500/30 space-y-2">
+                <div className="text-xs font-mono text-purple-400 font-bold">01｜TPBL 聯賽洋將規章</div>
+                <h3 className="text-sm font-black text-white">先發最多 2 洋・登錄最多 3 洋</h3>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  完全遵循 TPBL 聯盟規章防呆：先發五人名單最多登錄 <strong className="text-purple-300">2 名洋將</strong>；全隊 14 人出賽名單合計最多 <strong className="text-purple-300">3 名洋將</strong>，超額選擇會即時反灰鎖定，杜絕不合規的夢幻陣容。
+                </p>
+              </div>
+
+              <div className="bg-[#0E1117] p-5 rounded-2xl border border-rose-500/30 space-y-2">
+                <div className="text-xs font-mono text-rose-400 font-bold">02｜球權負荷排擠懲罰</div>
+                <h3 className="text-sm font-black text-white">USG% &gt; 105% 遞減・&gt; 115% 排擠</h3>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  場上只有一顆球！當先發五人 <code className="text-amber-300">USG%</code> 加總超過 <strong className="text-rose-300">105%</strong> 時觸發邊際遞減，等比例壓縮先發得分產能；若超過 <strong className="text-rose-300">115%</strong> 則觸發嚴重排擠懲罰，扣減團隊助攻導傳流暢度並放大失誤風險。
+                </p>
+              </div>
+
+              <div className="bg-[#0E1117] p-5 rounded-2xl border border-emerald-500/30 space-y-2">
+                <div className="text-xs font-mono text-emerald-400 font-bold">03｜攻防壓制鏈與輪替假設</div>
+                <h3 className="text-sm font-black text-white">STL/BLK 壓制・8 人輪替淨效率差</h3>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  防守方<strong className="text-emerald-300">抄截 (STL)</strong> 會壓制外圍導傳並放大高 USG% 陣容失誤，<strong className="text-emerald-300">阻攻 (BLK)</strong> 則直接削弱禁區真實命中率；再結合四節 <strong className="text-white">8 人主力輪替權重</strong> 與板凳深度 (GmSc) 計算交叉淨效率差與勝率。
+                </p>
+              </div>
+            </div>
 
             {/* 六大核心維度卡牌 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">

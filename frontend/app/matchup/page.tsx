@@ -781,11 +781,11 @@ export default function MatchupPage() {
                 登錄上限：<strong className="text-purple-400">3 名洋將</strong>
               </span>
               <Link
-                href="/glossary#matchup-model"
+                href="/glossary#matchup-logic"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF9100]/10 hover:bg-[#FF9100]/20 text-[#FF9100] border border-[#FF9100]/30 transition-colors font-medium"
               >
                 <HelpCircle className="w-3.5 h-3.5" />
-                <span>模型依據</span>
+                <span>推演邏輯說明</span>
               </Link>
               
               {/* 📸 新增社群 1:1 戰報卡按鈕 */}

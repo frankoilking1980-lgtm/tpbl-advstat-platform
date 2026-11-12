@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import { StageProvider } from '@/context/StageContext';
 import { Analytics } from '@vercel/analytics/next';
 
@@ -82,7 +83,7 @@ export default function RootLayout({
             <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {children}
             </main>
-
+            <Footer />
           </div>
         </StageProvider>
         <Analytics />

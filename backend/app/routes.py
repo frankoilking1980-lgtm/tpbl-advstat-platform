@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, time
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel
 import openpyxl
 
@@ -210,6 +210,8 @@ def _find_team_excel_file(season_folder: str, team_name: str) -> Optional[Path]:
     core_kw = std_team.replace("新竹御嵿", "").replace("新竹御頂", "").replace("高雄全家", "").replace("新北中信", "").replace("臺北台新", "").replace("桃園台啤永豐", "").replace("福爾摩沙", "").replace("新北", "")
 
     for f in target_dir.glob("*.xlsx"):
+        if f.name.startswith("~$"):
+            continue
         if core_kw in f.name and "summary" not in f.name.lower() and "總表" not in f.name:
             return f
     return None
@@ -313,6 +315,7 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
                     break
 
             players_box = []
+            g_rtg_cols = _find_rtg_cols(target_ws, h_row) if h_row else {}
             if h_row:
                 for r in range(h_row + 1, (target_ws.max_row or h_row) + 1):
                     p_name = str(target_ws.cell(row=r, column=2).value or "").strip()
@@ -339,7 +342,7 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
                     blk = int(round(clean_val_num(target_ws.cell(row=r, column=26).value, 0)))
                     tov = int(round(clean_val_num(target_ws.cell(row=r, column=27).value, 0)))
                     pf = int(round(clean_val_num(target_ws.cell(row=r, column=28).value, 0)))
-                    pm = int(round(clean_val_num(target_ws.cell(row=r, column=30).value, 0)))
+                    pm = round(clean_val_num(target_ws.cell(row=r, column=30).value, 0.0), 1)
 
                     efg_val = normalize_pct(target_ws.cell(row=r, column=31).value, 0.0, scale_to_100=True)
                     ts_val = normalize_pct(target_ws.cell(row=r, column=32).value, 0.0, scale_to_100=True)
@@ -350,9 +353,7 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
                         1,
                     )
 
-                    p_ortg = round(105.0 + (gmsc_val - 10.0) * 0.8, 1)
-                    p_drtg = round(105.0 - (stl + blk) * 2.0, 1)
-                    p_netrtg = round(p_ortg - p_drtg, 1)
+                    p_ortg, p_drtg, p_netrtg = _read_excel_rtg(target_ws, r, g_rtg_cols)
                     minutes_formatted = f"{sec // 60:02d}:{sec % 60:02d}"
 
                     players_box.append({
@@ -578,6 +579,99 @@ def _parse_season_pbp_from_excel(excel_path: Path):
         return [], []
 
 
+def _onoff_time_str(val) -> str:
+    """Excel 將 mm:ss 文字誤存為 h:m:s 時間時，還原為 mm:ss；字串原樣保留。"""
+    if val is None:
+        return ""
+    if isinstance(val, (timedelta, time, datetime)):
+        if isinstance(val, timedelta):
+            sec = int(val.total_seconds())
+        elif isinstance(val, datetime):
+            sec = (val - datetime(1899, 12, 30)).days * 86400 + val.hour * 3600 + val.minute * 60 + val.second
+        else:
+            sec = val.hour * 3600 + val.minute * 60 + val.second
+        sec = max(0, sec)
+        return f"{sec // 3600}:{(sec % 3600) // 60:02d}"
+    return str(val).strip()
+
+
+def _find_rtg_cols(ws, h_row: int) -> Dict[str, Optional[int]]:
+    """於表頭列 (球員個人區，1~36 欄) 尋找 ORtg / DRtg / NetRtg 欄位；找不到則為 None。"""
+    cols: Dict[str, Optional[int]] = {"ortg": None, "drtg": None, "netrtg": None}
+    for c in range(1, 37):
+        h = str(ws.cell(row=h_row, column=c).value or "").strip().lower().replace(" ", "").replace("_", "")
+        if h in ("ortg", "進攻效率") and cols["ortg"] is None:
+            cols["ortg"] = c
+        elif h in ("drtg", "防守效率") and cols["drtg"] is None:
+            cols["drtg"] = c
+        elif h in ("netrtg", "淨效率", "netrating") and cols["netrtg"] is None:
+            cols["netrtg"] = c
+    return cols
+
+
+def _read_excel_rtg(ws, r: int, cols: Dict[str, Optional[int]]):
+    """忠實讀取 Excel 個人 ORtg/DRtg/NetRtg；欄位或儲存格缺失時回傳 None，絕不估算。"""
+    def _one(col):
+        if not col:
+            return None
+        v = ws.cell(row=r, column=col).value
+        if v is None or str(v).strip() in ("", "-"):
+            return None
+        return round(clean_val_num(v, 0.0), 1)
+    o, d, n = _one(cols.get("ortg")), _one(cols.get("drtg")), _one(cols.get("netrtg"))
+    if n is None and o is not None and d is not None:
+        n = round(o - d, 1)
+    return o, d, n
+
+
+def _parse_season_onoff_from_excel(excel_path: Path):
+    """原汁原味讀取【賽季累積主力 On/Off 總榜】(平均數據 工作表，球員名 ~ 賽季淨影響力(Diff))。"""
+    if not excel_path or not excel_path.exists():
+        return []
+    try:
+        with open_workbook(excel_path) as wb:
+            if "平均數據" not in wb.sheetnames:
+                return []
+            ws = wb["平均數據"]
+            h_row = h_col = None
+            for r in range(1, 12):
+                for c in range(30, 60):
+                    if str(ws.cell(row=r, column=c).value or "").strip() == "累計在場時間":
+                        h_row, h_col = r, c - 1
+                        break
+                if h_row:
+                    break
+            if not h_row:
+                return []
+            rows = []
+            for r in range(h_row + 1, (ws.max_row or h_row) + 1):
+                name = str(ws.cell(row=r, column=h_col).value or "").strip()
+                if not name or name.lower() in ("none", "nan"):
+                    continue
+                on_net_raw = ws.cell(row=r, column=h_col + 4).value
+                off_net_raw = ws.cell(row=r, column=h_col + 5).value
+                diff_raw = ws.cell(row=r, column=h_col + 6).value
+                if on_net_raw is None and off_net_raw is None and diff_raw is None:
+                    continue
+                on_net = clean_val_num(on_net_raw, 0.0)
+                off_net = clean_val_num(off_net_raw, 0.0)
+                diff = clean_val_num(diff_raw, round(on_net - off_net, 1)) if diff_raw is not None else round(on_net - off_net, 1)
+                tt = ws.cell(row=h_row + (r - h_row), column=h_col + 1).value
+                rows.append({
+                    "player_name": name,
+                    "total_time": _onoff_time_str(tt),
+                    "on_ortg": clean_val_num(ws.cell(row=r, column=h_col + 2).value, 0.0),
+                    "on_drtg": clean_val_num(ws.cell(row=r, column=h_col + 3).value, 0.0),
+                    "on_netrtg": on_net,
+                    "off_netrtg": off_net,
+                    "diff_netrtg": diff,
+                })
+            rows.sort(key=lambda x: -x["diff_netrtg"])
+            return rows
+    except Exception:
+        return []
+
+
 # =====================================================================
 # 1. 賽季階段清單
 # =====================================================================
@@ -590,6 +684,24 @@ def get_stages():
             WHERE season_stage IS NOT NULL AND season_stage != ''
         """)
         raw_db_stages = [row["season_stage"] for row in cur.fetchall()]
+
+        cur.execute("""
+            SELECT stage, MAX(date) AS max_date, COUNT(*) AS game_count
+            FROM games
+            WHERE date IS NOT NULL AND date != ''
+            GROUP BY stage
+        """)
+        stage_meta = {
+            (row["stage"] or "").replace("季前熱身賽", "熱身賽"): {
+                "max_date": row["max_date"],
+                "game_count": row["game_count"],
+            }
+            for row in cur.fetchall()
+        }
+
+        cur.execute("SELECT MAX(date) AS global_max_date FROM games WHERE date IS NOT NULL AND date != ''")
+        global_row = cur.fetchone()
+        global_max_date = global_row["global_max_date"] if global_row and global_row["global_max_date"] else ""
 
     normalized_db = {s.replace("季前熱身賽", "熱身賽") for s in raw_db_stages}
     ordered_master_list = [
@@ -616,6 +728,9 @@ def get_stages():
             "name": s,
             "is_default": (s == default_stage),
             "year": s.split(" ")[0] if " " in s else "2026-2027",
+            "last_updated": stage_meta.get(s, {}).get("max_date") or global_max_date,
+            "global_last_updated": global_max_date,
+            "game_count": stage_meta.get(s, {}).get("game_count", 0),
         }
         for s in final_stages
     ]
@@ -672,6 +787,13 @@ def get_team_summary(stage: str = Query("2026-2027 例行賽", description="賽�
 # =====================================================================
 # 3. 球員進階數據 (散布圖 / 戰力卡)
 # =====================================================================
+def classify_identity_group(identity: str) -> str:
+    ident = (identity or "").strip()
+    if any(k in ident for k in ("洋將", "外籍生", "歸化")):
+        return "import"
+    return "local"
+
+
 def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "全部"):
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
     excel_player_map = {}
@@ -682,6 +804,8 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
 
     if target_dir.exists():
         for f in target_dir.glob("*.xlsx"):
+            if f.name.startswith("~$"):
+                continue
             if "summary" in f.name.lower() or "總表" in f.name:
                 continue
             try:
@@ -695,12 +819,16 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
                                 h_row = r
                                 break
                         if h_row:
+                            adv_rtg_cols = _find_rtg_cols(ws, h_row)
                             for r in range(h_row + 1, (ws.max_row or h_row) + 1):
                                 p_name = str(ws.cell(row=r, column=2).value or "").strip()
                                 if _is_skip_player_row(p_name):
                                     continue
                                 clean_name = p_name.split(" ")[0].split("(")[0].strip()
+                                _o, _d, _n = _read_excel_rtg(ws, r, adv_rtg_cols)
                                 excel_player_map[clean_name] = {
+                                    "plus_minus": round(clean_val_num(ws.cell(row=r, column=30).value, 0.0), 1),
+                                    "ortg": _o, "drtg": _d, "netrtg": _n,
                                     "fgm": clean_val_num(ws.cell(row=r, column=9).value, 0.0),
                                     "fga": clean_val_num(ws.cell(row=r, column=10).value, 0.0),
                                     "fg_pct": normalize_pct(ws.cell(row=r, column=11).value, 0.0, scale_to_100=True),
@@ -730,9 +858,10 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
         """
         params = [stage, min_ppg]
 
-        if identity in ["本土", "洋將"]:
-            query += " AND identity = ?"
-            params.append(identity)
+        if identity in ["本土", "僅本土", "local"]:
+            query += " AND identity NOT LIKE '%洋將%' AND identity NOT LIKE '%外籍生%' AND identity NOT LIKE '%歸化%'"
+        elif identity in ["洋將", "僅洋將", "import"]:
+            query += " AND (identity LIKE '%洋將%' OR identity LIKE '%外籍生%' OR identity LIKE '%歸化%')"
 
         query += " ORDER BY gmsc DESC, ppg DESC"
         cur.execute(query, tuple(params))
@@ -776,6 +905,7 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
             "team_name": r["team_name"],
             "jersey_number": r["jersey_number"] or "",
             "identity": r["identity"] or "本土",
+            "identity_group": classify_identity_group(r["identity"] or "本土"),
             "position": r["position"] or "",
             "games_played": int(r["games_played"] or 0),
             "minutes_str": minutes_str,
@@ -795,7 +925,10 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
             "spg": spg,
             "bpg": bpg,
             "tpg": tpg,
-            "plus_minus": round(gmsc - 10.0, 1),
+            "plus_minus": ex.get("plus_minus", 0.0),
+            "ortg": ex.get("ortg"),
+            "drtg": ex.get("drtg"),
+            "netrtg": ex.get("netrtg"),
             "three_par": three_par,
             "ftr": ftr,
             "usg_pct": disp_usg,
@@ -826,6 +959,83 @@ def _clamp_radar(val: float) -> float:
     return max(0.0, min(100.0, round(val, 1)))
 
 
+CLUTCH_MIN_GP = 2
+CLUTCH_MIN_MPG = 10.0
+
+
+def _compute_clutch_row(r: Dict[str, Any]) -> Dict[str, Any]:
+    ts_safe = max(0.0, r["ts_pct"])
+    usg_safe = max(0.0, min(100.0, r["usg_pct"]))
+    mpg, ppg, rpg, spg, bpg, gmsc = r["mpg"], r["ppg"], r["rpg"], r["spg"], r["bpg"], r["gmsc"]
+
+    is_closer = (mpg >= 18.0) and (usg_safe >= 22.0 or gmsc >= 13.0)
+    clutch_usg = round(min(100.0, usg_safe * (1.25 if is_closer else 0.80)), 1)
+    clutch_ts_diff = 1.5 if (ts_safe >= 54.0 and is_closer) else -2.5
+    clutch_ts = 0.0 if ts_safe == 0.0 else round(max(0.0, min(80.0, ts_safe + clutch_ts_diff)), 1)
+
+    ts_ratio = (clutch_ts / ts_safe) if ts_safe >= 20.0 else 1.0
+    usg_ratio = (clutch_usg / usg_safe) if usg_safe >= 5.0 else 1.0
+    raw = (ppg / max(mpg, 5.0)) * 5.0 * usg_ratio * ts_ratio
+    clutch_ppg = round(max(0.0, min(15.0, raw)), 1)
+    clutch_ft = 82.0 if (ts_safe >= 55.0 and ppg >= 14.0) else (62.0 if (rpg >= 8.0 and ppg < 12.0) else 74.0)
+
+    if clutch_ft < 65.0 and clutch_usg >= 20.0:
+        tag = "⚠️ 讀秒避險點"
+    elif is_closer and clutch_ts >= 53.0:
+        tag = "🎯 大心臟決勝點"
+    elif spg + bpg >= 2.0:
+        tag = "🧊 決勝防守鐵閘"
+    else:
+        tag = "⚖️ 戰術體系支援者"
+
+    clutch_score = round(clutch_ppg * (clutch_ts / 100.0) * (1.0 + clutch_usg / 100.0), 2)
+    return {
+        "player_name": r["player_name"],
+        "team_name": r["team_name"],
+        "identity": r["identity"],
+        "identity_group": r["identity_group"],
+        "games_played": r["games_played"],
+        "mpg": mpg,
+        "ppg_5min": clutch_ppg,
+        "usg_pct": clutch_usg,
+        "ts_pct": clutch_ts,
+        "ft_pct": clutch_ft,
+        "clutch_score": clutch_score,
+        "tag": tag,
+    }
+
+
+@router.get("/players/clutch-leaderboard", summary="全聯盟關鍵時刻 (最後 5 分鐘) 抗壓排行榜")
+def get_clutch_leaderboard(
+    stage: str = Query("2026-2027 例行賽"),
+    identity: str = Query("全部"),
+    sort: str = Query("score", description="score | ts"),
+    min_gp: int = Query(CLUTCH_MIN_GP, ge=0),
+    min_mpg: float = Query(CLUTCH_MIN_MPG, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+):
+    players = _fetch_advanced_players(stage, 0.0, identity)
+    rows = [
+        _compute_clutch_row(p) for p in players
+        if p["games_played"] >= min_gp and p["mpg"] >= min_mpg
+    ]
+    if sort == "ts":
+        rows.sort(key=lambda x: (-x["ts_pct"], -x["clutch_score"], x["player_name"]))
+    else:
+        rows.sort(key=lambda x: (-x["clutch_score"], -x["ppg_5min"], x["player_name"]))
+    for i, row in enumerate(rows[:limit], 1):
+        row["rank"] = i
+    return {
+        "stage": stage,
+        "identity": identity,
+        "sort": sort,
+        "min_games": min_gp,
+        "min_mpg": min_mpg,
+        "total": len(rows),
+        "players": rows[:limit],
+    }
+
+
 @router.get("/players/{player_name}/card", summary="取得球員戰力卡六維雷達與深度評語")
 def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽")):
     with db_session() as conn:
@@ -850,6 +1060,15 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
     gmsc = round(clean_val_num(r["gmsc"], 0.0), 1)
 
     q, q_label = get_quadrant(disp_usg, disp_ts)
+
+    _card_plus_minus = 0.0
+    try:
+        for _p in _fetch_advanced_players(stage):
+            if _p["player_name"] == r["player_name"]:
+                _card_plus_minus = _p.get("plus_minus", 0.0)
+                break
+    except Exception:
+        pass
 
     # -------------------------------------------------------------
     # 關鍵時刻 (Clutch Time) 與 第4節全節 (Q4) 演算推導模型
@@ -938,6 +1157,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
             "team_name": r["team_name"],
             "jersey_number": str(r["jersey_number"] or "0"),
             "identity": r["identity"] or "本土",
+            "identity_group": classify_identity_group(r["identity"] or "本土"),
             "position": r["position"] or "",
             "games_played": gp,
             "mpg": mpg,
@@ -947,7 +1167,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
             "spg": spg,
             "bpg": bpg,
             "tpg": 1.5,
-            "plus_minus": round(gmsc - 10.0, 1),
+            "plus_minus": _card_plus_minus,
             "usg_pct": disp_usg,
             "ts_pct": disp_ts,
             "efg_pct": disp_efg,
@@ -972,6 +1192,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
         "jersey": r["jersey_number"],
         "position": r["position"],
         "identity": r["identity"],
+        "identity_group": classify_identity_group(r["identity"] or "本土"),
         "stats": {
             "mpg": mpg, "ppg": ppg, "rpg": rpg, "apg": apg, "spg": spg, "bpg": bpg,
             "efg_pct": disp_efg, "ts_pct": disp_ts, "usg_pct": disp_usg, "gmsc": gmsc,
@@ -1158,14 +1379,14 @@ def get_game_detail(game_id: str):
                 "blk": int(round(bpg)),
                 "tov": 2 if mpg > 0 else 0,
                 "pf": 3 if mpg > 0 else 0,
-                "plus_minus": int(round(gmsc - 10)),
+                "plus_minus": 0.0,
                 "efg_pct": round(efg_100 / 100.0, 3),
                 "ts_pct": round(ts_100 / 100.0, 3),
                 "usg_pct": usg_100,
                 "gmsc": gmsc,
-                "ortg": round(105.0 + (gmsc - 10.0) * 0.8, 1),
-                "drtg": round(105.0 - (spg + bpg) * 2.0, 1),
-                "netrtg": round((105.0 + (gmsc - 10.0) * 0.8) - (105.0 - (spg + bpg) * 2.0), 1),
+                "ortg": None,
+                "drtg": None,
+                "netrtg": None,
             }
             if is_h:
                 fb_home.append(item)
@@ -1194,35 +1415,9 @@ def get_game_detail(game_id: str):
     home_top = [p for p in home_box if p["seconds"] > 0][:5]
     away_top = [p for p in away_box if p["seconds"] > 0][:5]
 
-    if not home_on_off:
-        home_on_off = [
-            {
-                "player_name": p["player_name"],
-                "minutes_on": p["minutes"],
-                "seconds_on": p["seconds"],
-                "on_ortg": 105.0,
-                "on_drtg": 103.0,
-                "on_netrtg": round(p["plus_minus"] * 0.6, 1),
-                "off_netrtg": round(-p["plus_minus"] * 0.4, 1),
-                "diff_netrtg": round(float(p["plus_minus"]), 1),
-            }
-            for p in home_top
-        ]
+    # 無 Excel On/Off 精算資料時一律回傳空，不使用估算
 
-    if not away_on_off:
-        away_on_off = [
-            {
-                "player_name": p["player_name"],
-                "minutes_on": p["minutes"],
-                "seconds_on": p["seconds"],
-                "on_ortg": 105.0,
-                "on_drtg": 103.0,
-                "on_netrtg": round(p["plus_minus"] * 0.6, 1),
-                "off_netrtg": round(-p["plus_minus"] * 0.4, 1),
-                "diff_netrtg": round(float(p["plus_minus"]), 1),
-            }
-            for p in away_top
-        ]
+    # 無 Excel On/Off 精算資料時一律回傳空，不使用估算
 
     player_onoff = {
         "away": away_on_off,
@@ -1386,6 +1581,7 @@ def _fetch_team_players(team_name: str, stage: str):
                             break
 
                     if h_row:
+                        rtg_cols = _find_rtg_cols(ws, h_row)
                         excel_players = []
                         for r in range(h_row + 1, (ws.max_row or h_row) + 1):
                             p_name = str(ws.cell(row=r, column=2).value or "").strip()
@@ -1451,7 +1647,7 @@ def _fetch_team_players(team_name: str, stage: str):
                             blk = clean_val_num(ws.cell(row=r, column=26).value, 0.0)
                             tov = clean_val_num(ws.cell(row=r, column=27).value, 0.0)
                             pf = clean_val_num(ws.cell(row=r, column=28).value, 0.0)
-                            pm = int(round(clean_val_num(ws.cell(row=r, column=30).value, 0)))
+                            pm = round(clean_val_num(ws.cell(row=r, column=30).value, 0.0), 1)
 
                             efg_100 = normalize_pct(ws.cell(row=r, column=31).value, 0.0, scale_to_100=True)
                             ts_100 = normalize_pct(ws.cell(row=r, column=32).value, 0.0, scale_to_100=True)
@@ -1462,9 +1658,7 @@ def _fetch_team_players(team_name: str, stage: str):
                                 1,
                             )
 
-                            p_ortg = round(105.0 + (gmsc_val - 10.0) * 0.8, 1)
-                            p_drtg = round(105.0 - (stl + blk) * 2.0, 1)
-                            p_netrtg = round(p_ortg - p_drtg, 1)
+                            p_ortg, p_drtg, p_netrtg = _read_excel_rtg(ws, r, rtg_cols)
 
                             jersey_num = str(ws.cell(row=r, column=1).value or "").replace(".0", "").strip()
                             if not jersey_num and db_meta.get("jersey_number"):
@@ -1579,14 +1773,14 @@ def _fetch_team_players(team_name: str, stage: str):
             "blk": bpg,
             "tov": 1.5 if mpg > 0 else 0.0,
             "pf": 2.0 if mpg > 0 else 0.0,
-            "plus_minus": int(round(gmsc - 10)),
+            "plus_minus": 0.0,
             "efg_pct": round(disp_efg / 100.0, 3),
             "ts_pct": round(disp_ts / 100.0, 3),
             "usg_pct": disp_usg,
             "gmsc": gmsc,
-            "ortg": round(105.0 + (gmsc - 10.0) * 0.8, 1),
-            "drtg": round(105.0 - (spg + bpg) * 2.0, 1),
-            "netrtg": round((105.0 + (gmsc - 10.0) * 0.8) - (105.0 - (spg + bpg) * 2.0), 1),
+            "ortg": None,
+            "drtg": None,
+            "netrtg": None,
         })
     return players
 
@@ -1596,66 +1790,54 @@ def get_team_players(team_name: str, stage: str = Query("2026-2027 例行賽")):
     return _fetch_team_players(team_name, stage)
 
 
-@router.get("/teams/{team_name}/pbp", summary="取得球隊 PBP 陣容與 On/Off 數據")
-def get_team_pbp(team_name: str, stage: str = Query("2026-2027 例行賽")):
-    players = _fetch_team_players(team_name, stage)
+_PBP_CACHE: Dict[Any, Any] = {}
 
-    on_off_players = []
-    for p in players[:10]:
-        diff = round(p["plus_minus"] * 1.2, 1)
-        tot_sec = int(p["seconds"] * max(int(p["games_played"] or 0), 0))
-        on_off_players.append({
-            "player_name": p["player_name"],
-            "total_time": f"{tot_sec // 60}:{tot_sec % 60:02d}",
-            "on_ortg": p["ortg"],
-            "on_drtg": p["drtg"],
-            "on_netrtg": p["netrtg"],
-            "off_netrtg": round(-p["netrtg"] * 0.5, 1),
-            "diff_netrtg": diff,
-        })
+
+def clear_pbp_cache() -> None:
+    _PBP_CACHE.clear()
+
+
+@router.get("/teams/{team_name}/pbp", summary="取得球隊 PBP 陣容與 On/Off 數據")
+def get_team_pbp(
+    response: Response,
+    team_name: str,
+    stage: str = Query("2026-2027 例行賽"),
+    exclude_garbage_time: bool = Query(False, description="是否排除垃圾時間 (Q4 分差 >= 20)"),
+):
+    if not any(team_name.strip() in aliases for aliases in TEAM_ALIASES_MAP.values()):
+        raise HTTPException(status_code=404, detail="找不到該球隊")
+    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=600"
+    _xl = _find_team_excel_file(STAGE_FOLDER_MAP.get(stage, "season2026"), team_name)
+    try:
+        _mtime = _xl.stat().st_mtime if _xl else 0
+    except OSError:
+        _mtime = 0
+    cache_key = (stage, team_name, exclude_garbage_time, _mtime)
+    cached = _PBP_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    result = _build_team_pbp(team_name, stage)
+    _PBP_CACHE[cache_key] = result
+    return result
+
+
+def _build_team_pbp(team_name: str, stage: str):
+    players = _fetch_team_players(team_name, stage)
 
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
     team_excel = _find_team_excel_file(season_folder, team_name)
+    # 完全忠實讀取 Excel 精算結果，不使用任何估算公式或備援
+    on_off_players = _parse_season_onoff_from_excel(team_excel)
     five_man_lineups, foreign_duos = _parse_season_pbp_from_excel(team_excel)
-
-    if not five_man_lineups:
-        top5 = players[:5]
-        if top5:
-            lineup_str = " / ".join([p["player_name"] for p in top5])
-            est_sec = int(top5[-1]["seconds"] * 0.6 * max(int(top5[0]["games_played"] or 0), 0))
-            five_man_lineups.append({
-                "lineup_name": lineup_str,
-                "total_time": f"{est_sec // 60}:00",
-                "plus_minus": int(sum(p['plus_minus'] for p in top5) * 0.4),
-                "ortg": 111.4,
-                "drtg": 103.2,
-                "netrtg": 8.2,
-            })
-
-    if not foreign_duos:
-        foreigns = [p for p in players if "洋將" in (p.get("identity") or "")]
-        if len(foreigns) >= 2:
-            for i in range(len(foreigns) - 1):
-                f1, f2 = foreigns[i], foreigns[i + 1]
-                f1_ts = normalize_pct(f1["ts_pct"], 0.0, scale_to_100=True)
-                f2_ts = normalize_pct(f2["ts_pct"], 0.0, scale_to_100=True)
-                est_sec = int(min(f1["seconds"], f2["seconds"]) * 0.7 * max(int(f1["games_played"] or 0), 0))
-                ortg_est = round(108.0 + (f1_ts + f2_ts - 110.0) * 0.15, 1)
-                drtg_est = round(102.0 - (f1["blk"] + f2["blk"]) * 2.0, 1)
-                foreign_duos.append({
-                    "duo_name": f"{f1['player_name']} + {f2['player_name']}",
-                    "total_time": f"{est_sec // 60}:00",
-                    "plus_minus": int((f1['plus_minus'] + f2['plus_minus']) * 0.6),
-                    "ortg": ortg_est,
-                    "drtg": drtg_est,
-                    "netrtg": round(ortg_est - drtg_est, 1),
-                    "features_and_advice": f"{f1['player_name']} 與 {f2['player_name']} 兼具禁區制空高度與外線威脅，在場上能拉開極佳進攻空間，互補性高。",
-                })
 
     return {
         "team_name": team_name,
         "stage": stage,
+        "exclude_garbage_time": False,
+        "garbage_time_filter_supported": False,
+        "data_limitation_note": "On/Off、五人陣容與雙洋將數據直接讀取 Excel 精算結果；無逐回合節數與即時比分，尚無法動態過濾垃圾時間。",
         "on_off_players": on_off_players,
+        "wowy_players": on_off_players,
         "five_man_lineups": five_man_lineups,
         "foreign_duos": foreign_duos,
         "player_boxscore": players,
@@ -1687,6 +1869,7 @@ class ResetStageRequest(BaseModel):
 
 @router.post("/admin/sync-game", summary="後台單場賽事同步")
 def admin_sync_game(req: SyncGameRequest):
+    clear_pbp_cache()
     return {
         "status": "success",
         "message": f"成功同步場次 {req.game_id} 至 {req.stage}",
@@ -1697,6 +1880,7 @@ def admin_sync_game(req: SyncGameRequest):
 
 @router.post("/admin/update-game-qualitative", summary="後台質化分析寫入更新")
 def admin_update_qualitative(req: UpdateQualitativeRequest):
+    clear_pbp_cache()
     return {
         "status": "success",
         "message": f"場次 {req.game_id} 質化分析數據已成功更新！",
@@ -1706,6 +1890,7 @@ def admin_update_qualitative(req: UpdateQualitativeRequest):
 
 @router.post("/admin/delete-game", summary="後台刪除單場賽事")
 def admin_delete_game(req: DeleteGameRequest):
+    clear_pbp_cache()
     with db_session() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM games WHERE id = ?", (req.game_id,))
@@ -1720,6 +1905,7 @@ def admin_delete_game(req: DeleteGameRequest):
 
 @router.post("/admin/reset-stage", summary="後台重置指定賽季資料")
 def admin_reset_stage(req: ResetStageRequest):
+    clear_pbp_cache()
     with db_session() as conn:
         cur = conn.cursor()
         if req.clear_games:
