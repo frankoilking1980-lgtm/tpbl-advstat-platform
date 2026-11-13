@@ -13,6 +13,7 @@ import {
   Swords,
   BookOpen,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -54,6 +55,12 @@ export default function Navbar() {
       label: '球隊對決模擬',
       href: '/matchup',
       icon: Swords,
+      exact: false,
+    },
+    {
+      label: '本週有趣預測',
+      href: '/weekly-preview',
+      icon: Sparkles,
       exact: false,
     },
     {

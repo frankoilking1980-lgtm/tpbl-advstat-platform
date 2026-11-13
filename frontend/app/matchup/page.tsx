@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { HelpCircle, History, RotateCcw, Camera } from 'lucide-react';
 import MatchupShareCardModal from '@/components/MatchupShareCardModal';
+import TacticalPlaybookBoard from '@/components/TacticalPlaybookBoard';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -1242,6 +1243,18 @@ export default function MatchupPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ============================================================== */}
+        {/* 2.5 互動式 SVG 半場戰術板（即時連動主客隊與 1～5 號位先發名單） */}
+        {/* ============================================================== */}
+        <div className="mb-8">
+          <TacticalPlaybookBoard
+            homeTeam={teamA}
+            awayTeam={teamB}
+            homeRoster={startersA.map((p, idx) => p?.player_name || `${teamA.slice(-2)}${idx + 1}號位`)}
+            awayRoster={startersB.map((p, idx) => p?.player_name || `${teamB.slice(-2)}${idx + 1}號位`)}
+          />
         </div>
 
         {/* ============================================================== */}

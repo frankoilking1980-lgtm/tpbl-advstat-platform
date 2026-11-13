@@ -1,0 +1,86 @@
+[
+  {
+    "team": "臺北台新戰神",
+    "player": "魏芃禾",
+    "status": "GTD",
+    "note": "賽前決定"
+  },
+  {
+    "team": "臺北台新戰神",
+    "player": "黃聰翰",
+    "status": "GTD",
+    "note": "賽前決定"
+  },
+  {
+    "team": "臺北台新戰神",
+    "player": "吳永盛",
+    "status": "GTD",
+    "note": "賽前決定"
+  },
+  {
+    "team": "臺北台新戰神",
+    "player": "謝銘駿",
+    "status": "Q",
+    "note": "當週 50% 以上不出賽"
+  },
+  {
+    "team": "新北國王",
+    "player": "林書緯",
+    "status": "Q",
+    "note": "當週 50% 以上不出賽"
+  },
+  {
+    "team": "新北國王",
+    "player": "克雷格",
+    "status": "Q",
+    "note": "當週 50% 以上不出賽"
+  },
+  {
+    "team": "新北國王",
+    "player": "周儀翔",
+    "status": "Q",
+    "note": "當週 50% 以上不出賽"
+  },
+  {
+    "team": "新北國王",
+    "player": "李愷諺",
+    "status": "Q",
+    "note": "當週 50% 以上不出賽"
+  },
+  {
+    "team": "新北國王",
+    "player": "熊祥泰",
+    "status": "Q",
+    "note": "當週 50% 以上不出賽"
+  },
+  {
+    "team": "新北國王",
+    "player": "湯瑪士",
+    "status": "Q",
+    "note": "當週 50% 以上不出賽"
+  },
+  {
+    "team": "新北中信特攻",
+    "player": "林韋翰",
+    "status": "GTD",
+    "note": "賽前決定"
+  },
+  {
+    "team": "桃園台啤永豐雲豹",
+    "player": "溫布許",
+    "status": "GTD",
+    "note": "賽前決定"
+  },
+  {
+    "team": "高雄全家海神",
+    "player": "唐維傑",
+    "status": "OUT",
+    "note": "當週無法出賽"
+  },
+  {
+    "team": "高雄全家海神",
+    "player": "胡瓏貿",
+    "status": "OUT",
+    "note": "當週無法出賽"
+  }
+]

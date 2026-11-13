@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, time
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, File, Header, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel
 import openpyxl
 
@@ -2052,3 +2052,236 @@ def get_team_last_lineup(
             bench.append(p)
             
     return {"starters": starters[:5], "bench": bench[:9]}
+
+
+# =====================================================================
+# 本週比賽有趣預測 (AI 深度球探報告：讀取本地快取 & 受保護生成端點)
+# =====================================================================
+
+class GenerateWeeklyPreviewRequest(BaseModel):
+    home_team: str
+    away_team: str
+    game_date: str
+    game_label: str = "本週焦點大戰"
+    extra_notes: Optional[str] = None
+    admin_secret: Optional[str] = None
+    model_name: Optional[str] = None
+
+
+@router.get("/weekly-previews", summary="取得已存檔的本週比賽深度球探報告清單 (零 API 消耗)")
+def get_weekly_previews_list():
+    from app.services.scouting_generator import list_saved_previews
+    return {"items": list_saved_previews()}
+
+
+@router.get("/weekly-previews/injuries", summary="掃描 Excel 傷兵名單工作表並回傳兩隊賽前傷兵狀態")
+def get_weekly_preview_injuries(
+    home: str = Query(..., description="主隊名稱"),
+    away: str = Query(..., description="客隊名稱"),
+):
+    from app.services.scouting_generator import get_excel_injuries
+    home_std = normalize_team_name(home)
+    away_std = normalize_team_name(away)
+    return get_excel_injuries(home_std, away_std)
+
+
+@router.get("/weekly-previews/{slug}", summary="取得單場本週比賽深度球探報告完整 JSON (零 API 消耗)")
+def get_weekly_preview_detail(slug: str):
+    from app.services.scouting_generator import get_saved_preview
+    report = get_saved_preview(slug)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"找不到週報：{slug}")
+    return report
+
+
+@router.post("/weekly-previews/generate", summary="管理員觸發 Gemini 生成本週深度球探報告並落盤快取")
+def create_weekly_preview(
+    req: GenerateWeeklyPreviewRequest,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    expected_secret = os.getenv("ADMIN_SECRET", "").strip()
+    if not expected_secret:
+        raise HTTPException(
+            status_code=503,
+            detail="伺服器尚未設定 ADMIN_SECRET 環境變數，已鎖定生成端點以保護 API 額度。",
+        )
+
+    provided_secret = (x_admin_secret or req.admin_secret or "").strip()
+    if not provided_secret or provided_secret != expected_secret:
+        raise HTTPException(status_code=403, detail="管理員密碼驗證失敗 (Invalid ADMIN_SECRET)。")
+
+    home_std = normalize_team_name(req.home_team)
+    away_std = normalize_team_name(req.away_team)
+    if home_std == away_std:
+        raise HTTPException(status_code=400, detail="主隊與客隊不可為同一支球隊。")
+
+    from app.services.scouting_generator import generate_weekly_preview
+
+    try:
+        report = generate_weekly_preview(
+            home_team=home_std,
+            away_team=away_std,
+            game_date=req.game_date,
+            game_label=req.game_label,
+            extra_notes=req.extra_notes,
+            model_name=req.model_name,
+        )
+        return report.model_dump(by_alias=True)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gemini 生成球探報告失敗：{e}")
+
+
+class ImportWeeklyPreviewJsonRequest(BaseModel):
+    home_team: str
+    away_team: str
+    game_date: str
+    game_label: str = "本週焦點大戰"
+    raw_json: str
+    model_used: str = "manual-json-import"
+    admin_secret: Optional[str] = None
+
+
+@router.post("/weekly-previews/build-prompt", summary="管理員組裝含真實數據與確認傷兵之完整 Prompt 字串")
+def build_weekly_preview_prompt_endpoint(
+    req: GenerateWeeklyPreviewRequest,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret((x_admin_secret or req.admin_secret or "").strip() or None)
+    home_std = normalize_team_name(req.home_team)
+    away_std = normalize_team_name(req.away_team)
+    if home_std == away_std:
+        raise HTTPException(status_code=400, detail="主隊與客隊不可為同一支球隊。")
+
+    from app.services.scouting_generator import build_weekly_preview_prompt
+
+    return build_weekly_preview_prompt(
+        home_team=home_std,
+        away_team=away_std,
+        game_date=req.game_date,
+        game_label=req.game_label,
+        extra_notes=req.extra_notes,
+    )
+
+
+@router.post("/weekly-previews/import-json", summary="管理員手動貼上 JSON 匯入發布週預測報告")
+def import_weekly_preview_json_endpoint(
+    req: ImportWeeklyPreviewJsonRequest,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret((x_admin_secret or req.admin_secret or "").strip() or None)
+    home_std = normalize_team_name(req.home_team)
+    away_std = normalize_team_name(req.away_team)
+    if home_std == away_std:
+        raise HTTPException(status_code=400, detail="主隊與客隊不可為同一支球隊。")
+    if not (req.raw_json or "").strip():
+        raise HTTPException(status_code=400, detail="請貼上有效的 JSON 內容。")
+
+    from app.services.scouting_generator import import_weekly_preview_json
+
+    try:
+        report = import_weekly_preview_json(
+            home_team=home_std,
+            away_team=away_std,
+            game_date=req.game_date,
+            game_label=req.game_label,
+            raw_json_text=req.raw_json,
+            model_used=req.model_used,
+        )
+        return report.model_dump(by_alias=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"JSON 解析或結構驗證失敗：{e}")
+
+
+# =====================================================================
+# 後台管理員驗證、傷兵名單 Excel 模板下載／上傳匯入與報告刪除
+# =====================================================================
+
+class AdminVerifyRequest(BaseModel):
+    secret: str
+
+
+def _require_admin_secret(provided: Optional[str]) -> None:
+    expected = os.getenv("ADMIN_SECRET", "").strip()
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail="伺服器尚未設定 ADMIN_SECRET 環境變數。",
+        )
+    if not provided or provided.strip() != expected:
+        raise HTTPException(status_code=401, detail="管理員密碼驗證失敗。")
+
+
+@router.post("/admin/verify", summary="驗證管理員密碼 (ADMIN_SECRET)")
+def verify_admin_secret(req: AdminVerifyRequest):
+    _require_admin_secret(req.secret)
+    return {"status": "ok", "verified": True}
+
+
+@router.get("/admin/injury-template", summary="下載傷兵名單標準 Excel 模板 (tpbl_injury_template.xlsx)")
+def download_injury_template():
+    from app.services.scouting_generator import build_injury_template_bytes
+    content = build_injury_template_bytes()
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="tpbl_injury_template.xlsx"'},
+    )
+
+
+@router.post("/admin/upload-injuries", summary="上傳並解析傷兵名單 Excel (.xlsx)")
+async def upload_injuries_excel(
+    file: UploadFile = File(...),
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="請上傳 .xlsx 格式的 Excel 檔案。")
+    from app.services.scouting_generator import parse_and_save_injuries_excel
+    raw_bytes = await file.read()
+    try:
+        items = parse_and_save_injuries_excel(raw_bytes)
+        return {"status": "ok", "count": len(items), "items": items}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"解析傷兵 Excel 失敗：{e}")
+
+
+@router.get("/admin/injuries", summary="取得目前已匯入的全聯盟傷兵清單")
+def list_admin_injuries(
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    from app.services.scouting_generator import get_all_injuries
+    return {"items": get_all_injuries()}
+
+
+@router.delete("/weekly-previews/{slug}", summary="管理員刪除指定週預測報告")
+def delete_weekly_preview_endpoint(
+    slug: str,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    from app.services.scouting_generator import delete_weekly_preview
+    ok = delete_weekly_preview(slug)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"找不到報告：{slug}")
+    return {"status": "deleted", "slug": slug}
+
+
+@router.get("/admin/upcoming-schedule", summary="讀取近期尚未完賽的賽程清單並標註是否已生成週報")
+def get_admin_upcoming_schedule(
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    from app.services.scouting_generator import get_upcoming_schedule
+    return {"items": get_upcoming_schedule()}
+
+
+@router.get("/admin/ping-gemini", summary="測試 GEMINI_API_KEY 連線狀態並動態列出可用模型")
+def admin_ping_gemini(
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    from app.services.scouting_generator import ping_gemini_api
+    return ping_gemini_api()
