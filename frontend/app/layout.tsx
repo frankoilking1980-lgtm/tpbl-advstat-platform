@@ -4,6 +4,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { StageProvider } from '@/context/StageContext';
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://tpbl-advstat-platform.vercel.app'),
@@ -87,6 +88,7 @@ export default function RootLayout({
           </div>
         </StageProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
