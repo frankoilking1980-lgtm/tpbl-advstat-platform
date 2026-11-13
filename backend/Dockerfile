@@ -13,4 +13,4 @@ COPY data/ ./data/
 # 設定通訊埠 (Cloud Run 預設會指派 8080)
 ENV PORT=8080
 
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}

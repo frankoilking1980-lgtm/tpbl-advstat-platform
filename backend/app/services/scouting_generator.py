@@ -223,9 +223,14 @@ def make_preview_slug(game_date: str, home_team: str, away_team: str) -> str:
     return f"{clean_date}-{h_code}-vs-{a_code}"
 
 
+def _has_frontend_dir() -> bool:
+    return (PROJECT_ROOT / "frontend").exists()
+
+
 def _ensure_preview_dirs() -> None:
     BACKEND_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
-    FRONTEND_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
+    if _has_frontend_dir():
+        FRONTEND_PREVIEWS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _rebuild_index_files() -> None:
@@ -257,7 +262,8 @@ def _rebuild_index_files() -> None:
     summaries.sort(key=lambda x: (x.get("game_date", ""), x.get("generated_at", "")), reverse=True)
     index_text = json.dumps(summaries, ensure_ascii=False, indent=2)
     (BACKEND_PREVIEWS_DIR / "index.json").write_text(index_text, encoding="utf-8")
-    (FRONTEND_PREVIEWS_DIR / "index.json").write_text(index_text, encoding="utf-8")
+    if _has_frontend_dir():
+        (FRONTEND_PREVIEWS_DIR / "index.json").write_text(index_text, encoding="utf-8")
 
 
 def _templatize_text(text: str, off_roster: List[str], def_roster: List[str]) -> str:
@@ -330,7 +336,8 @@ def update_team_playbook_library(report: WeeklyPreviewReport) -> Path:
 
     lib_json = json.dumps(library, ensure_ascii=False, indent=2)
     lib_backend.write_text(lib_json, encoding="utf-8")
-    lib_frontend.write_text(lib_json, encoding="utf-8")
+    if _has_frontend_dir():
+        lib_frontend.write_text(lib_json, encoding="utf-8")
     return lib_backend
 
 
@@ -341,10 +348,10 @@ def save_weekly_preview(report: WeeklyPreviewReport) -> Path:
     json_str = json.dumps(payload, ensure_ascii=False, indent=2)
 
     backend_file = BACKEND_PREVIEWS_DIR / f"{report.slug}.json"
-    frontend_file = FRONTEND_PREVIEWS_DIR / f"{report.slug}.json"
-
     backend_file.write_text(json_str, encoding="utf-8")
-    shutil.copy2(backend_file, frontend_file)
+    if _has_frontend_dir():
+        frontend_file = FRONTEND_PREVIEWS_DIR / f"{report.slug}.json"
+        shutil.copy2(backend_file, frontend_file)
     update_team_playbook_library(report)
     _rebuild_index_files()
     return backend_file
