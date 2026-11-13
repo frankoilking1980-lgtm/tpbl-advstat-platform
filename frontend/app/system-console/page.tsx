@@ -280,12 +280,18 @@ export default function SystemConsolePage() {
     }
     setGeneratingPreview(true);
     try {
-      const res = await fetch(`${apiBase}/api/weekly-previews/generate`, {
+      const directBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
+      const generateUrl = directBase
+        ? `${directBase}/api/weekly-previews/generate`
+        : '/api/weekly-previews/generate';
+
+      const res = await fetch(generateUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Admin-Secret': adminSecret,
         },
+        signal: AbortSignal.timeout(240000),
         body: JSON.stringify({
           home_team: genHome,
           away_team: genAway,
@@ -303,7 +309,11 @@ export default function SystemConsolePage() {
       });
       await loadConsoleWeeklyData(adminSecret);
     } catch (err: any) {
-      setGenResultMsg({ type: 'err', text: err?.message || '生成失敗' });
+      const msg =
+        err?.name === 'TimeoutError'
+          ? '生成逾時（超過 4 分鐘），請稍後重試或改用較快的 Flash 模型／手動 JSON 匯入。'
+          : err?.message || '生成失敗';
+      setGenResultMsg({ type: 'err', text: msg });
     } finally {
       setGeneratingPreview(false);
     }
