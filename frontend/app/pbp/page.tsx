@@ -118,6 +118,7 @@ interface OnOffPlayer {
 interface FiveManLineup {
   lineup_name: string;
   total_time: string;
+  total_seconds?: number;
   possessions?: number;
   plus_minus: number;
   ortg: number;
@@ -128,6 +129,7 @@ interface FiveManLineup {
 interface ForeignDuo {
   duo_name: string;
   total_time: string;
+  total_seconds?: number;
   possessions?: number;
   plus_minus: number;
   ortg: number;
@@ -216,21 +218,49 @@ const signColor = (n: number | null | undefined): string => {
 };
 
 const parseSeconds = (seconds?: number, minutesStr?: string): number => {
-  if (isNum(seconds) && seconds > 0) return seconds;
-  if (typeof minutesStr === 'string' && minutesStr.includes(':')) {
-    const [m, s] = minutesStr.split(':').map(Number);
-    if (!isNaN(m) && !isNaN(s)) return m * 60 + s;
+  if (isNum(seconds) && seconds >= 0) return seconds;
+  if (typeof minutesStr === 'string') {
+    const trimmed = minutesStr.trim();
+    if (trimmed.includes(':')) {
+      const parts = trimmed.split(':').map(Number);
+      if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+        return parts[0] === 0 ? parts[1] * 60 + parts[2] : parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return parts[0] * 60 + parts[1];
+      }
+    } else if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      return Math.round(Number(trimmed));
+    }
   }
   return 0;
 };
 
-const isSmallSample = (totalTime?: string, possessions?: number): boolean => {
+const formatLineupTime = (totalTime?: string, totalSeconds?: number): string => {
+  if (isNum(totalSeconds) && totalSeconds >= 0) {
+    const sec = Math.round(totalSeconds);
+    return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+  }
+  if (typeof totalTime === 'string') {
+    const trimmed = totalTime.trim();
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      const sec = Math.round(Number(trimmed));
+      return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+    }
+    if (trimmed.startsWith('00:') && trimmed.split(':').length === 3) {
+      return trimmed.slice(3);
+    }
+    return trimmed;
+  }
+  return '00:00';
+};
+
+const isSmallSample = (totalTime?: string, possessions?: number, totalSeconds?: number): boolean => {
   if (isNum(possessions) && possessions > 0) {
     return possessions < 80;
   }
-  const sec = parseSeconds(undefined, totalTime);
-  const minutes = sec / 60;
-  return minutes < 35;
+  const sec = isNum(totalSeconds) && totalSeconds >= 0 ? totalSeconds : parseSeconds(undefined, totalTime);
+  return sec < 35 * 60;
 };
 
 function SmallSampleBadge() {
@@ -738,10 +768,10 @@ function PBPContent() {
                           <span className="px-3 py-1 rounded-xl bg-[#00E676]/15 text-[#00E676] font-black text-sm border border-[#00E676]/30">
                             {duo.duo_name}
                           </span>
-                          {isSmallSample(duo.total_time, duo.possessions) && <SmallSampleBadge />}
+                          {isSmallSample(duo.total_time, duo.possessions, duo.total_seconds) && <SmallSampleBadge />}
                           <span className="flex items-center space-x-1 text-xs text-gray-400 font-mono">
                             <Clock className="w-3.5 h-3.5" />
-                            <span>共同出賽: {duo.total_time}</span>
+                            <span>共同出賽: {formatLineupTime(duo.total_time, duo.total_seconds)}</span>
                           </span>
                         </div>
 
@@ -881,10 +911,10 @@ function PBPContent() {
                           <td className="py-3.5 px-4 font-sans font-bold text-gray-200">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span>{l.lineup_name}</span>
-                              {isSmallSample(l.total_time, l.possessions) && <SmallSampleBadge />}
+                              {isSmallSample(l.total_time, l.possessions, l.total_seconds) && <SmallSampleBadge />}
                             </div>
                           </td>
-                          <td className="py-3.5 px-4 text-center text-gray-300">{l.total_time}</td>
+                          <td className="py-3.5 px-4 text-center text-gray-300">{formatLineupTime(l.total_time, l.total_seconds)}</td>
                           <td
                             className={`py-3.5 px-4 text-right font-bold ${
                               l.plus_minus > 0 ? 'text-[#00E676]' : 'text-red-400'

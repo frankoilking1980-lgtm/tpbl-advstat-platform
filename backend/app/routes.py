@@ -471,6 +471,71 @@ def _parse_real_excel_game(excel_path: Path, game_code: str):
         return [], [], [], []
 
 
+def normalize_lineup_time(val: Any) -> tuple[str, int]:
+    """統一正規化陣容/搭檔累計時間，回傳 (MM:SS 字串, 總秒數)。
+    - 純數字 (int/float 或無冒號純數字字串)：視為總秒數，換算為 MM:SS。
+    - 含冒號字串 (如 '15:30' 或 '00:15:30')：解析分與秒，去除前導 '00:'。
+    - Python time / timedelta / datetime：還原 Excel 誤將 MM:SS 存為 HH:MM:00 的情況並換算為 MM:SS。
+    """
+    if val is None or isinstance(val, bool):
+        return "00:00", 0
+
+    if isinstance(val, (int, float)):
+        if not math.isfinite(val) or val < 0:
+            return "00:00", 0
+        sec = int(round(val))
+        return f"{sec // 60:02d}:{sec % 60:02d}", sec
+
+    if isinstance(val, (timedelta, time, datetime)):
+        if isinstance(val, timedelta):
+            excel_sec = max(0, int(round(val.total_seconds())))
+        elif isinstance(val, datetime):
+            if val.year in (1899, 1900):
+                base = datetime(1899, 12, 30) if val.year == 1899 else datetime(1900, 1, 1)
+                extra = 86400 if val.year == 1900 else 0
+                excel_sec = max(0, int(round((val - base).total_seconds())) + extra)
+            else:
+                excel_sec = val.hour * 3600 + val.minute * 60 + val.second
+        else:
+            excel_sec = val.hour * 3600 + val.minute * 60 + val.second
+        h = excel_sec // 3600
+        m = (excel_sec % 3600) // 60
+        s = excel_sec % 60
+        sec = (m * 60 + s) if (h == 0 and s > 0) else (h * 60 + m)
+        return f"{sec // 60:02d}:{sec % 60:02d}", sec
+
+    s = str(val).strip()
+    if not s or s.lower() in INVALID_TOKENS:
+        return "00:00", 0
+
+    if ":" in s:
+        parts = s.split(":")
+        try:
+            if len(parts) == 3:
+                p0, p1, p2 = int(float(parts[0])), int(float(parts[1])), int(float(parts[2]))
+                if p0 == 0:
+                    sec = max(0, p1 * 60 + p2)
+                elif p2 == 0:
+                    sec = max(0, p0 * 60 + p1)
+                else:
+                    sec = max(0, p0 * 3600 + p1 * 60 + p2)
+                return f"{sec // 60:02d}:{sec % 60:02d}", sec
+            if len(parts) == 2:
+                sec = max(0, int(float(parts[0])) * 60 + int(float(parts[1])))
+                return f"{sec // 60:02d}:{sec % 60:02d}", sec
+        except Exception:
+            return "00:00", 0
+
+    try:
+        f_val = float(s)
+        if not math.isfinite(f_val) or f_val < 0:
+            return "00:00", 0
+        sec = int(round(f_val))
+        return f"{sec // 60:02d}:{sec % 60:02d}", sec
+    except Exception:
+        return "00:00", 0
+
+
 def _parse_season_pbp_from_excel(excel_path: Path):
     if not excel_path or not excel_path.exists():
         return [], []
@@ -503,8 +568,7 @@ def _parse_season_pbp_from_excel(excel_path: Path):
                         continue
 
                     raw_time = ws.cell(row=r, column=col_5m + 1).value
-                    sec = parse_time_to_seconds(raw_time, default_sec=0)
-                    mins_str = f"{sec // 60:02d}:{sec % 60:02d}"
+                    mins_str, sec = normalize_lineup_time(raw_time)
 
                     pm = int(round(clean_val_num(ws.cell(row=r, column=col_5m + 2).value, 0)))
                     ortg = clean_val_num(ws.cell(row=r, column=col_5m + 3).value, 0.0)
@@ -518,6 +582,7 @@ def _parse_season_pbp_from_excel(excel_path: Path):
                         "name": display_name,
                         "total_time": mins_str,
                         "minutes": mins_str,
+                        "total_seconds": sec,
                         "plus_minus": pm,
                         "pm": pm,
                         "ortg": ortg,
@@ -547,8 +612,7 @@ def _parse_season_pbp_from_excel(excel_path: Path):
                         continue
 
                     raw_time = ws.cell(row=r, column=col_duo + 1).value
-                    sec = parse_time_to_seconds(raw_time, default_sec=0)
-                    mins_str = f"{sec // 60:02d}:{sec % 60:02d}"
+                    mins_str, sec = normalize_lineup_time(raw_time)
 
                     pm = int(round(clean_val_num(ws.cell(row=r, column=col_duo + 2).value, 0)))
                     ortg = clean_val_num(ws.cell(row=r, column=col_duo + 3).value, 0.0)
@@ -563,6 +627,7 @@ def _parse_season_pbp_from_excel(excel_path: Path):
                         "name": name_val,
                         "total_time": mins_str,
                         "minutes": mins_str,
+                        "total_seconds": sec,
                         "plus_minus": pm,
                         "pm": pm,
                         "ortg": ortg,
