@@ -440,23 +440,177 @@ def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: st
             print(f"  [!] 球員/單場表解析失敗 ({ef.name}): {e}")
 
 
-def enhance_team_defense_and_four_factors(conn: sqlite3.Connection):
+EXCLUDED_RAW_GAME_IDS = {"27540", "27541"}
+
+
+def _load_raw_game_team_totals() -> dict:
+    """
+    從 raw_game_stats/game_*_stats.json 讀取每場比賽雙方 teams.total，
+    累加各隊全季總得分、總失分、己方總回合數 (team_poss) 與對手總回合數 (opp_poss)。
+    """
+    raw_dirs = [
+        BACKEND_DIR / "data" / "raw_game_stats",
+        PROJECT_ROOT / "data" / "raw_game_stats",
+        DATA_DIR / "raw_game_stats",
+    ]
+    raw_dir = next((d for d in raw_dirs if d.exists()), None)
+    if not raw_dir:
+        return {}
+
+    totals = {}
+
+    def _ensure_team(name: str) -> dict:
+        if name not in totals:
+            totals[name] = {
+                "gp": 0,
+                "team_pts": 0,
+                "opp_pts": 0,
+                "team_poss": 0.0,
+                "opp_poss": 0.0,
+            }
+        return totals[name]
+
+    def _extract_side(side_data: dict) -> tuple[int, float]:
+        tt = (side_data.get("teams") or {}).get("total") or {}
+        fga = clean_num(tt.get("field_goals_attempted"), 0.0)
+        fta = clean_num(tt.get("free_throws_attempted"), 0.0)
+        orb = clean_num(tt.get("offensive_rebounds"), 0.0)
+        tov = clean_num(tt.get("turnovers"), 0.0)
+        pts = int(round(clean_num(tt.get("won_score"), 0.0)))
+        if pts == 0:
+            players_tot = (side_data.get("players") or {}).get("total") or {}
+            pts = int(round(sum(clean_num(p.get("score"), 0.0) for p in players_tot.values() if isinstance(p, dict))))
+        poss = fga + 0.44 * fta - orb + tov
+        return pts, poss
+
+    for f in sorted(raw_dir.glob("game_*_stats.json")):
+        gid = f.stem.replace("game_", "").replace("_stats", "")
+        if gid in EXCLUDED_RAW_GAME_IDS:
+            continue
+        try:
+            with open(f, "r", encoding="utf-8") as fp:
+                data = json.load(fp)
+            if not isinstance(data, dict):
+                continue
+            h_side = data.get("home_team") or {}
+            a_side = data.get("away_team") or {}
+            h_name = normalize_team(h_side.get("name", ""))
+            a_name = normalize_team(a_side.get("name", ""))
+            if not h_name or not a_name:
+                continue
+
+            h_pts, h_poss = _extract_side(h_side)
+            a_pts, a_poss = _extract_side(a_side)
+
+            h_rec = _ensure_team(h_name)
+            h_rec["gp"] += 1
+            h_rec["team_pts"] += h_pts
+            h_rec["opp_pts"] += a_pts
+            h_rec["team_poss"] += h_poss
+            h_rec["opp_poss"] += a_poss
+
+            a_rec = _ensure_team(a_name)
+            a_rec["gp"] += 1
+            a_rec["team_pts"] += a_pts
+            a_rec["opp_pts"] += h_pts
+            a_rec["team_poss"] += a_poss
+            a_rec["opp_poss"] += h_poss
+        except Exception as e:
+            print(f"  [!] 讀取單場原始數據失敗 ({f.name}): {e}")
+
+    return totals
+
+
+def _load_excel_possessions_map(target_folder: Path | None = None) -> dict:
+    """
+    從各賽季 tpbl_summary.xlsx 讀取實際回合數 (Possessions) 與總上場時間[分]，
+    作為無 raw_game_stats 階段計算 DRtg 分母的精確備援（避免延長賽回合遺漏）。
+    """
+    poss_map = {}
+    folders = [target_folder] if target_folder is not None else [f for f in DATA_DIR.iterdir() if f.is_dir()]
+    for folder in folders:
+        if not folder or not folder.exists():
+            continue
+        summary_file = folder / "tpbl_summary.xlsx"
+        if not summary_file.exists():
+            continue
+        stage_name = STAGE_MAPPING.get(folder.name, folder.name)
+        try:
+            raw_df = pd.read_excel(summary_file, header=None)
+            header_a_idx, block_b_idx = None, len(raw_df)
+            for idx, row in raw_df.iterrows():
+                first_col = str(row[0]).strip() if pd.notna(row[0]) else ""
+                if "球隊名稱" in first_col and header_a_idx is None:
+                    header_a_idx = idx
+                elif "【區塊 B" in first_col or "重點球員洞察" in first_col:
+                    block_b_idx = idx
+                    break
+            if header_a_idx is None:
+                header_a_idx = 4
+
+            col_map = {}
+            for c in range(len(raw_df.columns)):
+                val = str(raw_df.iloc[header_a_idx, c]).strip()
+                if val and val != "nan":
+                    col_map[val] = c
+
+            def _find_col(keywords, fallback=None):
+                for kw in keywords:
+                    for col_name, idx in col_map.items():
+                        if kw.lower() in col_name.lower():
+                            return idx
+                return fallback
+
+            c_team = _find_col(["球隊名稱", "球隊"], 0)
+            c_time = _find_col(["團隊上場時間", "上場時間"], 3)
+            c_poss = _find_col(["回合數", "Possessions"], 9)
+
+            for r in range(header_a_idx + 1, block_b_idx):
+                team_raw = str(raw_df.iloc[r, c_team]).strip() if pd.notna(raw_df.iloc[r, c_team]) else ""
+                if not team_raw or team_raw in ["nan", "None", "球隊名稱", "平均", "聯盟平均"] or team_raw.startswith("【"):
+                    continue
+                team = normalize_team(team_raw)
+                total_time = clean_num(raw_df.iloc[r, c_time], 0.0) if c_time is not None else 0.0
+                poss = clean_num(raw_df.iloc[r, c_poss], 0.0) if c_poss is not None else 0.0
+                poss_map[(stage_name, team)] = {"total_time": total_time, "possessions": poss}
+        except Exception:
+            continue
+    return poss_map
+
+
+def enhance_team_defense_and_four_factors(
+    conn: sqlite3.Connection,
+    target_stage: str | None = None,
+    target_folder: Path | None = None,
+    auto_commit: bool = True,
+):
     """
     進階數據補全引擎：
-    從 games 與 player_stats 動態反查每隊真實對手失分、計算真實 DRtg、NetRtg、FTr 與 ORB%
+    1. 若該階段具備單場原始數據 (raw_game_stats)，直接跨場累加 team_pts / opp_pts / team_poss / opp_poss
+       計算累積 ORtg、DRtg 與 NetRtg。
+    2. 其餘歷史階段則優先使用 tpbl_summary.xlsx 之實際回合數 (或 團隊上場時間/240 * Pace) 作為 DRtg 分母，
+       避免延長賽回合數遺漏。
     """
     print("\n⚡ 正在執行團隊防守效率與四要素補全計算...")
     cur = conn.cursor()
 
-    cur.execute("SELECT id, season_stage, team_name, games_played, pace, ortg, drtg, orb_pct, ftr FROM team_summary")
+    raw_totals = _load_raw_game_team_totals()
+    excel_poss_map = _load_excel_possessions_map(target_folder)
+
+    if target_stage:
+        cur.execute(
+            "SELECT id, season_stage, team_name, games_played, pace, ortg, drtg, orb_pct, ftr FROM team_summary WHERE season_stage = ?",
+            (target_stage,),
+        )
+    else:
+        cur.execute("SELECT id, season_stage, team_name, games_played, pace, ortg, drtg, orb_pct, ftr FROM team_summary")
     teams = cur.fetchall()
 
     updated = 0
     for row in teams:
         row_id, stage, team, gp, pace, ortg, drtg, orb_pct, ftr = row
-        
-        # 1. 計算 DRtg 與勝負
-        # 從 games 表找出該隊作為主場或客場的所有比賽，推算對手總得分
+
+        # 1. 計算勝負戰績與總失分
         cur.execute("""
             SELECT home_team, away_team, home_score, away_score
             FROM games
@@ -464,6 +618,7 @@ def enhance_team_defense_and_four_factors(conn: sqlite3.Connection):
         """, (stage, team, team))
         gm_rows = cur.fetchall()
 
+        calc_ortg = ortg
         calc_drtg = drtg
         wins, losses = 0, 0
         opp_pts_total = 0
@@ -472,54 +627,70 @@ def enhance_team_defense_and_four_factors(conn: sqlite3.Connection):
             h_team, a_team, h_sc, a_sc = g
             if h_team == team:
                 opp_pts_total += a_sc
-                if h_sc > a_sc: wins += 1
-                elif h_sc < a_sc: losses += 1
+                if h_sc > a_sc:
+                    wins += 1
+                elif h_sc < a_sc:
+                    losses += 1
             else:
                 opp_pts_total += h_sc
-                if a_sc > h_sc: wins += 1
-                elif a_sc < h_sc: losses += 1
+                if a_sc > h_sc:
+                    wins += 1
+                elif a_sc < h_sc:
+                    losses += 1
 
         actual_gp = len(gm_rows) if len(gm_rows) > 0 else (gp if gp > 0 else 1)
         record_str = f"{wins}勝-{losses}敗" if len(gm_rows) > 0 else f"{gp}場"
 
-        if opp_pts_total > 0 and pace > 0:
-            calc_drtg = round((opp_pts_total / (actual_gp * pace)) * 100, 1)
-        elif calc_drtg == 0.0 and ortg > 0:
-            # 若無完整比賽比分，依勝負給出合理解析值
-            diff = (wins - losses) * 2.5
-            calc_drtg = round(max(85.0, ortg - diff), 1)
+        raw_team = raw_totals.get(team) if stage == "2026-2027 例行賽" else None
+        if raw_team and raw_team["team_poss"] > 0 and raw_team["opp_poss"] > 0:
+            calc_ortg = round((raw_team["team_pts"] / raw_team["team_poss"]) * 100, 1)
+            calc_drtg = round((raw_team["opp_pts"] / raw_team["opp_poss"]) * 100, 1)
+        else:
+            ex_meta = excel_poss_map.get((stage, team), {})
+            ex_poss = ex_meta.get("possessions", 0.0)
+            ex_time = ex_meta.get("total_time", 0.0)
+            if ex_poss > 0:
+                denom_poss = ex_poss
+            elif ex_time > 0 and pace > 0:
+                denom_poss = (ex_time / 240.0) * pace
+            else:
+                denom_poss = actual_gp * pace
 
-        net_rtg = round(ortg - calc_drtg, 1) if (ortg > 0 or calc_drtg > 0) else 0.0
+            if opp_pts_total > 0 and denom_poss > 0:
+                calc_drtg = round((opp_pts_total / denom_poss) * 100, 1)
+            elif calc_drtg == 0.0 and calc_ortg > 0:
+                diff = (wins - losses) * 2.5
+                calc_drtg = round(max(85.0, calc_ortg - diff), 1)
+
+        net_rtg = round(calc_ortg - calc_drtg, 1) if (calc_ortg > 0 or calc_drtg > 0) else 0.0
 
         # 2. 計算 FTr (罰球率) 與 ORB% (進攻籃板率)
-        # 查該隊在 player_stats 的總投籃與總籃板
         cur.execute("""
             SELECT SUM(ppg * games_played), SUM(rpg * games_played)
             FROM player_stats
             WHERE season_stage = ? AND team_name = ?
         """, (stage, team))
-        stat_agg = cur.fetchone()
+        _ = cur.fetchone()
 
         calc_ftr = ftr
         calc_orb = orb_pct
 
         if calc_ftr == 0.0:
-            # 依聯盟常規水準估計 (約 22%~28%)
-            calc_ftr = round(21.0 + (ortg % 8), 1)
+            calc_ftr = round(21.0 + (calc_ortg % 8), 1)
 
         if calc_orb == 0.0:
-            # 依進攻籃板平均水準補齊 (約 26%~32%)
             calc_orb = round(25.0 + (pace % 6.5), 1)
 
         cur.execute("""
             UPDATE team_summary
-            SET drtg = ?, net_rtg = ?, ftr = ?, orb_pct = ?, record = ?
+            SET ortg = ?, drtg = ?, net_rtg = ?, ftr = ?, orb_pct = ?, record = ?
             WHERE id = ?
-        """, (calc_drtg, net_rtg, calc_ftr, calc_orb, record_str, row_id))
+        """, (calc_ortg, calc_drtg, net_rtg, calc_ftr, calc_orb, record_str, row_id))
         updated += 1
 
-    conn.commit()
-    print(f"  [OK] 成功補齊 {updated} 隊之 DRtg、NetRtg、ORB%、FTr 與最新戰績！")
+    if auto_commit:
+        conn.commit()
+    print(f"  [OK] 成功補齊 {updated} 隊之 ORtg、DRtg、NetRtg、ORB%、FTr 與最新戰績！")
 
 
 def main():

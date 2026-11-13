@@ -62,9 +62,14 @@ export default function SystemConsolePage() {
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const [isLocalhost, setIsLocalhost] = useState<boolean>(true);
 
-  // 檢查目前工作階段 (Session) 是否已解鎖過
+  // 檢查目前工作階段 (Session) 是否已解鎖過，並判斷是否為本機環境
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      setIsLocalhost(host === 'localhost' || host === '127.0.0.1');
+    }
     const savedSecret = sessionStorage.getItem('tpbl_admin_secret');
     if (savedSecret) {
       setAdminSecret(savedSecret);
@@ -271,6 +276,29 @@ export default function SystemConsolePage() {
     }
   };
 
+  const parseApiResponse = async (res: Response) => {
+    const rawText = await res.text();
+    let data: any = null;
+    if (rawText) {
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = null;
+      }
+    }
+    if (!res.ok) {
+      const detail =
+        data?.detail ||
+        data?.message ||
+        (rawText ? `HTTP ${res.status}: ${rawText.slice(0, 300)}` : `HTTP ${res.status} 請求失敗`);
+      throw new Error(detail);
+    }
+    if (data === null) {
+      throw new Error(`伺服器回傳非 JSON 格式 (HTTP ${res.status})：${rawText.slice(0, 200)}`);
+    }
+    return data;
+  };
+
   const handleGenerateWeeklyPreview = async (e: React.FormEvent) => {
     e.preventDefault();
     setGenResultMsg(null);
@@ -280,10 +308,8 @@ export default function SystemConsolePage() {
     }
     setGeneratingPreview(true);
     try {
-      const directBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
-      const generateUrl = directBase
-        ? `${directBase}/api/weekly-previews/generate`
-        : '/api/weekly-previews/generate';
+      const directBase = apiBase.replace(/\/+$/, '');
+      const generateUrl = `${directBase}/api/weekly-previews/generate`;
 
       const res = await fetch(generateUrl, {
         method: 'POST',
@@ -301,8 +327,7 @@ export default function SystemConsolePage() {
           model_name: selectedGeminiModel || null,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || '生成失敗');
+      const data = await parseApiResponse(res);
       setGenResultMsg({
         type: 'ok',
         text: `已成功透過 ${data.model_used} 生成報告（${data.slug}），並自動更新 7 隊戰術庫！`,
@@ -883,6 +908,16 @@ export default function SystemConsolePage() {
               使用模型：<span className="text-[#00E676] font-bold">{selectedGeminiModel || '自動選用最新 Pro 模型'}</span>
             </div>
           </div>
+
+          {!isLocalhost && (
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-xs text-amber-200 flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-black text-amber-300">正式環境唯讀提示：</span>
+                正式環境檔案系統為唯讀或非持久化，請於本機 <code className="px-1.5 py-0.5 rounded bg-black/40 text-amber-100 font-mono">localhost</code> 生成週報並 <code className="px-1.5 py-0.5 rounded bg-black/40 text-amber-100 font-mono">git push</code> 發布（週報 JSON 儲存於 <code className="px-1.5 py-0.5 rounded bg-black/40 text-amber-100 font-mono">backend/data/weekly_previews/</code>）。
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleGenerateWeeklyPreview} className="grid grid-cols-1 md:grid-cols-12 gap-4">
             <div className="md:col-span-3">

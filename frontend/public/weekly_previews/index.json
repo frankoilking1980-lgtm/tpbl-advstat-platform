@@ -1,1 +1,58 @@
-[]
+[
+  {
+    "slug": "2026-11-15-dea-vs-mars",
+    "game_date": "2026-11-15",
+    "game_label": "G16 焦點對決",
+    "season_stage": "2026-2027 例行賽",
+    "home_team": "新北中信特攻",
+    "away_team": "臺北台新戰神",
+    "headline": "雙北雙槍火線對決！閃電風暴遭遇外線轟炸，阿巴西與林庭謙的頂級後場博弈",
+    "subheadline": "特攻防守效率百回合僅失100.2分對決戰神48.8%外線出手比重，禁區肉搏與轉換快攻的勝負手",
+    "home_win_prob": 53.5,
+    "away_win_prob": 46.5,
+    "generated_at": "2026-11-14T07:43:24",
+    "model_used": "gemini-3.8-flash"
+  },
+  {
+    "slug": "2026-11-15-leopards-vs-kings",
+    "game_date": "2026-11-15",
+    "game_label": "G15 焦點對決",
+    "season_stage": "2026-2027 例行賽",
+    "home_team": "桃園台啤永豐雲豹",
+    "away_team": "新北國王",
+    "headline": "雲豹主場迎擊殘陣國王：高錦瑋掌控陣地戰節奏，黃衫軍殘缺後場能否突圍？",
+    "subheadline": "國王後場大將面臨傷病潮考驗，雲豹雙箭頭米勒與莫騰強攻油漆區尋求連勝",
+    "home_win_prob": 62.5,
+    "away_win_prob": 37.5,
+    "generated_at": "2026-11-14T07:42:16",
+    "model_used": "gemini-3.8-flash"
+  },
+  {
+    "slug": "2026-11-14-dea-vs-aquas",
+    "game_date": "2026-11-14",
+    "game_label": "G14 焦點對決",
+    "season_stage": "2026-2027 例行賽",
+    "home_team": "新北中信特攻",
+    "away_team": "高雄全家海神",
+    "headline": "雙核狂轟難掩防守黑洞，胡瓏貿缺陣海神直面特攻閃電撕裂",
+    "subheadline": "海神雙洋將合攬55分卻受制21.5%失誤率，特攻嚴防轉換再演大勝劇本？",
+    "home_win_prob": 58.5,
+    "away_win_prob": 41.5,
+    "generated_at": "2026-11-14T07:41:12",
+    "model_used": "gemini-3.8-flash"
+  },
+  {
+    "slug": "2026-11-14-leopards-vs-lioneers",
+    "game_date": "2026-11-14",
+    "game_label": "G13 焦點對決",
+    "season_stage": "2026-2027 例行賽",
+    "home_team": "桃園台啤永豐雲豹",
+    "away_team": "新竹御嵿攻城獅",
+    "headline": "禁區巨靈碰撞與外線節奏拉鋸！雲豹主場嚴防攻城獅狂暴雙塔衝擊",
+    "subheadline": "高錦瑋引導陣地戰拆解長人陣，迪亞洛與德魯合體掌控禁區制空權",
+    "home_win_prob": 49.2,
+    "away_win_prob": 50.8,
+    "generated_at": "2026-11-14T07:39:56",
+    "model_used": "gemini-3.8-flash"
+  }
+]

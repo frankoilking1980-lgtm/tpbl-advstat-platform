@@ -14,7 +14,7 @@ import datetime
 from pathlib import Path
 import pandas as pd
 import openpyxl
-from build_db import clean_num, clean_pct_100
+from build_db import clean_num, clean_pct_100, enhance_team_defense_and_four_factors
 
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BACKEND_DIR.parent
@@ -523,6 +523,7 @@ def main():
         process_schedules(conn, target_folder, stage_name, auto_commit=False)
         process_team_summary(conn, target_folder, stage_name, auto_commit=False)
         process_player_excels(conn, target_folder, stage_name, auto_commit=False)
+        enhance_team_defense_and_four_factors(conn, target_stage=stage_name, target_folder=target_folder, auto_commit=False)
         conn.commit()
 
         cur = conn.cursor()
