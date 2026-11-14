@@ -235,11 +235,13 @@ function MetricsPanel({ items, away, home }: { items: MetricComparisonItem[]; aw
 function LineupPairTable({
   team,
   lineups,
+  worstLineups,
   pairs,
   accent,
 }: {
   team: string;
   lineups: GameLineupItem[];
+  worstLineups: GameLineupItem[];
   pairs: GameLineupItem[];
   accent: 'amber' | 'emerald';
 }) {
@@ -287,15 +289,29 @@ function LineupPairTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-cardBorder/40 font-mono">
-            {lineups.length === 0 && pairs.length === 0 ? (
+            {lineups.length === 0 && worstLineups.length === 0 && pairs.length === 0 ? (
               <tr><td colSpan={6} className="py-4 text-center text-gray-500 font-sans">無陣容數據</td></tr>
             ) : (
               <>
                 {lineups.map((l, i) => renderRow(l, i, false))}
+                <tr className="bg-gray-900/60 font-sans font-bold text-gray-300">
+                  <td colSpan={6} className="py-1.5 px-3 text-[11px] text-rose-400 border-t border-cardBorder">
+                    最差陣容（Worst Lineups）
+                  </td>
+                </tr>
+                {worstLineups.length > 0 ? (
+                  worstLineups.map((l, i) => renderRow(l, i, false))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-2.5 px-3 text-center text-emerald-400/80 font-sans text-xs">
+                      只有最佳，沒有最差
+                    </td>
+                  </tr>
+                )}
                 {pairs.length > 0 && (
                   <tr className="bg-gray-900/60 font-sans font-bold text-gray-300">
                     <td colSpan={6} className="py-1.5 px-3 text-[11px] text-amber-400 border-t border-cardBorder">
-                      核心搭檔效益 (Key Pairs)
+                      核心搭檔效益 (Key Pairs Top 3)
                     </td>
                   </tr>
                 )}
@@ -959,7 +975,10 @@ export default function GamesReviewPage() {
   }, [filteredGames]);
 
   const { data: game, isLoading: detailLoading, error: detailError } = useSWR<DetailedGameData & {
-    lineups_and_pairs?: { away?: { lineups?: GameLineupItem[]; pairs?: GameLineupItem[] }; home?: { lineups?: GameLineupItem[]; pairs?: GameLineupItem[] } };
+    lineups_and_pairs?: {
+      away?: { lineups?: GameLineupItem[]; worst_lineups?: GameLineupItem[]; pairs?: GameLineupItem[] };
+      home?: { lineups?: GameLineupItem[]; worst_lineups?: GameLineupItem[]; pairs?: GameLineupItem[] };
+    };
     player_onoff?: { away?: any[]; home?: any[] };
     tactics_wowy?: { away?: GameTacticItem[]; home?: GameTacticItem[] };
   }>(
@@ -981,8 +1000,10 @@ export default function GamesReviewPage() {
   const metricItems = useMemo(() => (metrics ? buildMetricItems(metrics) : []), [metrics]);
 
   const awayLineups = game?.lineups_and_pairs?.away?.lineups ?? [];
+  const awayWorstLineups = game?.lineups_and_pairs?.away?.worst_lineups ?? [];
   const awayPairs = game?.lineups_and_pairs?.away?.pairs ?? [];
   const homeLineups = game?.lineups_and_pairs?.home?.lineups ?? [];
+  const homeWorstLineups = game?.lineups_and_pairs?.home?.worst_lineups ?? [];
   const homePairs = game?.lineups_and_pairs?.home?.pairs ?? [];
   const awayOnOff = game?.player_onoff?.away ?? [];
   const homeOnOff = game?.player_onoff?.home ?? [];
@@ -1124,8 +1145,8 @@ export default function GamesReviewPage() {
           <section className="space-y-4">
             <SectionTitle icon={<Users className="w-5 h-5" />} title="單場最佳陣容與核心搭檔效益" hint="含最佳五人與 Key Pairs 雙人搭檔" />
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-              <LineupPairTable team={game.away_team} lineups={awayLineups} pairs={awayPairs} accent="amber" />
-              <LineupPairTable team={game.home_team} lineups={homeLineups} pairs={homePairs} accent="emerald" />
+              <LineupPairTable team={game.away_team} lineups={awayLineups} worstLineups={awayWorstLineups} pairs={awayPairs} accent="amber" />
+              <LineupPairTable team={game.home_team} lineups={homeLineups} worstLineups={homeWorstLineups} pairs={homePairs} accent="emerald" />
             </div>
           </section>
 

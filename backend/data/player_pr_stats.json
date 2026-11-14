@@ -3,39 +3,39 @@
     "stage": "2026-2027 例行賽",
     "min_mpg": 8.0,
     "team_games": {
-      "新北中信特攻": 2,
+      "新北中信特攻": 3,
       "新北國王": 4,
-      "新竹御嵿攻城獅": 2,
-      "桃園台啤永豐雲豹": 2,
+      "新竹御嵿攻城獅": 3,
+      "桃園台啤永豐雲豹": 3,
       "福爾摩沙夢想家": 3,
       "臺北台新戰神": 3,
-      "高雄全家海神": 4
+      "高雄全家海神": 5
     },
-    "total_qualified": 68
+    "total_qualified": 69
   },
   "players": {
     "迪亞洛": {
       "rank": 1,
-      "id": 536,
+      "id": 537,
       "name": "迪亞洛",
       "team_name": "新竹御嵿攻城獅",
       "jersey_number": "33",
       "position": "PF",
       "identity": "洋將",
-      "games_played": 2,
-      "mpg": 42.6,
+      "games_played": 3,
+      "mpg": 43.5,
       "badges": {
         "PTS": {
-          "val": 28.5,
-          "pr": 100
+          "val": 25.7,
+          "pr": 97
         },
         "REB": {
-          "val": 15.5,
+          "val": 16.3,
           "pr": 100
         },
         "AST": {
-          "val": 1.5,
-          "pr": 42
+          "val": 1.7,
+          "pr": 48
         },
         "STL": {
           "val": 1.0,
@@ -43,130 +43,81 @@
         },
         "BLK": {
           "val": 2.0,
-          "pr": 95
+          "pr": 96
         },
         "eFG%": {
-          "val": 69.7,
-          "pr": 87
-        },
-        "TS%": {
-          "val": 69.7,
-          "pr": 85
-        },
-        "USG%": {
-          "val": 26.7,
-          "pr": 69
-        },
-        "GmSC": {
-          "val": 28.2,
-          "pr": 100
-        }
-      }
-    },
-    "德魯": {
-      "rank": 2,
-      "id": 537,
-      "name": "德魯",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "2",
-      "position": "F",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 42.4,
-      "badges": {
-        "PTS": {
-          "val": 20.5,
+          "val": 63.3,
           "pr": 90
         },
-        "REB": {
-          "val": 9.0,
-          "pr": 85
-        },
-        "AST": {
-          "val": 7.0,
-          "pr": 99
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 4.5,
-          "pr": 100
-        },
-        "eFG%": {
-          "val": 79.5,
-          "pr": 97
-        },
         "TS%": {
-          "val": 83.2,
-          "pr": 97
+          "val": 63.2,
+          "pr": 83
         },
         "USG%": {
-          "val": 17.5,
-          "pr": 27
+          "val": 26.5,
+          "pr": 70
         },
         "GmSC": {
-          "val": 23.9,
-          "pr": 99
+          "val": 25.1,
+          "pr": 100
         }
       }
     },
     "洛斯柯": {
-      "rank": 3,
-      "id": 598,
+      "rank": 2,
+      "id": 599,
       "name": "洛斯柯",
       "team_name": "高雄全家海神",
       "jersey_number": "25",
       "position": "PF/C",
       "identity": "洋將",
-      "games_played": 4,
-      "mpg": 35.2,
+      "games_played": 5,
+      "mpg": 35.6,
       "badges": {
         "PTS": {
-          "val": 28.0,
-          "pr": 99
+          "val": 27.4,
+          "pr": 100
         },
         "REB": {
-          "val": 11.0,
-          "pr": 93
+          "val": 10.8,
+          "pr": 91
         },
         "AST": {
-          "val": 4.5,
-          "pr": 90
+          "val": 4.0,
+          "pr": 86
         },
         "STL": {
-          "val": 1.5,
-          "pr": 72
+          "val": 1.4,
+          "pr": 69
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 56.7,
+          "val": 56.1,
           "pr": 66
         },
         "TS%": {
-          "val": 65.6,
-          "pr": 84
+          "val": 64.1,
+          "pr": 86
         },
         "USG%": {
-          "val": 39.1,
-          "pr": 99
+          "val": 38.0,
+          "pr": 100
         },
         "GmSC": {
-          "val": 22.6,
-          "pr": 97
+          "val": 21.7,
+          "pr": 99
         }
       }
     },
     "貝西里": {
-      "rank": 4,
-      "id": 597,
+      "rank": 3,
+      "id": 598,
       "name": "貝西里",
       "team_name": "高雄全家海神",
-      "jersey_number": "0",
+      "jersey_number": "",
       "position": "SF",
       "identity": "洋將",
       "games_played": 4,
@@ -174,15 +125,15 @@
       "badges": {
         "PTS": {
           "val": 27.0,
-          "pr": 97
+          "pr": 99
         },
         "REB": {
           "val": 12.3,
-          "pr": 96
+          "pr": 93
         },
         "AST": {
           "val": 3.0,
-          "pr": 74
+          "pr": 72
         },
         "STL": {
           "val": 1.3,
@@ -190,29 +141,29 @@
         },
         "BLK": {
           "val": 1.3,
-          "pr": 88
+          "pr": 90
         },
         "eFG%": {
-          "val": 62.1,
-          "pr": 81
+          "val": 62.2,
+          "pr": 86
         },
         "TS%": {
-          "val": 63.6,
-          "pr": 79
+          "val": 63.5,
+          "pr": 84
         },
         "USG%": {
-          "val": 34.4,
+          "val": 34.5,
           "pr": 91
         },
         "GmSC": {
-          "val": 21.6,
-          "pr": 96
+          "val": 21.5,
+          "pr": 97
         }
       }
     },
     "林庭謙": {
-      "rank": 5,
-      "id": 581,
+      "rank": 4,
+      "id": 582,
       "name": "林庭謙",
       "team_name": "臺北台新戰神",
       "jersey_number": "0",
@@ -227,139 +178,90 @@
         },
         "REB": {
           "val": 2.7,
-          "pr": 37
+          "pr": 40
         },
         "AST": {
           "val": 5.7,
-          "pr": 97
+          "pr": 96
         },
         "STL": {
           "val": 2.3,
-          "pr": 90
+          "pr": 93
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 59.6,
-          "pr": 71
+          "pr": 75
         },
         "TS%": {
           "val": 62.8,
-          "pr": 76
+          "pr": 80
         },
         "USG%": {
           "val": 25.9,
-          "pr": 66
+          "pr": 67
         },
         "GmSC": {
           "val": 20.8,
-          "pr": 94
+          "pr": 96
         }
       }
     },
-    "米勒": {
-      "rank": 6,
-      "id": 558,
-      "name": "米勒",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "13",
-      "position": "SF",
+    "德魯": {
+      "rank": 5,
+      "id": 538,
+      "name": "德魯",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "2",
+      "position": "F",
       "identity": "洋將",
-      "games_played": 2,
-      "mpg": 36.8,
+      "games_played": 3,
+      "mpg": 41.5,
       "badges": {
         "PTS": {
-          "val": 21.0,
-          "pr": 92
+          "val": 15.0,
+          "pr": 70
         },
         "REB": {
-          "val": 9.0,
-          "pr": 85
-        },
-        "AST": {
-          "val": 2.0,
-          "pr": 54
-        },
-        "STL": {
-          "val": 2.5,
+          "val": 12.7,
           "pr": 94
         },
-        "BLK": {
-          "val": 1.0,
-          "pr": 85
-        },
-        "eFG%": {
-          "val": 70.0,
-          "pr": 88
-        },
-        "TS%": {
-          "val": 71.4,
-          "pr": 87
-        },
-        "USG%": {
-          "val": 24.2,
-          "pr": 59
-        },
-        "GmSC": {
-          "val": 20.0,
-          "pr": 93
-        }
-      }
-    },
-    "阿巴西": {
-      "rank": 7,
-      "id": 508,
-      "name": "阿巴西",
-      "team_name": "新北中信特攻",
-      "jersey_number": "",
-      "position": "F/SF",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 29.2,
-      "badges": {
-        "PTS": {
-          "val": 21.5,
-          "pr": 94
-        },
-        "REB": {
-          "val": 1.5,
-          "pr": 20
-        },
         "AST": {
-          "val": 2.5,
-          "pr": 65
-        },
-        "STL": {
-          "val": 3.5,
+          "val": 6.7,
           "pr": 99
         },
+        "STL": {
+          "val": 1.3,
+          "pr": 63
+        },
         "BLK": {
-          "val": 0.0,
-          "pr": 29
+          "val": 3.3,
+          "pr": 100
         },
         "eFG%": {
           "val": 72.2,
-          "pr": 91
+          "pr": 96
         },
         "TS%": {
-          "val": 73.6,
-          "pr": 90
+          "val": 75.9,
+          "pr": 94
         },
         "USG%": {
-          "val": 27.7,
-          "pr": 72
+          "val": 14.8,
+          "pr": 17
         },
         "GmSC": {
-          "val": 19.4,
-          "pr": 91
+          "val": 20.3,
+          "pr": 94
         }
       }
     },
     "馬利": {
-      "rank": 8,
-      "id": 593,
+      "rank": 6,
+      "id": 594,
       "name": "馬利",
       "team_name": "臺北台新戰神",
       "jersey_number": "34",
@@ -370,7 +272,7 @@
       "badges": {
         "PTS": {
           "val": 21.0,
-          "pr": 92
+          "pr": 93
         },
         "REB": {
           "val": 13.7,
@@ -382,82 +284,180 @@
         },
         "STL": {
           "val": 2.0,
-          "pr": 85
+          "pr": 88
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 60.6,
-          "pr": 72
+          "pr": 78
         },
         "TS%": {
           "val": 61.3,
-          "pr": 72
+          "pr": 77
         },
         "USG%": {
           "val": 35.7,
-          "pr": 94
+          "pr": 97
         },
         "GmSC": {
           "val": 18.0,
-          "pr": 90
+          "pr": 93
         }
       }
     },
     "法拉帝": {
-      "rank": 9,
+      "rank": 7,
       "id": 507,
       "name": "法拉帝",
       "team_name": "新北中信特攻",
       "jersey_number": "20",
       "position": "PF/C",
       "identity": "洋將",
-      "games_played": 2,
-      "mpg": 32.1,
+      "games_played": 3,
+      "mpg": 34.6,
       "badges": {
         "PTS": {
-          "val": 18.5,
-          "pr": 82
-        },
-        "REB": {
-          "val": 12.0,
+          "val": 21.7,
           "pr": 94
         },
+        "REB": {
+          "val": 13.3,
+          "pr": 97
+        },
         "AST": {
-          "val": 2.5,
-          "pr": 65
+          "val": 1.7,
+          "pr": 48
         },
         "STL": {
-          "val": 1.5,
-          "pr": 72
+          "val": 1.3,
+          "pr": 63
         },
         "BLK": {
           "val": 2.0,
-          "pr": 95
+          "pr": 96
         },
         "eFG%": {
-          "val": 43.1,
-          "pr": 34
+          "val": 49.0,
+          "pr": 49
         },
         "TS%": {
-          "val": 51.3,
-          "pr": 43
+          "val": 55.5,
+          "pr": 58
         },
         "USG%": {
-          "val": 32.3,
-          "pr": 84
+          "val": 32.8,
+          "pr": 87
         },
         "GmSC": {
-          "val": 15.4,
+          "val": 17.9,
+          "pr": 91
+        }
+      }
+    },
+    "米勒": {
+      "rank": 8,
+      "id": 559,
+      "name": "米勒",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "13",
+      "position": "SF",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 30.9,
+      "badges": {
+        "PTS": {
+          "val": 16.3,
+          "pr": 75
+        },
+        "REB": {
+          "val": 8.3,
+          "pr": 78
+        },
+        "AST": {
+          "val": 2.0,
+          "pr": 59
+        },
+        "STL": {
+          "val": 2.0,
+          "pr": 88
+        },
+        "BLK": {
+          "val": 0.7,
+          "pr": 83
+        },
+        "eFG%": {
+          "val": 62.9,
+          "pr": 88
+        },
+        "TS%": {
+          "val": 65.9,
+          "pr": 90
+        },
+        "USG%": {
+          "val": 24.1,
+          "pr": 59
+        },
+        "GmSC": {
+          "val": 15.7,
+          "pr": 90
+        }
+      }
+    },
+    "阿巴西": {
+      "rank": 9,
+      "id": 508,
+      "name": "阿巴西",
+      "team_name": "新北中信特攻",
+      "jersey_number": "",
+      "position": "F/SF",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 29.9,
+      "badges": {
+        "PTS": {
+          "val": 19.3,
+          "pr": 90
+        },
+        "REB": {
+          "val": 2.3,
+          "pr": 28
+        },
+        "AST": {
+          "val": 3.3,
+          "pr": 79
+        },
+        "STL": {
+          "val": 3.0,
+          "pr": 99
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 61.6,
+          "pr": 84
+        },
+        "TS%": {
+          "val": 62.9,
+          "pr": 81
+        },
+        "USG%": {
+          "val": 30.1,
+          "pr": 80
+        },
+        "GmSC": {
+          "val": 15.1,
           "pr": 88
         }
       }
     },
     "麥基": {
       "rank": 10,
-      "id": 591,
+      "id": 592,
       "name": "麥基",
       "team_name": "臺北台新戰神",
       "jersey_number": "25",
@@ -468,11 +468,11 @@
       "badges": {
         "PTS": {
           "val": 19.0,
-          "pr": 85
+          "pr": 87
         },
         "REB": {
           "val": 6.0,
-          "pr": 70
+          "pr": 72
         },
         "AST": {
           "val": 4.0,
@@ -480,19 +480,19 @@
         },
         "STL": {
           "val": 1.7,
-          "pr": 79
+          "pr": 80
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 78.6,
-          "pr": 95
+          "pr": 98
         },
         "TS%": {
           "val": 79.4,
-          "pr": 96
+          "pr": 97
         },
         "USG%": {
           "val": 22.4,
@@ -504,58 +504,9 @@
         }
       }
     },
-    "魏嘉豪": {
-      "rank": 11,
-      "id": 510,
-      "name": "魏嘉豪",
-      "team_name": "新北中信特攻",
-      "jersey_number": "7",
-      "position": "G/PG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 24.0,
-      "badges": {
-        "PTS": {
-          "val": 12.0,
-          "pr": 60
-        },
-        "REB": {
-          "val": 2.5,
-          "pr": 30
-        },
-        "AST": {
-          "val": 5.0,
-          "pr": 93
-        },
-        "STL": {
-          "val": 3.5,
-          "pr": 99
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 61.1,
-          "pr": 76
-        },
-        "TS%": {
-          "val": 63.6,
-          "pr": 78
-        },
-        "USG%": {
-          "val": 22.5,
-          "pr": 50
-        },
-        "GmSC": {
-          "val": 13.4,
-          "pr": 85
-        }
-      }
-    },
     "高柏鎧": {
-      "rank": 12,
-      "id": 570,
+      "rank": 11,
+      "id": 571,
       "name": "高柏鎧",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "34",
@@ -566,45 +517,45 @@
       "badges": {
         "PTS": {
           "val": 13.0,
-          "pr": 65
+          "pr": 61
         },
         "REB": {
           "val": 13.0,
-          "pr": 97
+          "pr": 96
         },
         "AST": {
           "val": 1.0,
-          "pr": 34
+          "pr": 28
         },
         "STL": {
           "val": 0.7,
-          "pr": 42
+          "pr": 41
         },
         "BLK": {
           "val": 2.0,
-          "pr": 95
+          "pr": 96
         },
         "eFG%": {
           "val": 51.9,
-          "pr": 51
+          "pr": 52
         },
         "TS%": {
           "val": 55.3,
-          "pr": 56
+          "pr": 55
         },
         "USG%": {
           "val": 19.1,
-          "pr": 32
+          "pr": 30
         },
         "GmSC": {
           "val": 13.3,
-          "pr": 84
+          "pr": 86
         }
       }
     },
     "林俊吉": {
-      "rank": 13,
-      "id": 568,
+      "rank": 12,
+      "id": 569,
       "name": "林俊吉",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "11",
@@ -615,94 +566,45 @@
       "badges": {
         "PTS": {
           "val": 20.3,
-          "pr": 88
+          "pr": 91
         },
         "REB": {
           "val": 3.0,
-          "pr": 44
+          "pr": 46
         },
         "AST": {
           "val": 2.7,
-          "pr": 71
+          "pr": 70
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 61.2,
-          "pr": 78
+          "pr": 81
         },
         "TS%": {
           "val": 64.8,
-          "pr": 81
+          "pr": 88
         },
         "USG%": {
           "val": 35.4,
-          "pr": 93
+          "pr": 94
         },
         "GmSC": {
           "val": 13.2,
-          "pr": 82
-        }
-      }
-    },
-    "高錦瑋": {
-      "rank": 14,
-      "id": 551,
-      "name": "高錦瑋",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "5",
-      "position": "PG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 32.8,
-      "badges": {
-        "PTS": {
-          "val": 18.0,
-          "pr": 81
-        },
-        "REB": {
-          "val": 3.5,
-          "pr": 53
-        },
-        "AST": {
-          "val": 4.5,
-          "pr": 90
-        },
-        "STL": {
-          "val": 2.0,
-          "pr": 85
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 62.5,
-          "pr": 82
-        },
-        "TS%": {
-          "val": 62.3,
-          "pr": 74
-        },
-        "USG%": {
-          "val": 27.5,
-          "pr": 71
-        },
-        "GmSC": {
-          "val": 13.0,
-          "pr": 81
+          "pr": 84
         }
       }
     },
     "克雷格": {
-      "rank": 15,
-      "id": 520,
+      "rank": 13,
+      "id": 521,
       "name": "克雷格",
       "team_name": "新北國王",
       "jersey_number": "3",
@@ -713,23 +615,23 @@
       "badges": {
         "PTS": {
           "val": 19.2,
-          "pr": 87
+          "pr": 88
         },
         "REB": {
           "val": 3.5,
-          "pr": 53
+          "pr": 54
         },
         "AST": {
           "val": 3.5,
-          "pr": 79
+          "pr": 82
         },
         "STL": {
           "val": 2.5,
-          "pr": 94
+          "pr": 96
         },
         "BLK": {
           "val": 0.7,
-          "pr": 82
+          "pr": 83
         },
         "eFG%": {
           "val": 44.6,
@@ -737,7 +639,7 @@
         },
         "TS%": {
           "val": 54.8,
-          "pr": 53
+          "pr": 54
         },
         "USG%": {
           "val": 33.1,
@@ -745,13 +647,13 @@
         },
         "GmSC": {
           "val": 12.8,
-          "pr": 79
+          "pr": 83
         }
       }
     },
     "基德": {
-      "rank": 16,
-      "id": 567,
+      "rank": 14,
+      "id": 568,
       "name": "基德",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "10",
@@ -762,45 +664,94 @@
       "badges": {
         "PTS": {
           "val": 18.7,
-          "pr": 84
+          "pr": 86
         },
         "REB": {
           "val": 7.0,
-          "pr": 74
+          "pr": 75
         },
         "AST": {
           "val": 2.0,
-          "pr": 54
+          "pr": 59
         },
         "STL": {
           "val": 1.7,
-          "pr": 79
+          "pr": 80
         },
         "BLK": {
           "val": 0.7,
-          "pr": 82
+          "pr": 83
         },
         "eFG%": {
           "val": 41.5,
-          "pr": 26
+          "pr": 30
         },
         "TS%": {
           "val": 49.8,
-          "pr": 37
+          "pr": 38
         },
         "USG%": {
           "val": 31.1,
-          "pr": 81
+          "pr": 83
         },
         "GmSC": {
           "val": 12.7,
-          "pr": 78
+          "pr": 81
+        }
+      }
+    },
+    "奧獅頓": {
+      "rank": 15,
+      "id": 546,
+      "name": "奧獅頓",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "32",
+      "position": "F",
+      "identity": "洋將",
+      "games_played": 2,
+      "mpg": 21.4,
+      "badges": {
+        "PTS": {
+          "val": 15.5,
+          "pr": 72
+        },
+        "REB": {
+          "val": 8.5,
+          "pr": 82
+        },
+        "AST": {
+          "val": 1.0,
+          "pr": 28
+        },
+        "STL": {
+          "val": 1.0,
+          "pr": 52
+        },
+        "BLK": {
+          "val": 0.5,
+          "pr": 79
+        },
+        "eFG%": {
+          "val": 56.2,
+          "pr": 68
+        },
+        "TS%": {
+          "val": 58.2,
+          "pr": 64
+        },
+        "USG%": {
+          "val": 36.0,
+          "pr": 99
+        },
+        "GmSC": {
+          "val": 12.6,
+          "pr": 80
         }
       }
     },
     "馬雷利亞": {
-      "rank": 17,
-      "id": 589,
+      "rank": 16,
+      "id": 590,
       "name": "馬雷利亞",
       "team_name": "臺北台新戰神",
       "jersey_number": "17",
@@ -811,31 +762,31 @@
       "badges": {
         "PTS": {
           "val": 15.0,
-          "pr": 74
+          "pr": 70
         },
         "REB": {
           "val": 8.5,
-          "pr": 81
+          "pr": 82
         },
         "AST": {
           "val": 3.5,
-          "pr": 79
+          "pr": 82
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 58.3,
-          "pr": 69
+          "pr": 70
         },
         "TS%": {
           "val": 59.2,
-          "pr": 66
+          "pr": 68
         },
         "USG%": {
           "val": 24.4,
@@ -843,62 +794,209 @@
         },
         "GmSC": {
           "val": 12.4,
-          "pr": 76
+          "pr": 78
         }
       }
     },
-    "辛巴": {
-      "rank": 18,
-      "id": 539,
-      "name": "辛巴",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "35",
-      "position": "C",
+    "猛士": {
+      "rank": 17,
+      "id": 503,
+      "name": "猛士",
+      "team_name": "新北中信特攻",
+      "jersey_number": "61",
+      "position": "F",
       "identity": "洋將",
-      "games_played": 1,
-      "mpg": 20.0,
+      "games_played": 3,
+      "mpg": 33.0,
       "badges": {
         "PTS": {
-          "val": 9.0,
-          "pr": 46
+          "val": 17.0,
+          "pr": 81
         },
         "REB": {
-          "val": 7.0,
-          "pr": 74
+          "val": 9.3,
+          "pr": 86
         },
         "AST": {
-          "val": 1.0,
-          "pr": 34
+          "val": 3.0,
+          "pr": 72
         },
         "STL": {
-          "val": 0.0,
-          "pr": 10
+          "val": 0.7,
+          "pr": 41
         },
         "BLK": {
-          "val": 3.0,
+          "val": 2.7,
           "pr": 99
         },
         "eFG%": {
-          "val": 100.0,
-          "pr": 100
+          "val": 40.2,
+          "pr": 25
         },
         "TS%": {
-          "val": 92.2,
-          "pr": 100
+          "val": 42.8,
+          "pr": 28
         },
         "USG%": {
-          "val": 12.6,
-          "pr": 7
+          "val": 34.2,
+          "pr": 90
         },
         "GmSC": {
-          "val": 11.9,
+          "val": 12.2,
+          "pr": 77
+        }
+      }
+    },
+    "魏嘉豪": {
+      "rank": 18,
+      "id": 510,
+      "name": "魏嘉豪",
+      "team_name": "新北中信特攻",
+      "jersey_number": "7",
+      "position": "G/PG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 25.9,
+      "badges": {
+        "PTS": {
+          "val": 10.7,
+          "pr": 52
+        },
+        "REB": {
+          "val": 2.0,
+          "pr": 22
+        },
+        "AST": {
+          "val": 7.0,
+          "pr": 100
+        },
+        "STL": {
+          "val": 3.3,
+          "pr": 100
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 55.6,
+          "pr": 64
+        },
+        "TS%": {
+          "val": 54.8,
+          "pr": 52
+        },
+        "USG%": {
+          "val": 22.1,
+          "pr": 47
+        },
+        "GmSC": {
+          "val": 12.0,
           "pr": 75
         }
       }
     },
-    "李愷諺": {
+    "莫騰": {
       "rank": 19,
-      "id": 521,
+      "id": 556,
+      "name": "莫騰",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "10",
+      "position": "F",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 34.6,
+      "badges": {
+        "PTS": {
+          "val": 17.7,
+          "pr": 84
+        },
+        "REB": {
+          "val": 9.3,
+          "pr": 86
+        },
+        "AST": {
+          "val": 1.7,
+          "pr": 48
+        },
+        "STL": {
+          "val": 1.7,
+          "pr": 80
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 47.9,
+          "pr": 46
+        },
+        "TS%": {
+          "val": 50.6,
+          "pr": 43
+        },
+        "USG%": {
+          "val": 31.1,
+          "pr": 83
+        },
+        "GmSC": {
+          "val": 11.8,
+          "pr": 74
+        }
+      }
+    },
+    "高錦瑋": {
+      "rank": 20,
+      "id": 552,
+      "name": "高錦瑋",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "5",
+      "position": "PG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 34.8,
+      "badges": {
+        "PTS": {
+          "val": 16.7,
+          "pr": 78
+        },
+        "REB": {
+          "val": 3.3,
+          "pr": 51
+        },
+        "AST": {
+          "val": 5.0,
+          "pr": 92
+        },
+        "STL": {
+          "val": 1.7,
+          "pr": 80
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 59.8,
+          "pr": 77
+        },
+        "TS%": {
+          "val": 58.5,
+          "pr": 65
+        },
+        "USG%": {
+          "val": 25.7,
+          "pr": 65
+        },
+        "GmSC": {
+          "val": 11.7,
+          "pr": 72
+        }
+      }
+    },
+    "李愷諺": {
+      "rank": 21,
+      "id": 522,
       "name": "李愷諺",
       "team_name": "新北國王",
       "jersey_number": "9",
@@ -909,11 +1007,11 @@
       "badges": {
         "PTS": {
           "val": 14.0,
-          "pr": 69
+          "pr": 67
         },
         "REB": {
           "val": 5.2,
-          "pr": 63
+          "pr": 67
         },
         "AST": {
           "val": 3.2,
@@ -925,15 +1023,15 @@
         },
         "BLK": {
           "val": 0.2,
-          "pr": 60
+          "pr": 59
         },
         "eFG%": {
           "val": 55.5,
-          "pr": 65
+          "pr": 62
         },
         "TS%": {
           "val": 59.8,
-          "pr": 68
+          "pr": 72
         },
         "USG%": {
           "val": 22.7,
@@ -941,62 +1039,13 @@
         },
         "GmSC": {
           "val": 11.7,
-          "pr": 74
-        }
-      }
-    },
-    "奧獅頓": {
-      "rank": 20,
-      "id": 545,
-      "name": "奧獅頓",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "32",
-      "position": "F",
-      "identity": "洋將",
-      "games_played": 1,
-      "mpg": 22.0,
-      "badges": {
-        "PTS": {
-          "val": 17.0,
-          "pr": 78
-        },
-        "REB": {
-          "val": 10.0,
-          "pr": 90
-        },
-        "AST": {
-          "val": 0.0,
-          "pr": 6
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 53.9,
-          "pr": 56
-        },
-        "TS%": {
-          "val": 55.9,
-          "pr": 59
-        },
-        "USG%": {
-          "val": 42.8,
-          "pr": 100
-        },
-        "GmSC": {
-          "val": 11.3,
-          "pr": 71
+          "pr": 72
         }
       }
     },
     "肯刀爾": {
-      "rank": 21,
-      "id": 519,
+      "rank": 22,
+      "id": 520,
       "name": "肯刀爾",
       "team_name": "新北國王",
       "jersey_number": "2",
@@ -1007,23 +1056,23 @@
       "badges": {
         "PTS": {
           "val": 16.7,
-          "pr": 75
+          "pr": 78
         },
         "REB": {
           "val": 10.5,
-          "pr": 91
+          "pr": 90
         },
         "AST": {
           "val": 1.8,
-          "pr": 50
+          "pr": 54
         },
         "STL": {
           "val": 2.0,
-          "pr": 85
+          "pr": 88
         },
         "BLK": {
           "val": 0.2,
-          "pr": 60
+          "pr": 59
         },
         "eFG%": {
           "val": 37.2,
@@ -1031,21 +1080,119 @@
         },
         "TS%": {
           "val": 44.4,
-          "pr": 28
+          "pr": 30
         },
         "USG%": {
           "val": 32.7,
-          "pr": 87
+          "pr": 86
         },
         "GmSC": {
           "val": 11.3,
-          "pr": 71
+          "pr": 70
+        }
+      }
+    },
+    "盧冠軒": {
+      "rank": 23,
+      "id": 541,
+      "name": "盧冠軒",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "42",
+      "position": "G/SG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 28.1,
+      "badges": {
+        "PTS": {
+          "val": 17.0,
+          "pr": 81
+        },
+        "REB": {
+          "val": 3.0,
+          "pr": 46
+        },
+        "AST": {
+          "val": 2.0,
+          "pr": 59
+        },
+        "STL": {
+          "val": 1.0,
+          "pr": 52
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 59.0,
+          "pr": 72
+        },
+        "TS%": {
+          "val": 60.6,
+          "pr": 74
+        },
+        "USG%": {
+          "val": 29.6,
+          "pr": 74
+        },
+        "GmSC": {
+          "val": 11.1,
+          "pr": 68
+        }
+      }
+    },
+    "于煥亞": {
+      "rank": 24,
+      "id": 602,
+      "name": "于煥亞",
+      "team_name": "高雄全家海神",
+      "jersey_number": "7",
+      "position": "SG",
+      "identity": "本土",
+      "games_played": 5,
+      "mpg": 30.5,
+      "badges": {
+        "PTS": {
+          "val": 13.2,
+          "pr": 62
+        },
+        "REB": {
+          "val": 2.6,
+          "pr": 35
+        },
+        "AST": {
+          "val": 4.6,
+          "pr": 90
+        },
+        "STL": {
+          "val": 2.0,
+          "pr": 88
+        },
+        "BLK": {
+          "val": 0.2,
+          "pr": 59
+        },
+        "eFG%": {
+          "val": 59.4,
+          "pr": 74
+        },
+        "TS%": {
+          "val": 59.5,
+          "pr": 70
+        },
+        "USG%": {
+          "val": 22.1,
+          "pr": 47
+        },
+        "GmSC": {
+          "val": 10.9,
+          "pr": 67
         }
       }
     },
     "馬建豪": {
-      "rank": 22,
-      "id": 569,
+      "rank": 25,
+      "id": 570,
       "name": "馬建豪",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "2",
@@ -1056,27 +1203,27 @@
       "badges": {
         "PTS": {
           "val": 17.0,
-          "pr": 78
+          "pr": 81
         },
         "REB": {
           "val": 4.3,
-          "pr": 62
+          "pr": 64
         },
         "AST": {
           "val": 1.7,
-          "pr": 47
+          "pr": 48
         },
         "STL": {
           "val": 1.7,
-          "pr": 79
+          "pr": 80
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 55.1,
-          "pr": 63
+          "pr": 61
         },
         "TS%": {
           "val": 55.4,
@@ -1084,66 +1231,17 @@
         },
         "USG%": {
           "val": 28.8,
-          "pr": 74
+          "pr": 72
         },
         "GmSC": {
           "val": 10.5,
-          "pr": 69
-        }
-      }
-    },
-    "加爾文": {
-      "rank": 23,
-      "id": 600,
-      "name": "加爾文",
-      "team_name": "高雄全家海神",
-      "jersey_number": "52",
-      "position": "C",
-      "identity": "洋將",
-      "games_played": 4,
-      "mpg": 22.6,
-      "badges": {
-        "PTS": {
-          "val": 14.2,
-          "pr": 72
-        },
-        "REB": {
-          "val": 9.2,
-          "pr": 88
-        },
-        "AST": {
-          "val": 2.3,
-          "pr": 60
-        },
-        "STL": {
-          "val": 1.5,
-          "pr": 72
-        },
-        "BLK": {
-          "val": 0.2,
-          "pr": 60
-        },
-        "eFG%": {
-          "val": 54.2,
-          "pr": 59
-        },
-        "TS%": {
-          "val": 54.0,
-          "pr": 50
-        },
-        "USG%": {
-          "val": 38.3,
-          "pr": 97
-        },
-        "GmSC": {
-          "val": 10.4,
-          "pr": 68
+          "pr": 65
         }
       }
     },
     "霍爾曼": {
-      "rank": 24,
-      "id": 572,
+      "rank": 26,
+      "id": 573,
       "name": "霍爾曼",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "35",
@@ -1154,15 +1252,15 @@
       "badges": {
         "PTS": {
           "val": 14.0,
-          "pr": 69
+          "pr": 67
         },
         "REB": {
           "val": 6.0,
-          "pr": 70
+          "pr": 72
         },
         "AST": {
           "val": 2.5,
-          "pr": 65
+          "pr": 67
         },
         "STL": {
           "val": 1.0,
@@ -1170,7 +1268,7 @@
         },
         "BLK": {
           "val": 1.5,
-          "pr": 90
+          "pr": 91
         },
         "eFG%": {
           "val": 43.8,
@@ -1178,21 +1276,70 @@
         },
         "TS%": {
           "val": 50.1,
-          "pr": 39
+          "pr": 41
         },
         "USG%": {
           "val": 24.6,
-          "pr": 65
+          "pr": 64
         },
         "GmSC": {
           "val": 10.3,
+          "pr": 64
+        }
+      }
+    },
+    "加爾文": {
+      "rank": 27,
+      "id": 601,
+      "name": "加爾文",
+      "team_name": "高雄全家海神",
+      "jersey_number": "52",
+      "position": "C",
+      "identity": "洋將",
+      "games_played": 5,
+      "mpg": 22.6,
+      "badges": {
+        "PTS": {
+          "val": 13.8,
+          "pr": 65
+        },
+        "REB": {
+          "val": 8.4,
+          "pr": 80
+        },
+        "AST": {
+          "val": 1.8,
+          "pr": 54
+        },
+        "STL": {
+          "val": 1.4,
+          "pr": 69
+        },
+        "BLK": {
+          "val": 0.2,
+          "pr": 59
+        },
+        "eFG%": {
+          "val": 56.1,
           "pr": 66
+        },
+        "TS%": {
+          "val": 55.8,
+          "pr": 59
+        },
+        "USG%": {
+          "val": 35.6,
+          "pr": 96
+        },
+        "GmSC": {
+          "val": 9.7,
+          "pr": 62
         }
       }
     },
     "沃許本": {
-      "rank": 25,
-      "id": 523,
+      "rank": 28,
+      "id": 524,
       "name": "沃許本",
       "team_name": "新北國王",
       "jersey_number": "42",
@@ -1203,45 +1350,45 @@
       "badges": {
         "PTS": {
           "val": 13.7,
-          "pr": 66
+          "pr": 64
         },
         "REB": {
           "val": 9.0,
-          "pr": 85
+          "pr": 84
         },
         "AST": {
           "val": 3.0,
-          "pr": 74
+          "pr": 72
         },
         "STL": {
           "val": 0.7,
-          "pr": 42
+          "pr": 41
         },
         "BLK": {
           "val": 1.0,
-          "pr": 85
+          "pr": 88
         },
         "eFG%": {
           "val": 43.6,
-          "pr": 37
+          "pr": 36
         },
         "TS%": {
           "val": 46.8,
-          "pr": 34
+          "pr": 33
         },
         "USG%": {
           "val": 30.0,
-          "pr": 75
+          "pr": 78
         },
         "GmSC": {
           "val": 9.6,
-          "pr": 65
+          "pr": 61
         }
       }
     },
     "林彥廷": {
-      "rank": 26,
-      "id": 526,
+      "rank": 29,
+      "id": 527,
       "name": "林彥廷",
       "team_name": "新北國王",
       "jersey_number": "12",
@@ -1252,15 +1399,15 @@
       "badges": {
         "PTS": {
           "val": 11.8,
-          "pr": 59
+          "pr": 58
         },
         "REB": {
           "val": 2.8,
-          "pr": 40
+          "pr": 43
         },
         "AST": {
           "val": 2.0,
-          "pr": 54
+          "pr": 59
         },
         "STL": {
           "val": 1.5,
@@ -1268,29 +1415,78 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 61.6,
-          "pr": 79
+          "pr": 83
         },
         "TS%": {
           "val": 62.6,
-          "pr": 75
+          "pr": 78
         },
         "USG%": {
           "val": 19.2,
-          "pr": 34
+          "pr": 32
         },
         "GmSC": {
           "val": 9.4,
-          "pr": 63
+          "pr": 59
+        }
+      }
+    },
+    "強斯": {
+      "rank": 30,
+      "id": 506,
+      "name": "強斯",
+      "team_name": "新北中信特攻",
+      "jersey_number": "17",
+      "position": "PF/C",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 24.6,
+      "badges": {
+        "PTS": {
+          "val": 11.3,
+          "pr": 54
+        },
+        "REB": {
+          "val": 7.0,
+          "pr": 75
+        },
+        "AST": {
+          "val": 1.0,
+          "pr": 28
+        },
+        "STL": {
+          "val": 1.0,
+          "pr": 52
+        },
+        "BLK": {
+          "val": 0.7,
+          "pr": 83
+        },
+        "eFG%": {
+          "val": 40.4,
+          "pr": 26
+        },
+        "TS%": {
+          "val": 52.9,
+          "pr": 45
+        },
+        "USG%": {
+          "val": 26.1,
+          "pr": 68
+        },
+        "GmSC": {
+          "val": 9.3,
+          "pr": 58
         }
       }
     },
     "林書緯": {
-      "rank": 27,
-      "id": 525,
+      "rank": 31,
+      "id": 526,
       "name": "林書緯",
       "team_name": "新北國王",
       "jersey_number": "1",
@@ -1305,89 +1501,40 @@
         },
         "REB": {
           "val": 3.7,
-          "pr": 56
+          "pr": 57
         },
         "AST": {
           "val": 5.0,
-          "pr": 93
+          "pr": 92
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 52.1,
-          "pr": 53
+          "pr": 54
         },
         "TS%": {
           "val": 56.7,
-          "pr": 60
+          "pr": 61
         },
         "USG%": {
           "val": 19.5,
-          "pr": 36
+          "pr": 33
         },
         "GmSC": {
           "val": 9.2,
-          "pr": 61
-        }
-      }
-    },
-    "莫騰": {
-      "rank": 28,
-      "id": 555,
-      "name": "莫騰",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "10",
-      "position": "F",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 31.6,
-      "badges": {
-        "PTS": {
-          "val": 17.0,
-          "pr": 78
-        },
-        "REB": {
-          "val": 8.5,
-          "pr": 81
-        },
-        "AST": {
-          "val": 0.5,
-          "pr": 20
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 48.2,
-          "pr": 47
-        },
-        "TS%": {
-          "val": 53.9,
-          "pr": 49
-        },
-        "USG%": {
-          "val": 33.2,
-          "pr": 90
-        },
-        "GmSC": {
-          "val": 9.2,
-          "pr": 61
+          "pr": 57
         }
       }
     },
     "林韋翰": {
-      "rank": 29,
+      "rank": 32,
       "id": 517,
       "name": "林韋翰",
       "team_name": "新北中信特攻",
@@ -1399,15 +1546,15 @@
       "badges": {
         "PTS": {
           "val": 10.0,
-          "pr": 50
+          "pr": 49
         },
         "REB": {
           "val": 2.5,
-          "pr": 30
+          "pr": 32
         },
         "AST": {
           "val": 2.5,
-          "pr": 65
+          "pr": 67
         },
         "STL": {
           "val": 1.5,
@@ -1415,15 +1562,15 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 90.9,
-          "pr": 99
+          "pr": 100
         },
         "TS%": {
           "val": 90.9,
-          "pr": 99
+          "pr": 100
         },
         "USG%": {
           "val": 23.5,
@@ -1431,258 +1578,209 @@
         },
         "GmSC": {
           "val": 9.0,
-          "pr": 59
+          "pr": 55
         }
       }
     },
-    "盧冠軒": {
-      "rank": 30,
-      "id": 540,
-      "name": "盧冠軒",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "42",
-      "position": "G/SG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 24.9,
-      "badges": {
-        "PTS": {
-          "val": 14.0,
-          "pr": 69
-        },
-        "REB": {
-          "val": 3.0,
-          "pr": 44
-        },
-        "AST": {
-          "val": 2.0,
-          "pr": 54
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 50.0,
-          "pr": 50
-        },
-        "TS%": {
-          "val": 52.5,
-          "pr": 44
-        },
-        "USG%": {
-          "val": 31.8,
-          "pr": 82
-        },
-        "GmSC": {
-          "val": 8.5,
-          "pr": 57
-        }
-      }
-    },
-    "強斯": {
-      "rank": 31,
-      "id": 506,
-      "name": "強斯",
-      "team_name": "新北中信特攻",
-      "jersey_number": "17",
-      "position": "PF/C",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 25.1,
-      "badges": {
-        "PTS": {
-          "val": 11.0,
-          "pr": 52
-        },
-        "REB": {
-          "val": 7.5,
-          "pr": 76
-        },
-        "AST": {
-          "val": 0.5,
-          "pr": 20
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 41.7,
-          "pr": 29
-        },
-        "TS%": {
-          "val": 51.1,
-          "pr": 41
-        },
-        "USG%": {
-          "val": 24.3,
-          "pr": 60
-        },
-        "GmSC": {
-          "val": 8.5,
-          "pr": 57
-        }
-      }
-    },
-    "謝亞軒": {
-      "rank": 32,
-      "id": 504,
-      "name": "謝亞軒",
-      "team_name": "新北中信特攻",
-      "jersey_number": "10",
-      "position": "G/SG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 26.1,
-      "badges": {
-        "PTS": {
-          "val": 6.5,
-          "pr": 36
-        },
-        "REB": {
-          "val": 3.0,
-          "pr": 44
-        },
-        "AST": {
-          "val": 2.5,
-          "pr": 65
-        },
-        "STL": {
-          "val": 3.0,
-          "pr": 97
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 54.2,
-          "pr": 57
-        },
-        "TS%": {
-          "val": 54.2,
-          "pr": 51
-        },
-        "USG%": {
-          "val": 12.9,
-          "pr": 10
-        },
-        "GmSC": {
-          "val": 8.2,
-          "pr": 54
-        }
-      }
-    },
-    "傅友": {
+    "溫布許": {
       "rank": 33,
-      "id": 543,
-      "name": "傅友",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "14",
-      "position": "G/F",
-      "identity": "本土",
-      "games_played": 1,
-      "mpg": 10.2,
+      "id": 561,
+      "name": "溫布許",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "20",
+      "position": "F",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 32.3,
       "badges": {
         "PTS": {
-          "val": 9.0,
-          "pr": 46
+          "val": 16.0,
+          "pr": 74
         },
         "REB": {
-          "val": 3.0,
-          "pr": 44
+          "val": 9.7,
+          "pr": 88
         },
         "AST": {
-          "val": 0.0,
-          "pr": 6
+          "val": 2.3,
+          "pr": 64
         },
         "STL": {
-          "val": 0.0,
-          "pr": 10
-        },
-        "BLK": {
-          "val": 1.0,
-          "pr": 85
-        },
-        "eFG%": {
-          "val": 75.0,
-          "pr": 93
-        },
-        "TS%": {
-          "val": 75.0,
-          "pr": 91
-        },
-        "USG%": {
-          "val": 30.4,
-          "pr": 76
-        },
-        "GmSC": {
-          "val": 8.0,
-          "pr": 53
-        }
-      }
-    },
-    "于煥亞": {
-      "rank": 34,
-      "id": 601,
-      "name": "于煥亞",
-      "team_name": "高雄全家海神",
-      "jersey_number": "7",
-      "position": "SG",
-      "identity": "本土",
-      "games_played": 4,
-      "mpg": 29.4,
-      "badges": {
-        "PTS": {
-          "val": 11.7,
-          "pr": 57
-        },
-        "REB": {
-          "val": 2.2,
+          "val": 0.3,
           "pr": 24
         },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 34.3,
+          "pr": 19
+        },
+        "TS%": {
+          "val": 41.4,
+          "pr": 23
+        },
+        "USG%": {
+          "val": 34.7,
+          "pr": 93
+        },
+        "GmSC": {
+          "val": 8.6,
+          "pr": 54
+        }
+      }
+    },
+    "錢肯尼": {
+      "rank": 34,
+      "id": 563,
+      "name": "錢肯尼",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "23",
+      "position": "SG",
+      "identity": "華裔/本土",
+      "games_played": 3,
+      "mpg": 29.5,
+      "badges": {
+        "PTS": {
+          "val": 10.3,
+          "pr": 51
+        },
+        "REB": {
+          "val": 1.7,
+          "pr": 18
+        },
         "AST": {
-          "val": 3.7,
-          "pr": 82
+          "val": 1.3,
+          "pr": 38
         },
         "STL": {
           "val": 1.3,
           "pr": 63
         },
         "BLK": {
-          "val": 0.2,
-          "pr": 60
+          "val": 0.3,
+          "pr": 69
         },
         "eFG%": {
-          "val": 57.6,
-          "pr": 68
+          "val": 58.3,
+          "pr": 70
         },
         "TS%": {
-          "val": 57.0,
-          "pr": 62
+          "val": 59.2,
+          "pr": 67
         },
         "USG%": {
-          "val": 22.1,
-          "pr": 47
+          "val": 16.5,
+          "pr": 23
         },
         "GmSC": {
-          "val": 7.9,
+          "val": 7.6,
+          "pr": 52
+        }
+      }
+    },
+    "謝亞軒": {
+      "rank": 35,
+      "id": 504,
+      "name": "謝亞軒",
+      "team_name": "新北中信特攻",
+      "jersey_number": "10",
+      "position": "G/SG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 29.3,
+      "badges": {
+        "PTS": {
+          "val": 6.0,
+          "pr": 36
+        },
+        "REB": {
+          "val": 3.7,
+          "pr": 57
+        },
+        "AST": {
+          "val": 3.3,
+          "pr": 79
+        },
+        "STL": {
+          "val": 2.7,
+          "pr": 97
+        },
+        "BLK": {
+          "val": 0.3,
+          "pr": 69
+        },
+        "eFG%": {
+          "val": 52.9,
+          "pr": 55
+        },
+        "TS%": {
+          "val": 52.9,
+          "pr": 46
+        },
+        "USG%": {
+          "val": 13.0,
+          "pr": 9
+        },
+        "GmSC": {
+          "val": 7.2,
           "pr": 51
         }
       }
     },
+    "蘇文儒": {
+      "rank": 36,
+      "id": 609,
+      "name": "蘇文儒",
+      "team_name": "高雄全家海神",
+      "jersey_number": "24",
+      "position": "SG",
+      "identity": "本土",
+      "games_played": 4,
+      "mpg": 28.4,
+      "badges": {
+        "PTS": {
+          "val": 9.3,
+          "pr": 47
+        },
+        "REB": {
+          "val": 3.5,
+          "pr": 54
+        },
+        "AST": {
+          "val": 4.0,
+          "pr": 86
+        },
+        "STL": {
+          "val": 1.2,
+          "pr": 58
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 44.0,
+          "pr": 39
+        },
+        "TS%": {
+          "val": 48.2,
+          "pr": 36
+        },
+        "USG%": {
+          "val": 20.4,
+          "pr": 35
+        },
+        "GmSC": {
+          "val": 7.0,
+          "pr": 49
+        }
+      }
+    },
     "雷蒙恩": {
-      "rank": 35,
-      "id": 592,
+      "rank": 37,
+      "id": 593,
       "name": "雷蒙恩",
       "team_name": "臺北台新戰神",
       "jersey_number": "33",
@@ -1693,94 +1791,45 @@
       "badges": {
         "PTS": {
           "val": 12.7,
-          "pr": 63
+          "pr": 59
         },
         "REB": {
           "val": 5.7,
-          "pr": 67
+          "pr": 69
         },
         "AST": {
           "val": 1.7,
-          "pr": 47
+          "pr": 48
         },
         "STL": {
           "val": 2.3,
-          "pr": 90
+          "pr": 93
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 41.2,
-          "pr": 25
+          "pr": 29
         },
         "TS%": {
           "val": 42.4,
-          "pr": 25
+          "pr": 26
         },
         "USG%": {
           "val": 23.4,
-          "pr": 54
+          "pr": 55
         },
         "GmSC": {
           "val": 6.9,
-          "pr": 50
-        }
-      }
-    },
-    "猛士": {
-      "rank": 36,
-      "id": 503,
-      "name": "猛士",
-      "team_name": "新北中信特攻",
-      "jersey_number": "61",
-      "position": "F",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 33.1,
-      "badges": {
-        "PTS": {
-          "val": 12.5,
-          "pr": 62
-        },
-        "REB": {
-          "val": 6.5,
-          "pr": 72
-        },
-        "AST": {
-          "val": 3.5,
-          "pr": 79
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 2.0,
-          "pr": 95
-        },
-        "eFG%": {
-          "val": 30.6,
-          "pr": 12
-        },
-        "TS%": {
-          "val": 33.1,
-          "pr": 10
-        },
-        "USG%": {
-          "val": 32.6,
-          "pr": 85
-        },
-        "GmSC": {
-          "val": 6.6,
-          "pr": 49
+          "pr": 48
         }
       }
     },
     "丁聖儒": {
-      "rank": 37,
-      "id": 582,
+      "rank": 38,
+      "id": 583,
       "name": "丁聖儒",
       "team_name": "臺北台新戰神",
       "jersey_number": "2",
@@ -1791,15 +1840,15 @@
       "badges": {
         "PTS": {
           "val": 5.0,
-          "pr": 21
+          "pr": 22
         },
         "REB": {
           "val": 1.3,
-          "pr": 18
+          "pr": 13
         },
         "AST": {
           "val": 5.3,
-          "pr": 96
+          "pr": 94
         },
         "STL": {
           "val": 1.3,
@@ -1807,11 +1856,11 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 46.4,
-          "pr": 44
+          "pr": 43
         },
         "TS%": {
           "val": 47.6,
@@ -1819,164 +1868,66 @@
         },
         "USG%": {
           "val": 12.7,
-          "pr": 9
+          "pr": 7
         },
         "GmSC": {
           "val": 6.1,
-          "pr": 47
-        }
-      }
-    },
-    "蘇文儒": {
-      "rank": 38,
-      "id": 608,
-      "name": "蘇文儒",
-      "team_name": "高雄全家海神",
-      "jersey_number": "24",
-      "position": "SG",
-      "identity": "本土",
-      "games_played": 3,
-      "mpg": 26.8,
-      "badges": {
-        "PTS": {
-          "val": 7.7,
-          "pr": 41
-        },
-        "REB": {
-          "val": 3.3,
-          "pr": 49
-        },
-        "AST": {
-          "val": 4.3,
-          "pr": 88
-        },
-        "STL": {
-          "val": 1.3,
-          "pr": 63
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 41.7,
-          "pr": 29
-        },
-        "TS%": {
-          "val": 44.6,
-          "pr": 29
-        },
-        "USG%": {
-          "val": 19.9,
-          "pr": 38
-        },
-        "GmSC": {
-          "val": 5.8,
           "pr": 46
         }
       }
     },
-    "林任鴻": {
+    "傅友": {
       "rank": 39,
-      "id": 514,
-      "name": "林任鴻",
-      "team_name": "新北中信特攻",
-      "jersey_number": "12",
-      "position": "F",
+      "id": 544,
+      "name": "傅友",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "14",
+      "position": "G/F",
       "identity": "本土",
       "games_played": 2,
-      "mpg": 11.0,
+      "mpg": 8.7,
       "badges": {
         "PTS": {
-          "val": 6.0,
-          "pr": 31
+          "val": 7.0,
+          "pr": 40
         },
         "REB": {
           "val": 2.0,
           "pr": 22
         },
         "AST": {
+          "val": 0.0,
+          "pr": 4
+        },
+        "STL": {
+          "val": 0.0,
+          "pr": 9
+        },
+        "BLK": {
           "val": 0.5,
-          "pr": 20
-        },
-        "STL": {
-          "val": 0.0,
-          "pr": 10
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 66.7,
-          "pr": 85
-        },
-        "TS%": {
-          "val": 77.3,
-          "pr": 93
-        },
-        "USG%": {
-          "val": 18.2,
-          "pr": 29
-        },
-        "GmSC": {
-          "val": 5.7,
-          "pr": 44
-        }
-      }
-    },
-    "溫布許": {
-      "rank": 40,
-      "id": 560,
-      "name": "溫布許",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "20",
-      "position": "F",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 27.6,
-      "badges": {
-        "PTS": {
-          "val": 11.0,
-          "pr": 52
-        },
-        "REB": {
-          "val": 8.5,
-          "pr": 81
-        },
-        "AST": {
-          "val": 3.0,
-          "pr": 74
-        },
-        "STL": {
-          "val": 0.0,
-          "pr": 10
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 34.0,
-          "pr": 19
-        },
-        "TS%": {
-          "val": 39.8,
-          "pr": 21
-        },
-        "USG%": {
-          "val": 30.7,
           "pr": 79
         },
+        "eFG%": {
+          "val": 70.0,
+          "pr": 92
+        },
+        "TS%": {
+          "val": 70.0,
+          "pr": 91
+        },
+        "USG%": {
+          "val": 29.7,
+          "pr": 76
+        },
         "GmSC": {
-          "val": 5.6,
-          "pr": 43
+          "val": 5.8,
+          "pr": 45
         }
       }
     },
     "蘇士軒": {
-      "rank": 41,
-      "id": 524,
+      "rank": 40,
+      "id": 525,
       "name": "蘇士軒",
       "team_name": "新北國王",
       "jersey_number": "17",
@@ -1987,27 +1938,27 @@
       "badges": {
         "PTS": {
           "val": 5.2,
-          "pr": 22
+          "pr": 25
         },
         "REB": {
           "val": 4.2,
-          "pr": 60
+          "pr": 62
         },
         "AST": {
           "val": 0.2,
-          "pr": 12
+          "pr": 9
         },
         "STL": {
           "val": 2.0,
-          "pr": 85
+          "pr": 88
         },
         "BLK": {
           "val": 1.8,
-          "pr": 91
+          "pr": 93
         },
         "eFG%": {
           "val": 42.2,
-          "pr": 31
+          "pr": 32
         },
         "TS%": {
           "val": 46.5,
@@ -2015,66 +1966,66 @@
         },
         "USG%": {
           "val": 13.1,
-          "pr": 13
+          "pr": 12
         },
         "GmSC": {
           "val": 5.2,
-          "pr": 40
+          "pr": 43
         }
       }
     },
-    "蔡宸綱": {
-      "rank": 42,
-      "id": 538,
-      "name": "蔡宸綱",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "17",
-      "position": "F/PF",
+    "林任鴻": {
+      "rank": 41,
+      "id": 514,
+      "name": "林任鴻",
+      "team_name": "新北中信特攻",
+      "jersey_number": "12",
+      "position": "F",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 24.5,
+      "games_played": 3,
+      "mpg": 10.5,
       "badges": {
         "PTS": {
-          "val": 9.0,
-          "pr": 46
+          "val": 5.7,
+          "pr": 33
         },
         "REB": {
-          "val": 2.5,
-          "pr": 30
+          "val": 2.3,
+          "pr": 28
         },
         "AST": {
-          "val": 1.5,
-          "pr": 42
+          "val": 0.7,
+          "pr": 20
         },
         "STL": {
-          "val": 2.5,
-          "pr": 94
+          "val": 0.0,
+          "pr": 9
         },
         "BLK": {
-          "val": 0.5,
-          "pr": 76
+          "val": 0.0,
+          "pr": 28
         },
         "eFG%": {
-          "val": 44.1,
-          "pr": 40
+          "val": 71.4,
+          "pr": 94
         },
         "TS%": {
-          "val": 45.8,
-          "pr": 31
+          "val": 80.8,
+          "pr": 99
         },
         "USG%": {
-          "val": 26.0,
-          "pr": 68
+          "val": 20.6,
+          "pr": 36
         },
         "GmSC": {
-          "val": 5.2,
-          "pr": 40
+          "val": 5.1,
+          "pr": 42
         }
       }
     },
     "賀丹": {
-      "rank": 43,
-      "id": 599,
+      "rank": 42,
+      "id": 600,
       "name": "賀丹",
       "team_name": "高雄全家海神",
       "jersey_number": "3",
@@ -2085,143 +2036,45 @@
       "badges": {
         "PTS": {
           "val": 11.5,
-          "pr": 54
+          "pr": 55
         },
         "REB": {
           "val": 3.3,
-          "pr": 49
+          "pr": 51
         },
         "AST": {
           "val": 0.5,
-          "pr": 20
+          "pr": 14
         },
         "STL": {
           "val": 0.7,
-          "pr": 42
+          "pr": 41
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 47.3,
-          "pr": 46
+          "val": 47.5,
+          "pr": 45
         },
         "TS%": {
-          "val": 53.7,
-          "pr": 47
+          "val": 53.4,
+          "pr": 51
         },
         "USG%": {
-          "val": 30.5,
-          "pr": 78
+          "val": 30.6,
+          "pr": 81
         },
         "GmSC": {
-          "val": 5.1,
-          "pr": 38
-        }
-      }
-    },
-    "朱雲豪": {
-      "rank": 44,
-      "id": 547,
-      "name": "朱雲豪",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "28",
-      "position": "F/SF",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 14.0,
-      "badges": {
-        "PTS": {
-          "val": 6.5,
-          "pr": 36
-        },
-        "REB": {
-          "val": 0.5,
-          "pr": 7
-        },
-        "AST": {
-          "val": 0.0,
-          "pr": 6
-        },
-        "STL": {
-          "val": 1.5,
-          "pr": 72
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 65.0,
-          "pr": 84
-        },
-        "TS%": {
-          "val": 65.0,
-          "pr": 82
-        },
-        "USG%": {
-          "val": 18.5,
-          "pr": 31
-        },
-        "GmSC": {
-          "val": 5.1,
-          "pr": 38
-        }
-      }
-    },
-    "錢肯尼": {
-      "rank": 45,
-      "id": 562,
-      "name": "錢肯尼",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "23",
-      "position": "SG",
-      "identity": "華裔/本土",
-      "games_played": 2,
-      "mpg": 30.7,
-      "badges": {
-        "PTS": {
-          "val": 9.0,
-          "pr": 46
-        },
-        "REB": {
-          "val": 1.0,
-          "pr": 14
-        },
-        "AST": {
-          "val": 1.0,
-          "pr": 34
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 53.1,
-          "pr": 54
-        },
-        "TS%": {
-          "val": 53.3,
-          "pr": 46
-        },
-        "USG%": {
-          "val": 15.9,
-          "pr": 22
-        },
-        "GmSC": {
-          "val": 4.9,
-          "pr": 35
+          "val": 5.0,
+          "pr": 41
         }
       }
     },
     "陳振傑": {
-      "rank": 46,
-      "id": 574,
+      "rank": 43,
+      "id": 575,
       "name": "陳振傑",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "0",
@@ -2232,15 +2085,15 @@
       "badges": {
         "PTS": {
           "val": 5.7,
-          "pr": 29
+          "pr": 33
         },
         "REB": {
           "val": 2.3,
-          "pr": 25
+          "pr": 28
         },
         "AST": {
           "val": 1.7,
-          "pr": 47
+          "pr": 48
         },
         "STL": {
           "val": 1.3,
@@ -2248,29 +2101,29 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 29.4,
-          "pr": 9
+          "pr": 13
         },
         "TS%": {
           "val": 41.4,
-          "pr": 24
+          "pr": 25
         },
         "USG%": {
           "val": 21.2,
-          "pr": 44
+          "pr": 41
         },
         "GmSC": {
           "val": 4.6,
-          "pr": 34
+          "pr": 39
         }
       }
     },
     "胡瓏貿": {
-      "rank": 47,
-      "id": 604,
+      "rank": 44,
+      "id": 605,
       "name": "胡瓏貿",
       "team_name": "高雄全家海神",
       "jersey_number": "10",
@@ -2281,45 +2134,45 @@
       "badges": {
         "PTS": {
           "val": 5.7,
-          "pr": 29
+          "pr": 33
         },
         "REB": {
           "val": 3.8,
-          "pr": 57
+          "pr": 59
         },
         "AST": {
           "val": 1.5,
-          "pr": 42
+          "pr": 41
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 71.2,
-          "pr": 90
+          "val": 70.0,
+          "pr": 92
         },
         "TS%": {
-          "val": 71.5,
-          "pr": 88
+          "val": 70.5,
+          "pr": 93
         },
         "USG%": {
-          "val": 15.7,
-          "pr": 21
+          "val": 15.8,
+          "pr": 22
         },
         "GmSC": {
-          "val": 4.3,
-          "pr": 32
+          "val": 4.2,
+          "pr": 37
         }
       }
     },
     "熊祥泰": {
-      "rank": 48,
-      "id": 522,
+      "rank": 45,
+      "id": 523,
       "name": "熊祥泰",
       "team_name": "新北國王",
       "jersey_number": "20",
@@ -2330,45 +2183,143 @@
       "badges": {
         "PTS": {
           "val": 5.3,
-          "pr": 24
+          "pr": 27
         },
         "REB": {
           "val": 1.0,
-          "pr": 14
+          "pr": 11
         },
         "AST": {
           "val": 0.7,
-          "pr": 27
+          "pr": 20
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 48.6,
-          "pr": 49
+          "pr": 48
         },
         "TS%": {
           "val": 57.9,
-          "pr": 63
+          "pr": 62
         },
         "USG%": {
           "val": 13.6,
-          "pr": 15
+          "pr": 16
         },
         "GmSC": {
           "val": 4.2,
-          "pr": 31
+          "pr": 37
+        }
+      }
+    },
+    "林信寬": {
+      "rank": 46,
+      "id": 558,
+      "name": "林信寬",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "12",
+      "position": "SF",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 28.9,
+      "badges": {
+        "PTS": {
+          "val": 9.0,
+          "pr": 44
+        },
+        "REB": {
+          "val": 7.3,
+          "pr": 77
+        },
+        "AST": {
+          "val": 1.0,
+          "pr": 28
+        },
+        "STL": {
+          "val": 0.7,
+          "pr": 41
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 40.6,
+          "pr": 28
+        },
+        "TS%": {
+          "val": 40.0,
+          "pr": 17
+        },
+        "USG%": {
+          "val": 23.2,
+          "pr": 52
+        },
+        "GmSC": {
+          "val": 4.0,
+          "pr": 35
+        }
+      }
+    },
+    "邱子軒": {
+      "rank": 47,
+      "id": 610,
+      "name": "邱子軒",
+      "team_name": "高雄全家海神",
+      "jersey_number": "8",
+      "position": "SG",
+      "identity": "本土",
+      "games_played": 2,
+      "mpg": 17.9,
+      "badges": {
+        "PTS": {
+          "val": 7.0,
+          "pr": 40
+        },
+        "REB": {
+          "val": 1.5,
+          "pr": 15
+        },
+        "AST": {
+          "val": 1.5,
+          "pr": 41
+        },
+        "STL": {
+          "val": 0.5,
+          "pr": 32
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 55.0,
+          "pr": 59
+        },
+        "TS%": {
+          "val": 59.5,
+          "pr": 71
+        },
+        "USG%": {
+          "val": 21.3,
+          "pr": 42
+        },
+        "GmSC": {
+          "val": 3.8,
+          "pr": 33
         }
       }
     },
     "陳冠全": {
-      "rank": 49,
-      "id": 594,
+      "rank": 48,
+      "id": 595,
       "name": "陳冠全",
       "team_name": "臺北台新戰神",
       "jersey_number": "62",
@@ -2379,94 +2330,94 @@
       "badges": {
         "PTS": {
           "val": 5.5,
-          "pr": 26
+          "pr": 29
         },
         "REB": {
           "val": 1.5,
-          "pr": 20
+          "pr": 15
         },
         "AST": {
           "val": 0.0,
-          "pr": 6
+          "pr": 4
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 78.6,
-          "pr": 95
+          "pr": 98
         },
         "TS%": {
           "val": 78.6,
-          "pr": 94
+          "pr": 96
         },
         "USG%": {
           "val": 20.7,
-          "pr": 43
+          "pr": 38
         },
         "GmSC": {
           "val": 3.5,
-          "pr": 29
+          "pr": 31
         }
       }
     },
-    "張宗憲": {
-      "rank": 50,
-      "id": 573,
-      "name": "張宗憲",
-      "team_name": "福爾摩沙夢想家",
-      "jersey_number": "3",
-      "position": "SG",
+    "蔡宸綱": {
+      "rank": 49,
+      "id": 539,
+      "name": "蔡宸綱",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "17",
+      "position": "F/PF",
       "identity": "本土",
       "games_played": 3,
-      "mpg": 19.0,
+      "mpg": 26.8,
       "badges": {
         "PTS": {
-          "val": 6.3,
-          "pr": 32
+          "val": 9.3,
+          "pr": 47
         },
         "REB": {
-          "val": 2.7,
-          "pr": 37
+          "val": 3.3,
+          "pr": 51
         },
         "AST": {
-          "val": 1.0,
-          "pr": 34
+          "val": 1.3,
+          "pr": 38
         },
         "STL": {
-          "val": 0.7,
-          "pr": 42
+          "val": 1.7,
+          "pr": 80
         },
         "BLK": {
-          "val": 0.0,
-          "pr": 29
+          "val": 1.0,
+          "pr": 88
         },
         "eFG%": {
-          "val": 42.9,
-          "pr": 32
+          "val": 39.1,
+          "pr": 23
         },
         "TS%": {
-          "val": 43.4,
-          "pr": 26
+          "val": 40.4,
+          "pr": 19
         },
         "USG%": {
-          "val": 24.4,
-          "pr": 62
+          "val": 27.5,
+          "pr": 71
         },
         "GmSC": {
-          "val": 3.3,
-          "pr": 27
+          "val": 3.5,
+          "pr": 31
         }
       }
     },
     "蔣淯安": {
-      "rank": 51,
-      "id": 571,
+      "rank": 50,
+      "id": 572,
       "name": "蔣淯安",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "41",
@@ -2477,15 +2428,15 @@
       "badges": {
         "PTS": {
           "val": 9.0,
-          "pr": 46
+          "pr": 44
         },
         "REB": {
           "val": 4.0,
-          "pr": 59
+          "pr": 61
         },
         "AST": {
           "val": 2.3,
-          "pr": 60
+          "pr": 64
         },
         "STL": {
           "val": 1.0,
@@ -2493,7 +2444,7 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 43.5,
@@ -2501,187 +2452,138 @@
         },
         "TS%": {
           "val": 50.1,
-          "pr": 39
+          "pr": 41
         },
         "USG%": {
           "val": 23.3,
-          "pr": 53
+          "pr": 54
         },
         "GmSC": {
           "val": 3.3,
-          "pr": 27
+          "pr": 28
         }
       }
     },
-    "陳懷安": {
-      "rank": 52,
-      "id": 602,
-      "name": "陳懷安",
-      "team_name": "高雄全家海神",
-      "jersey_number": "66",
-      "position": "PG",
+    "張宗憲": {
+      "rank": 51,
+      "id": 574,
+      "name": "張宗憲",
+      "team_name": "福爾摩沙夢想家",
+      "jersey_number": "3",
+      "position": "SG",
       "identity": "本土",
-      "games_played": 4,
-      "mpg": 15.8,
+      "games_played": 3,
+      "mpg": 19.0,
       "badges": {
         "PTS": {
-          "val": 1.2,
-          "pr": 6
+          "val": 6.3,
+          "pr": 38
         },
         "REB": {
-          "val": 2.5,
-          "pr": 30
-        },
-        "AST": {
-          "val": 3.8,
-          "pr": 84
-        },
-        "STL": {
-          "val": 0.2,
-          "pr": 21
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 29.8,
-          "pr": 10
-        },
-        "TS%": {
-          "val": 31.6,
-          "pr": 9
-        },
-        "USG%": {
-          "val": 9.9,
-          "pr": 1
-        },
-        "GmSC": {
           "val": 2.7,
-          "pr": 25
-        }
-      }
-    },
-    "施晉堯": {
-      "rank": 53,
-      "id": 605,
-      "name": "施晉堯",
-      "team_name": "高雄全家海神",
-      "jersey_number": "11",
-      "position": "SF",
-      "identity": "本土",
-      "games_played": 4,
-      "mpg": 15.2,
-      "badges": {
-        "PTS": {
-          "val": 4.3,
-          "pr": 19
-        },
-        "REB": {
-          "val": 0.7,
-          "pr": 9
-        },
-        "AST": {
-          "val": 1.5,
-          "pr": 42
-        },
-        "STL": {
-          "val": 0.0,
-          "pr": 10
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 61.1,
-          "pr": 74
-        },
-        "TS%": {
-          "val": 61.1,
-          "pr": 69
-        },
-        "USG%": {
-          "val": 15.4,
-          "pr": 19
-        },
-        "GmSC": {
-          "val": 2.5,
-          "pr": 23
-        }
-      }
-    },
-    "呂威霆": {
-      "rank": 54,
-      "id": 603,
-      "name": "呂威霆",
-      "team_name": "高雄全家海神",
-      "jersey_number": "21",
-      "position": "C",
-      "identity": "本土",
-      "games_played": 4,
-      "mpg": 11.9,
-      "badges": {
-        "PTS": {
-          "val": 4.0,
-          "pr": 18
-        },
-        "REB": {
-          "val": 2.5,
-          "pr": 30
-        },
-        "AST": {
-          "val": 0.7,
-          "pr": 27
-        },
-        "STL": {
-          "val": 0.0,
-          "pr": 10
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 55.0,
-          "pr": 62
-        },
-        "TS%": {
-          "val": 58.9,
-          "pr": 65
-        },
-        "USG%": {
-          "val": 20.2,
           "pr": 40
         },
+        "AST": {
+          "val": 1.0,
+          "pr": 28
+        },
+        "STL": {
+          "val": 0.7,
+          "pr": 41
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 42.9,
+          "pr": 33
+        },
+        "TS%": {
+          "val": 43.4,
+          "pr": 29
+        },
+        "USG%": {
+          "val": 24.4,
+          "pr": 62
+        },
         "GmSC": {
-          "val": 2.5,
-          "pr": 23
+          "val": 3.3,
+          "pr": 28
         }
       }
     },
-    "曾柏喻": {
-      "rank": 55,
-      "id": 542,
-      "name": "曾柏喻",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "7",
-      "position": "G/SG",
+    "莊博元": {
+      "rank": 52,
+      "id": 557,
+      "name": "莊博元",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "11",
+      "position": "G",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 33.7,
+      "games_played": 3,
+      "mpg": 27.2,
       "badges": {
         "PTS": {
-          "val": 6.5,
-          "pr": 36
+          "val": 5.3,
+          "pr": 27
         },
         "REB": {
-          "val": 3.0,
-          "pr": 44
+          "val": 1.7,
+          "pr": 18
         },
         "AST": {
-          "val": 7.0,
-          "pr": 99
+          "val": 0.7,
+          "pr": 20
+        },
+        "STL": {
+          "val": 0.0,
+          "pr": 9
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 53.3,
+          "pr": 58
+        },
+        "TS%": {
+          "val": 53.3,
+          "pr": 49
+        },
+        "USG%": {
+          "val": 10.2,
+          "pr": 4
+        },
+        "GmSC": {
+          "val": 2.9,
+          "pr": 26
+        }
+      }
+    },
+    "朱雲豪": {
+      "rank": 53,
+      "id": 548,
+      "name": "朱雲豪",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "28",
+      "position": "F/SF",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 12.6,
+      "badges": {
+        "PTS": {
+          "val": 5.0,
+          "pr": 22
+        },
+        "REB": {
+          "val": 0.7,
+          "pr": 7
+        },
+        "AST": {
+          "val": 0.0,
+          "pr": 4
         },
         "STL": {
           "val": 1.0,
@@ -2689,176 +2591,176 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 31.2,
-          "pr": 13
+          "val": 50.0,
+          "pr": 51
         },
         "TS%": {
-          "val": 34.9,
-          "pr": 13
+          "val": 50.0,
+          "pr": 39
         },
         "USG%": {
-          "val": 22.0,
-          "pr": 46
+          "val": 21.9,
+          "pr": 45
         },
         "GmSC": {
-          "val": 2.3,
-          "pr": 21
-        }
-      }
-    },
-    "莊博元": {
-      "rank": 56,
-      "id": 556,
-      "name": "莊博元",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "11",
-      "position": "G",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 25.5,
-      "badges": {
-        "PTS": {
-          "val": 5.5,
-          "pr": 26
-        },
-        "REB": {
-          "val": 0.5,
-          "pr": 7
-        },
-        "AST": {
-          "val": 0.0,
-          "pr": 6
-        },
-        "STL": {
-          "val": 0.0,
-          "pr": 10
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 55.0,
-          "pr": 60
-        },
-        "TS%": {
-          "val": 55.0,
-          "pr": 54
-        },
-        "USG%": {
-          "val": 11.2,
-          "pr": 6
-        },
-        "GmSC": {
-          "val": 2.2,
-          "pr": 19
+          "val": 2.8,
+          "pr": 25
         }
       }
     },
     "劉丞勳": {
-      "rank": 57,
-      "id": 535,
+      "rank": 54,
+      "id": 536,
       "name": "劉丞勳",
       "team_name": "新竹御嵿攻城獅",
       "jersey_number": "13",
       "position": "G/F",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 39.5,
+      "games_played": 3,
+      "mpg": 36.0,
       "badges": {
         "PTS": {
-          "val": 7.0,
-          "pr": 40
+          "val": 8.0,
+          "pr": 42
         },
         "REB": {
-          "val": 5.5,
-          "pr": 65
+          "val": 4.3,
+          "pr": 64
         },
         "AST": {
-          "val": 2.5,
-          "pr": 65
+          "val": 2.3,
+          "pr": 64
         },
         "STL": {
-          "val": 2.0,
-          "pr": 85
+          "val": 1.7,
+          "pr": 80
         },
         "BLK": {
-          "val": 0.0,
-          "pr": 29
+          "val": 0.3,
+          "pr": 69
         },
         "eFG%": {
-          "val": 25.0,
-          "pr": 7
+          "val": 29.7,
+          "pr": 14
         },
         "TS%": {
-          "val": 27.2,
-          "pr": 7
+          "val": 31.0,
+          "pr": 13
         },
         "USG%": {
-          "val": 19.5,
-          "pr": 36
+          "val": 21.5,
+          "pr": 43
         },
         "GmSC": {
-          "val": 2.0,
-          "pr": 18
+          "val": 2.5,
+          "pr": 23
         }
       }
     },
-    "林信寬": {
-      "rank": 58,
-      "id": 557,
-      "name": "林信寬",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "12",
-      "position": "SF",
+    "陳懷安": {
+      "rank": 55,
+      "id": 603,
+      "name": "陳懷安",
+      "team_name": "高雄全家海神",
+      "jersey_number": "66",
+      "position": "PG",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 28.1,
+      "games_played": 5,
+      "mpg": 15.0,
       "badges": {
         "PTS": {
-          "val": 6.5,
-          "pr": 36
+          "val": 1.6,
+          "pr": 7
         },
         "REB": {
-          "val": 8.0,
-          "pr": 78
+          "val": 2.6,
+          "pr": 35
         },
         "AST": {
-          "val": 0.5,
-          "pr": 20
+          "val": 3.2,
+          "pr": 76
         },
         "STL": {
-          "val": 0.5,
-          "pr": 34
+          "val": 0.6,
+          "pr": 33
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 35.3,
-          "pr": 21
+          "val": 28.3,
+          "pr": 12
         },
         "TS%": {
-          "val": 36.4,
-          "pr": 16
+          "val": 27.5,
+          "pr": 10
         },
         "USG%": {
-          "val": 20.2,
-          "pr": 40
+          "val": 13.2,
+          "pr": 13
         },
         "GmSC": {
-          "val": 1.8,
-          "pr": 15
+          "val": 2.3,
+          "pr": 22
+        }
+      }
+    },
+    "呂威霆": {
+      "rank": 56,
+      "id": 604,
+      "name": "呂威霆",
+      "team_name": "高雄全家海神",
+      "jersey_number": "21",
+      "position": "C",
+      "identity": "本土",
+      "games_played": 5,
+      "mpg": 12.1,
+      "badges": {
+        "PTS": {
+          "val": 3.8,
+          "pr": 19
+        },
+        "REB": {
+          "val": 2.6,
+          "pr": 35
+        },
+        "AST": {
+          "val": 0.6,
+          "pr": 16
+        },
+        "STL": {
+          "val": 0.0,
+          "pr": 9
+        },
+        "BLK": {
+          "val": 0.4,
+          "pr": 77
+        },
+        "eFG%": {
+          "val": 62.3,
+          "pr": 87
+        },
+        "TS%": {
+          "val": 64.4,
+          "pr": 87
+        },
+        "USG%": {
+          "val": 18.5,
+          "pr": 28
+        },
+        "GmSC": {
+          "val": 2.2,
+          "pr": 20
         }
       }
     },
     "黃聰翰": {
-      "rank": 59,
-      "id": 587,
+      "rank": 57,
+      "id": 588,
       "name": "黃聰翰",
       "team_name": "臺北台新戰神",
       "jersey_number": "11",
@@ -2869,143 +2771,290 @@
       "badges": {
         "PTS": {
           "val": 3.7,
-          "pr": 16
+          "pr": 17
         },
         "REB": {
           "val": 1.0,
-          "pr": 14
+          "pr": 11
         },
         "AST": {
           "val": 0.3,
-          "pr": 14
+          "pr": 12
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 61.1,
-          "pr": 76
+          "pr": 80
         },
         "TS%": {
           "val": 61.1,
-          "pr": 71
+          "pr": 75
         },
         "USG%": {
           "val": 16.8,
-          "pr": 24
+          "pr": 25
         },
         "GmSC": {
           "val": 1.8,
-          "pr": 15
+          "pr": 18
+        }
+      }
+    },
+    "施晉堯": {
+      "rank": 58,
+      "id": 606,
+      "name": "施晉堯",
+      "team_name": "高雄全家海神",
+      "jersey_number": "11",
+      "position": "SF",
+      "identity": "本土",
+      "games_played": 5,
+      "mpg": 16.7,
+      "badges": {
+        "PTS": {
+          "val": 4.2,
+          "pr": 20
+        },
+        "REB": {
+          "val": 0.8,
+          "pr": 9
+        },
+        "AST": {
+          "val": 1.2,
+          "pr": 34
+        },
+        "STL": {
+          "val": 0.0,
+          "pr": 9
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 53.2,
+          "pr": 57
+        },
+        "TS%": {
+          "val": 53.3,
+          "pr": 48
+        },
+        "USG%": {
+          "val": 15.5,
+          "pr": 20
+        },
+        "GmSC": {
+          "val": 1.8,
+          "pr": 18
+        }
+      }
+    },
+    "吳曉謹": {
+      "rank": 59,
+      "id": 607,
+      "name": "吳曉謹",
+      "team_name": "高雄全家海神",
+      "jersey_number": "57",
+      "position": "SF",
+      "identity": "本土",
+      "games_played": 5,
+      "mpg": 12.1,
+      "badges": {
+        "PTS": {
+          "val": 2.2,
+          "pr": 10
+        },
+        "REB": {
+          "val": 0.6,
+          "pr": 6
+        },
+        "AST": {
+          "val": 1.2,
+          "pr": 34
+        },
+        "STL": {
+          "val": 0.4,
+          "pr": 30
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 35.0,
+          "pr": 20
+        },
+        "TS%": {
+          "val": 40.7,
+          "pr": 20
+        },
+        "USG%": {
+          "val": 13.5,
+          "pr": 14
+        },
+        "GmSC": {
+          "val": 1.6,
+          "pr": 16
+        }
+      }
+    },
+    "曹薰襄": {
+      "rank": 60,
+      "id": 566,
+      "name": "曹薰襄",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "57",
+      "position": "PG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 14.7,
+      "badges": {
+        "PTS": {
+          "val": 1.3,
+          "pr": 6
+        },
+        "REB": {
+          "val": 2.3,
+          "pr": 28
+        },
+        "AST": {
+          "val": 4.0,
+          "pr": 86
+        },
+        "STL": {
+          "val": 0.7,
+          "pr": 41
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 11.1,
+          "pr": 4
+        },
+        "TS%": {
+          "val": 20.2,
+          "pr": 4
+        },
+        "USG%": {
+          "val": 18.6,
+          "pr": 29
+        },
+        "GmSC": {
+          "val": 1.4,
+          "pr": 14
         }
       }
     },
     "簡廷兆": {
-      "rank": 60,
+      "rank": 61,
       "id": 509,
       "name": "簡廷兆",
       "team_name": "新北中信特攻",
       "jersey_number": "24",
       "position": "G",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 20.0,
+      "games_played": 3,
+      "mpg": 21.4,
       "badges": {
         "PTS": {
-          "val": 3.0,
+          "val": 2.7,
           "pr": 12
         },
         "REB": {
-          "val": 1.0,
-          "pr": 14
+          "val": 2.0,
+          "pr": 22
         },
         "AST": {
-          "val": 0.0,
-          "pr": 6
+          "val": 1.0,
+          "pr": 28
         },
         "STL": {
-          "val": 0.5,
-          "pr": 34
+          "val": 0.3,
+          "pr": 24
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 37.5,
-          "pr": 24
+          "val": 26.7,
+          "pr": 9
         },
         "TS%": {
-          "val": 37.5,
-          "pr": 18
+          "val": 26.7,
+          "pr": 9
         },
         "USG%": {
-          "val": 10.3,
-          "pr": 3
+          "val": 12.1,
+          "pr": 6
         },
         "GmSC": {
-          "val": 1.4,
-          "pr": 12
+          "val": 1.3,
+          "pr": 13
         }
       }
     },
-    "吳曉謹": {
-      "rank": 61,
-      "id": 606,
-      "name": "吳曉謹",
-      "team_name": "高雄全家海神",
-      "jersey_number": "57",
-      "position": "SF",
+    "曾柏喻": {
+      "rank": 62,
+      "id": 543,
+      "name": "曾柏喻",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "7",
+      "position": "G/SG",
       "identity": "本土",
-      "games_played": 4,
-      "mpg": 12.9,
+      "games_played": 3,
+      "mpg": 32.9,
       "badges": {
         "PTS": {
-          "val": 2.3,
-          "pr": 9
+          "val": 5.7,
+          "pr": 33
         },
         "REB": {
-          "val": 0.8,
-          "pr": 10
+          "val": 2.7,
+          "pr": 40
         },
         "AST": {
-          "val": 1.0,
-          "pr": 34
+          "val": 6.0,
+          "pr": 97
         },
         "STL": {
-          "val": 0.5,
-          "pr": 34
+          "val": 0.7,
+          "pr": 41
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 31.3,
-          "pr": 15
+          "val": 28.3,
+          "pr": 10
         },
         "TS%": {
-          "val": 38.9,
-          "pr": 19
+          "val": 32.0,
+          "pr": 14
         },
         "USG%": {
-          "val": 13.6,
-          "pr": 15
+          "val": 20.7,
+          "pr": 38
         },
         "GmSC": {
-          "val": 1.4,
-          "pr": 12
+          "val": 1.1,
+          "pr": 11
         }
       }
     },
     "劉彥廷": {
-      "rank": 62,
-      "id": 584,
+      "rank": 63,
+      "id": 585,
       "name": "劉彥廷",
       "team_name": "臺北台新戰神",
       "jersey_number": "7",
@@ -3016,27 +3065,27 @@
       "badges": {
         "PTS": {
           "val": 3.3,
-          "pr": 15
+          "pr": 16
         },
         "REB": {
           "val": 2.7,
-          "pr": 37
+          "pr": 40
         },
         "AST": {
           "val": 0.3,
-          "pr": 14
+          "pr": 12
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 45.0,
-          "pr": 43
+          "pr": 42
         },
         "TS%": {
           "val": 41.0,
@@ -3048,62 +3097,13 @@
         },
         "GmSC": {
           "val": 1.1,
-          "pr": 10
-        }
-      }
-    },
-    "曹薰襄": {
-      "rank": 63,
-      "id": 565,
-      "name": "曹薰襄",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "57",
-      "position": "PG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 15.2,
-      "badges": {
-        "PTS": {
-          "val": 1.0,
-          "pr": 4
-        },
-        "REB": {
-          "val": 2.5,
-          "pr": 30
-        },
-        "AST": {
-          "val": 4.0,
-          "pr": 86
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 16.7,
-          "pr": 4
-        },
-        "TS%": {
-          "val": 16.7,
-          "pr": 4
-        },
-        "USG%": {
-          "val": 17.1,
-          "pr": 25
-        },
-        "GmSC": {
-          "val": 1.0,
-          "pr": 9
+          "pr": 11
         }
       }
     },
     "忻沃克": {
       "rank": 64,
-      "id": 575,
+      "id": 576,
       "name": "忻沃克",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "42",
@@ -3114,23 +3114,23 @@
       "badges": {
         "PTS": {
           "val": 3.0,
-          "pr": 12
+          "pr": 14
         },
         "REB": {
           "val": 5.7,
-          "pr": 67
+          "pr": 69
         },
         "AST": {
           "val": 0.7,
-          "pr": 27
+          "pr": 20
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 33.3,
@@ -3138,31 +3138,80 @@
         },
         "TS%": {
           "val": 36.2,
-          "pr": 15
+          "pr": 16
         },
         "USG%": {
           "val": 13.0,
-          "pr": 12
+          "pr": 9
         },
         "GmSC": {
           "val": 0.9,
+          "pr": 9
+        }
+      }
+    },
+    "張兆辰": {
+      "rank": 65,
+      "id": 555,
+      "name": "張兆辰",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "9",
+      "position": "PF",
+      "identity": "本土",
+      "games_played": 2,
+      "mpg": 8.8,
+      "badges": {
+        "PTS": {
+          "val": 0.0,
+          "pr": 2
+        },
+        "REB": {
+          "val": 2.0,
+          "pr": 22
+        },
+        "AST": {
+          "val": 0.0,
+          "pr": 4
+        },
+        "STL": {
+          "val": 0.0,
+          "pr": 9
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 0.0,
+          "pr": 2
+        },
+        "TS%": {
+          "val": 0.0,
+          "pr": 2
+        },
+        "USG%": {
+          "val": 2.9,
+          "pr": 1
+        },
+        "GmSC": {
+          "val": 0.2,
           "pr": 7
         }
       }
     },
     "董永全": {
-      "rank": 65,
-      "id": 564,
+      "rank": 66,
+      "id": 565,
       "name": "董永全",
       "team_name": "桃園台啤永豐雲豹",
       "jersey_number": "31",
       "position": "SF",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 9.5,
+      "games_played": 3,
+      "mpg": 9.4,
       "badges": {
         "PTS": {
-          "val": 1.0,
+          "val": 0.7,
           "pr": 4
         },
         "REB": {
@@ -3171,135 +3220,135 @@
         },
         "AST": {
           "val": 0.0,
-          "pr": 6
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 33.3,
-          "pr": 17
-        },
-        "TS%": {
-          "val": 33.3,
-          "pr": 12
-        },
-        "USG%": {
-          "val": 10.9,
           "pr": 4
         },
+        "STL": {
+          "val": 0.3,
+          "pr": 24
+        },
+        "BLK": {
+          "val": 0.3,
+          "pr": 69
+        },
+        "eFG%": {
+          "val": 25.0,
+          "pr": 7
+        },
+        "TS%": {
+          "val": 25.0,
+          "pr": 7
+        },
+        "USG%": {
+          "val": 9.2,
+          "pr": 3
+        },
         "GmSC": {
-          "val": 0.1,
+          "val": -0.3,
           "pr": 6
         }
       }
     },
     "李沛澄": {
-      "rank": 66,
+      "rank": 67,
       "id": 511,
       "name": "李沛澄",
       "team_name": "新北中信特攻",
       "jersey_number": "77",
       "position": "G",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 10.7,
+      "games_played": 3,
+      "mpg": 11.5,
       "badges": {
         "PTS": {
-          "val": 1.5,
-          "pr": 7
+          "val": 2.0,
+          "pr": 9
         },
         "REB": {
           "val": 0.0,
           "pr": 2
         },
         "AST": {
-          "val": 0.5,
-          "pr": 20
+          "val": 0.3,
+          "pr": 12
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 25.0,
-          "pr": 7
+          "val": 30.0,
+          "pr": 16
         },
         "TS%": {
-          "val": 25.0,
-          "pr": 6
+          "val": 30.0,
+          "pr": 12
         },
         "USG%": {
-          "val": 14.6,
-          "pr": 18
+          "val": 15.0,
+          "pr": 19
         },
         "GmSC": {
-          "val": -1.0,
+          "val": -0.6,
           "pr": 4
         }
       }
     },
     "陳力生": {
-      "rank": 67,
-      "id": 541,
+      "rank": 68,
+      "id": 542,
       "name": "陳力生",
       "team_name": "新竹御嵿攻城獅",
       "jersey_number": "3",
       "position": "G/PG",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 14.9,
+      "games_played": 3,
+      "mpg": 15.2,
       "badges": {
         "PTS": {
-          "val": 2.5,
-          "pr": 10
+          "val": 2.7,
+          "pr": 12
         },
         "REB": {
-          "val": 3.5,
-          "pr": 53
+          "val": 3.0,
+          "pr": 46
         },
         "AST": {
-          "val": 2.0,
-          "pr": 54
+          "val": 1.7,
+          "pr": 48
         },
         "STL": {
-          "val": 1.0,
-          "pr": 52
+          "val": 0.7,
+          "pr": 41
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 6.7,
-          "pr": 3
+          "val": 11.8,
+          "pr": 6
         },
         "TS%": {
-          "val": 14.9,
-          "pr": 3
+          "val": 20.8,
+          "pr": 6
         },
         "USG%": {
-          "val": 36.1,
-          "pr": 96
+          "val": 29.7,
+          "pr": 76
         },
         "GmSC": {
-          "val": -1.5,
+          "val": -1.0,
           "pr": 3
         }
       }
     },
     "周儀翔": {
-      "rank": 68,
-      "id": 527,
+      "rank": 69,
+      "id": 528,
       "name": "周儀翔",
       "team_name": "新北國王",
       "jersey_number": "6",
@@ -3310,7 +3359,7 @@
       "badges": {
         "PTS": {
           "val": 0.0,
-          "pr": 1
+          "pr": 2
         },
         "REB": {
           "val": 0.3,
@@ -3318,27 +3367,27 @@
         },
         "AST": {
           "val": 0.7,
-          "pr": 27
+          "pr": 20
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 0.0,
-          "pr": 1
+          "pr": 2
         },
         "TS%": {
           "val": 0.0,
-          "pr": 1
+          "pr": 2
         },
         "USG%": {
           "val": 17.5,
-          "pr": 27
+          "pr": 26
         },
         "GmSC": {
           "val": -2.2,
@@ -3350,26 +3399,26 @@
   "rankings": [
     {
       "rank": 1,
-      "id": 536,
+      "id": 537,
       "name": "迪亞洛",
       "team_name": "新竹御嵿攻城獅",
       "jersey_number": "33",
       "position": "PF",
       "identity": "洋將",
-      "games_played": 2,
-      "mpg": 42.6,
+      "games_played": 3,
+      "mpg": 43.5,
       "badges": {
         "PTS": {
-          "val": 28.5,
-          "pr": 100
+          "val": 25.7,
+          "pr": 97
         },
         "REB": {
-          "val": 15.5,
+          "val": 16.3,
           "pr": 100
         },
         "AST": {
-          "val": 1.5,
-          "pr": 42
+          "val": 1.7,
+          "pr": 48
         },
         "STL": {
           "val": 1.0,
@@ -3377,71 +3426,71 @@
         },
         "BLK": {
           "val": 2.0,
-          "pr": 95
+          "pr": 96
         },
         "eFG%": {
-          "val": 69.7,
-          "pr": 87
+          "val": 63.3,
+          "pr": 90
         },
         "TS%": {
-          "val": 69.7,
-          "pr": 85
+          "val": 63.2,
+          "pr": 83
         },
         "USG%": {
-          "val": 26.7,
-          "pr": 69
+          "val": 26.5,
+          "pr": 70
         },
         "GmSC": {
-          "val": 28.2,
+          "val": 25.1,
           "pr": 100
         }
       }
     },
     {
       "rank": 2,
-      "id": 537,
-      "name": "德魯",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "2",
-      "position": "F",
+      "id": 599,
+      "name": "洛斯柯",
+      "team_name": "高雄全家海神",
+      "jersey_number": "25",
+      "position": "PF/C",
       "identity": "洋將",
-      "games_played": 2,
-      "mpg": 42.4,
+      "games_played": 5,
+      "mpg": 35.6,
       "badges": {
         "PTS": {
-          "val": 20.5,
-          "pr": 90
-        },
-        "REB": {
-          "val": 9.0,
-          "pr": 85
-        },
-        "AST": {
-          "val": 7.0,
-          "pr": 99
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 4.5,
+          "val": 27.4,
           "pr": 100
         },
+        "REB": {
+          "val": 10.8,
+          "pr": 91
+        },
+        "AST": {
+          "val": 4.0,
+          "pr": 86
+        },
+        "STL": {
+          "val": 1.4,
+          "pr": 69
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
         "eFG%": {
-          "val": 79.5,
-          "pr": 97
+          "val": 56.1,
+          "pr": 66
         },
         "TS%": {
-          "val": 83.2,
-          "pr": 97
+          "val": 64.1,
+          "pr": 86
         },
         "USG%": {
-          "val": 17.5,
-          "pr": 27
+          "val": 38.0,
+          "pr": 100
         },
         "GmSC": {
-          "val": 23.9,
+          "val": 21.7,
           "pr": 99
         }
       }
@@ -3449,58 +3498,9 @@
     {
       "rank": 3,
       "id": 598,
-      "name": "洛斯柯",
-      "team_name": "高雄全家海神",
-      "jersey_number": "25",
-      "position": "PF/C",
-      "identity": "洋將",
-      "games_played": 4,
-      "mpg": 35.2,
-      "badges": {
-        "PTS": {
-          "val": 28.0,
-          "pr": 99
-        },
-        "REB": {
-          "val": 11.0,
-          "pr": 93
-        },
-        "AST": {
-          "val": 4.5,
-          "pr": 90
-        },
-        "STL": {
-          "val": 1.5,
-          "pr": 72
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 56.7,
-          "pr": 66
-        },
-        "TS%": {
-          "val": 65.6,
-          "pr": 84
-        },
-        "USG%": {
-          "val": 39.1,
-          "pr": 99
-        },
-        "GmSC": {
-          "val": 22.6,
-          "pr": 97
-        }
-      }
-    },
-    {
-      "rank": 4,
-      "id": 597,
       "name": "貝西里",
       "team_name": "高雄全家海神",
-      "jersey_number": "0",
+      "jersey_number": "",
       "position": "SF",
       "identity": "洋將",
       "games_played": 4,
@@ -3508,15 +3508,15 @@
       "badges": {
         "PTS": {
           "val": 27.0,
-          "pr": 97
+          "pr": 99
         },
         "REB": {
           "val": 12.3,
-          "pr": 96
+          "pr": 93
         },
         "AST": {
           "val": 3.0,
-          "pr": 74
+          "pr": 72
         },
         "STL": {
           "val": 1.3,
@@ -3524,29 +3524,29 @@
         },
         "BLK": {
           "val": 1.3,
-          "pr": 88
+          "pr": 90
         },
         "eFG%": {
-          "val": 62.1,
-          "pr": 81
+          "val": 62.2,
+          "pr": 86
         },
         "TS%": {
-          "val": 63.6,
-          "pr": 79
+          "val": 63.5,
+          "pr": 84
         },
         "USG%": {
-          "val": 34.4,
+          "val": 34.5,
           "pr": 91
         },
         "GmSC": {
-          "val": 21.6,
-          "pr": 96
+          "val": 21.5,
+          "pr": 97
         }
       }
     },
     {
-      "rank": 5,
-      "id": 581,
+      "rank": 4,
+      "id": 582,
       "name": "林庭謙",
       "team_name": "臺北台新戰神",
       "jersey_number": "0",
@@ -3561,139 +3561,90 @@
         },
         "REB": {
           "val": 2.7,
-          "pr": 37
+          "pr": 40
         },
         "AST": {
           "val": 5.7,
-          "pr": 97
+          "pr": 96
         },
         "STL": {
           "val": 2.3,
-          "pr": 90
+          "pr": 93
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 59.6,
-          "pr": 71
+          "pr": 75
         },
         "TS%": {
           "val": 62.8,
-          "pr": 76
+          "pr": 80
         },
         "USG%": {
           "val": 25.9,
-          "pr": 66
+          "pr": 67
         },
         "GmSC": {
           "val": 20.8,
+          "pr": 96
+        }
+      }
+    },
+    {
+      "rank": 5,
+      "id": 538,
+      "name": "德魯",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "2",
+      "position": "F",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 41.5,
+      "badges": {
+        "PTS": {
+          "val": 15.0,
+          "pr": 70
+        },
+        "REB": {
+          "val": 12.7,
+          "pr": 94
+        },
+        "AST": {
+          "val": 6.7,
+          "pr": 99
+        },
+        "STL": {
+          "val": 1.3,
+          "pr": 63
+        },
+        "BLK": {
+          "val": 3.3,
+          "pr": 100
+        },
+        "eFG%": {
+          "val": 72.2,
+          "pr": 96
+        },
+        "TS%": {
+          "val": 75.9,
+          "pr": 94
+        },
+        "USG%": {
+          "val": 14.8,
+          "pr": 17
+        },
+        "GmSC": {
+          "val": 20.3,
           "pr": 94
         }
       }
     },
     {
       "rank": 6,
-      "id": 558,
-      "name": "米勒",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "13",
-      "position": "SF",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 36.8,
-      "badges": {
-        "PTS": {
-          "val": 21.0,
-          "pr": 92
-        },
-        "REB": {
-          "val": 9.0,
-          "pr": 85
-        },
-        "AST": {
-          "val": 2.0,
-          "pr": 54
-        },
-        "STL": {
-          "val": 2.5,
-          "pr": 94
-        },
-        "BLK": {
-          "val": 1.0,
-          "pr": 85
-        },
-        "eFG%": {
-          "val": 70.0,
-          "pr": 88
-        },
-        "TS%": {
-          "val": 71.4,
-          "pr": 87
-        },
-        "USG%": {
-          "val": 24.2,
-          "pr": 59
-        },
-        "GmSC": {
-          "val": 20.0,
-          "pr": 93
-        }
-      }
-    },
-    {
-      "rank": 7,
-      "id": 508,
-      "name": "阿巴西",
-      "team_name": "新北中信特攻",
-      "jersey_number": "",
-      "position": "F/SF",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 29.2,
-      "badges": {
-        "PTS": {
-          "val": 21.5,
-          "pr": 94
-        },
-        "REB": {
-          "val": 1.5,
-          "pr": 20
-        },
-        "AST": {
-          "val": 2.5,
-          "pr": 65
-        },
-        "STL": {
-          "val": 3.5,
-          "pr": 99
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 72.2,
-          "pr": 91
-        },
-        "TS%": {
-          "val": 73.6,
-          "pr": 90
-        },
-        "USG%": {
-          "val": 27.7,
-          "pr": 72
-        },
-        "GmSC": {
-          "val": 19.4,
-          "pr": 91
-        }
-      }
-    },
-    {
-      "rank": 8,
-      "id": 593,
+      "id": 594,
       "name": "馬利",
       "team_name": "臺北台新戰神",
       "jersey_number": "34",
@@ -3704,7 +3655,7 @@
       "badges": {
         "PTS": {
           "val": 21.0,
-          "pr": 92
+          "pr": 93
         },
         "REB": {
           "val": 13.7,
@@ -3716,82 +3667,180 @@
         },
         "STL": {
           "val": 2.0,
-          "pr": 85
+          "pr": 88
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 60.6,
-          "pr": 72
+          "pr": 78
         },
         "TS%": {
           "val": 61.3,
-          "pr": 72
+          "pr": 77
         },
         "USG%": {
           "val": 35.7,
-          "pr": 94
+          "pr": 97
         },
         "GmSC": {
           "val": 18.0,
-          "pr": 90
+          "pr": 93
         }
       }
     },
     {
-      "rank": 9,
+      "rank": 7,
       "id": 507,
       "name": "法拉帝",
       "team_name": "新北中信特攻",
       "jersey_number": "20",
       "position": "PF/C",
       "identity": "洋將",
-      "games_played": 2,
-      "mpg": 32.1,
+      "games_played": 3,
+      "mpg": 34.6,
       "badges": {
         "PTS": {
-          "val": 18.5,
-          "pr": 82
-        },
-        "REB": {
-          "val": 12.0,
+          "val": 21.7,
           "pr": 94
         },
+        "REB": {
+          "val": 13.3,
+          "pr": 97
+        },
         "AST": {
-          "val": 2.5,
-          "pr": 65
+          "val": 1.7,
+          "pr": 48
         },
         "STL": {
-          "val": 1.5,
-          "pr": 72
+          "val": 1.3,
+          "pr": 63
         },
         "BLK": {
           "val": 2.0,
-          "pr": 95
+          "pr": 96
         },
         "eFG%": {
-          "val": 43.1,
-          "pr": 34
+          "val": 49.0,
+          "pr": 49
         },
         "TS%": {
-          "val": 51.3,
-          "pr": 43
+          "val": 55.5,
+          "pr": 58
         },
         "USG%": {
-          "val": 32.3,
-          "pr": 84
+          "val": 32.8,
+          "pr": 87
         },
         "GmSC": {
-          "val": 15.4,
+          "val": 17.9,
+          "pr": 91
+        }
+      }
+    },
+    {
+      "rank": 8,
+      "id": 559,
+      "name": "米勒",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "13",
+      "position": "SF",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 30.9,
+      "badges": {
+        "PTS": {
+          "val": 16.3,
+          "pr": 75
+        },
+        "REB": {
+          "val": 8.3,
+          "pr": 78
+        },
+        "AST": {
+          "val": 2.0,
+          "pr": 59
+        },
+        "STL": {
+          "val": 2.0,
+          "pr": 88
+        },
+        "BLK": {
+          "val": 0.7,
+          "pr": 83
+        },
+        "eFG%": {
+          "val": 62.9,
+          "pr": 88
+        },
+        "TS%": {
+          "val": 65.9,
+          "pr": 90
+        },
+        "USG%": {
+          "val": 24.1,
+          "pr": 59
+        },
+        "GmSC": {
+          "val": 15.7,
+          "pr": 90
+        }
+      }
+    },
+    {
+      "rank": 9,
+      "id": 508,
+      "name": "阿巴西",
+      "team_name": "新北中信特攻",
+      "jersey_number": "",
+      "position": "F/SF",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 29.9,
+      "badges": {
+        "PTS": {
+          "val": 19.3,
+          "pr": 90
+        },
+        "REB": {
+          "val": 2.3,
+          "pr": 28
+        },
+        "AST": {
+          "val": 3.3,
+          "pr": 79
+        },
+        "STL": {
+          "val": 3.0,
+          "pr": 99
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 61.6,
+          "pr": 84
+        },
+        "TS%": {
+          "val": 62.9,
+          "pr": 81
+        },
+        "USG%": {
+          "val": 30.1,
+          "pr": 80
+        },
+        "GmSC": {
+          "val": 15.1,
           "pr": 88
         }
       }
     },
     {
       "rank": 10,
-      "id": 591,
+      "id": 592,
       "name": "麥基",
       "team_name": "臺北台新戰神",
       "jersey_number": "25",
@@ -3802,11 +3851,11 @@
       "badges": {
         "PTS": {
           "val": 19.0,
-          "pr": 85
+          "pr": 87
         },
         "REB": {
           "val": 6.0,
-          "pr": 70
+          "pr": 72
         },
         "AST": {
           "val": 4.0,
@@ -3814,19 +3863,19 @@
         },
         "STL": {
           "val": 1.7,
-          "pr": 79
+          "pr": 80
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 78.6,
-          "pr": 95
+          "pr": 98
         },
         "TS%": {
           "val": 79.4,
-          "pr": 96
+          "pr": 97
         },
         "USG%": {
           "val": 22.4,
@@ -3840,56 +3889,7 @@
     },
     {
       "rank": 11,
-      "id": 510,
-      "name": "魏嘉豪",
-      "team_name": "新北中信特攻",
-      "jersey_number": "7",
-      "position": "G/PG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 24.0,
-      "badges": {
-        "PTS": {
-          "val": 12.0,
-          "pr": 60
-        },
-        "REB": {
-          "val": 2.5,
-          "pr": 30
-        },
-        "AST": {
-          "val": 5.0,
-          "pr": 93
-        },
-        "STL": {
-          "val": 3.5,
-          "pr": 99
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 61.1,
-          "pr": 76
-        },
-        "TS%": {
-          "val": 63.6,
-          "pr": 78
-        },
-        "USG%": {
-          "val": 22.5,
-          "pr": 50
-        },
-        "GmSC": {
-          "val": 13.4,
-          "pr": 85
-        }
-      }
-    },
-    {
-      "rank": 12,
-      "id": 570,
+      "id": 571,
       "name": "高柏鎧",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "34",
@@ -3900,45 +3900,45 @@
       "badges": {
         "PTS": {
           "val": 13.0,
-          "pr": 65
+          "pr": 61
         },
         "REB": {
           "val": 13.0,
-          "pr": 97
+          "pr": 96
         },
         "AST": {
           "val": 1.0,
-          "pr": 34
+          "pr": 28
         },
         "STL": {
           "val": 0.7,
-          "pr": 42
+          "pr": 41
         },
         "BLK": {
           "val": 2.0,
-          "pr": 95
+          "pr": 96
         },
         "eFG%": {
           "val": 51.9,
-          "pr": 51
+          "pr": 52
         },
         "TS%": {
           "val": 55.3,
-          "pr": 56
+          "pr": 55
         },
         "USG%": {
           "val": 19.1,
-          "pr": 32
+          "pr": 30
         },
         "GmSC": {
           "val": 13.3,
-          "pr": 84
+          "pr": 86
         }
       }
     },
     {
-      "rank": 13,
-      "id": 568,
+      "rank": 12,
+      "id": 569,
       "name": "林俊吉",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "11",
@@ -3949,94 +3949,45 @@
       "badges": {
         "PTS": {
           "val": 20.3,
-          "pr": 88
+          "pr": 91
         },
         "REB": {
           "val": 3.0,
-          "pr": 44
+          "pr": 46
         },
         "AST": {
           "val": 2.7,
-          "pr": 71
+          "pr": 70
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 61.2,
-          "pr": 78
+          "pr": 81
         },
         "TS%": {
           "val": 64.8,
-          "pr": 81
+          "pr": 88
         },
         "USG%": {
           "val": 35.4,
-          "pr": 93
+          "pr": 94
         },
         "GmSC": {
           "val": 13.2,
-          "pr": 82
+          "pr": 84
         }
       }
     },
     {
-      "rank": 14,
-      "id": 551,
-      "name": "高錦瑋",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "5",
-      "position": "PG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 32.8,
-      "badges": {
-        "PTS": {
-          "val": 18.0,
-          "pr": 81
-        },
-        "REB": {
-          "val": 3.5,
-          "pr": 53
-        },
-        "AST": {
-          "val": 4.5,
-          "pr": 90
-        },
-        "STL": {
-          "val": 2.0,
-          "pr": 85
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 62.5,
-          "pr": 82
-        },
-        "TS%": {
-          "val": 62.3,
-          "pr": 74
-        },
-        "USG%": {
-          "val": 27.5,
-          "pr": 71
-        },
-        "GmSC": {
-          "val": 13.0,
-          "pr": 81
-        }
-      }
-    },
-    {
-      "rank": 15,
-      "id": 520,
+      "rank": 13,
+      "id": 521,
       "name": "克雷格",
       "team_name": "新北國王",
       "jersey_number": "3",
@@ -4047,23 +3998,23 @@
       "badges": {
         "PTS": {
           "val": 19.2,
-          "pr": 87
+          "pr": 88
         },
         "REB": {
           "val": 3.5,
-          "pr": 53
+          "pr": 54
         },
         "AST": {
           "val": 3.5,
-          "pr": 79
+          "pr": 82
         },
         "STL": {
           "val": 2.5,
-          "pr": 94
+          "pr": 96
         },
         "BLK": {
           "val": 0.7,
-          "pr": 82
+          "pr": 83
         },
         "eFG%": {
           "val": 44.6,
@@ -4071,7 +4022,7 @@
         },
         "TS%": {
           "val": 54.8,
-          "pr": 53
+          "pr": 54
         },
         "USG%": {
           "val": 33.1,
@@ -4079,13 +4030,13 @@
         },
         "GmSC": {
           "val": 12.8,
-          "pr": 79
+          "pr": 83
         }
       }
     },
     {
-      "rank": 16,
-      "id": 567,
+      "rank": 14,
+      "id": 568,
       "name": "基德",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "10",
@@ -4096,45 +4047,94 @@
       "badges": {
         "PTS": {
           "val": 18.7,
-          "pr": 84
+          "pr": 86
         },
         "REB": {
           "val": 7.0,
-          "pr": 74
+          "pr": 75
         },
         "AST": {
           "val": 2.0,
-          "pr": 54
+          "pr": 59
         },
         "STL": {
           "val": 1.7,
-          "pr": 79
+          "pr": 80
         },
         "BLK": {
           "val": 0.7,
-          "pr": 82
+          "pr": 83
         },
         "eFG%": {
           "val": 41.5,
-          "pr": 26
+          "pr": 30
         },
         "TS%": {
           "val": 49.8,
-          "pr": 37
+          "pr": 38
         },
         "USG%": {
           "val": 31.1,
-          "pr": 81
+          "pr": 83
         },
         "GmSC": {
           "val": 12.7,
-          "pr": 78
+          "pr": 81
         }
       }
     },
     {
-      "rank": 17,
-      "id": 589,
+      "rank": 15,
+      "id": 546,
+      "name": "奧獅頓",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "32",
+      "position": "F",
+      "identity": "洋將",
+      "games_played": 2,
+      "mpg": 21.4,
+      "badges": {
+        "PTS": {
+          "val": 15.5,
+          "pr": 72
+        },
+        "REB": {
+          "val": 8.5,
+          "pr": 82
+        },
+        "AST": {
+          "val": 1.0,
+          "pr": 28
+        },
+        "STL": {
+          "val": 1.0,
+          "pr": 52
+        },
+        "BLK": {
+          "val": 0.5,
+          "pr": 79
+        },
+        "eFG%": {
+          "val": 56.2,
+          "pr": 68
+        },
+        "TS%": {
+          "val": 58.2,
+          "pr": 64
+        },
+        "USG%": {
+          "val": 36.0,
+          "pr": 99
+        },
+        "GmSC": {
+          "val": 12.6,
+          "pr": 80
+        }
+      }
+    },
+    {
+      "rank": 16,
+      "id": 590,
       "name": "馬雷利亞",
       "team_name": "臺北台新戰神",
       "jersey_number": "17",
@@ -4145,31 +4145,31 @@
       "badges": {
         "PTS": {
           "val": 15.0,
-          "pr": 74
+          "pr": 70
         },
         "REB": {
           "val": 8.5,
-          "pr": 81
+          "pr": 82
         },
         "AST": {
           "val": 3.5,
-          "pr": 79
+          "pr": 82
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 58.3,
-          "pr": 69
+          "pr": 70
         },
         "TS%": {
           "val": 59.2,
-          "pr": 66
+          "pr": 68
         },
         "USG%": {
           "val": 24.4,
@@ -4177,62 +4177,209 @@
         },
         "GmSC": {
           "val": 12.4,
-          "pr": 76
+          "pr": 78
+        }
+      }
+    },
+    {
+      "rank": 17,
+      "id": 503,
+      "name": "猛士",
+      "team_name": "新北中信特攻",
+      "jersey_number": "61",
+      "position": "F",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 33.0,
+      "badges": {
+        "PTS": {
+          "val": 17.0,
+          "pr": 81
+        },
+        "REB": {
+          "val": 9.3,
+          "pr": 86
+        },
+        "AST": {
+          "val": 3.0,
+          "pr": 72
+        },
+        "STL": {
+          "val": 0.7,
+          "pr": 41
+        },
+        "BLK": {
+          "val": 2.7,
+          "pr": 99
+        },
+        "eFG%": {
+          "val": 40.2,
+          "pr": 25
+        },
+        "TS%": {
+          "val": 42.8,
+          "pr": 28
+        },
+        "USG%": {
+          "val": 34.2,
+          "pr": 90
+        },
+        "GmSC": {
+          "val": 12.2,
+          "pr": 77
         }
       }
     },
     {
       "rank": 18,
-      "id": 539,
-      "name": "辛巴",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "35",
-      "position": "C",
-      "identity": "洋將",
-      "games_played": 1,
-      "mpg": 20.0,
+      "id": 510,
+      "name": "魏嘉豪",
+      "team_name": "新北中信特攻",
+      "jersey_number": "7",
+      "position": "G/PG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 25.9,
       "badges": {
         "PTS": {
-          "val": 9.0,
-          "pr": 46
+          "val": 10.7,
+          "pr": 52
         },
         "REB": {
-          "val": 7.0,
-          "pr": 74
+          "val": 2.0,
+          "pr": 22
         },
         "AST": {
-          "val": 1.0,
-          "pr": 34
+          "val": 7.0,
+          "pr": 100
         },
         "STL": {
-          "val": 0.0,
-          "pr": 10
+          "val": 3.3,
+          "pr": 100
         },
         "BLK": {
-          "val": 3.0,
-          "pr": 99
+          "val": 0.0,
+          "pr": 28
         },
         "eFG%": {
-          "val": 100.0,
-          "pr": 100
+          "val": 55.6,
+          "pr": 64
         },
         "TS%": {
-          "val": 92.2,
-          "pr": 100
+          "val": 54.8,
+          "pr": 52
         },
         "USG%": {
-          "val": 12.6,
-          "pr": 7
+          "val": 22.1,
+          "pr": 47
         },
         "GmSC": {
-          "val": 11.9,
+          "val": 12.0,
           "pr": 75
         }
       }
     },
     {
       "rank": 19,
-      "id": 521,
+      "id": 556,
+      "name": "莫騰",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "10",
+      "position": "F",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 34.6,
+      "badges": {
+        "PTS": {
+          "val": 17.7,
+          "pr": 84
+        },
+        "REB": {
+          "val": 9.3,
+          "pr": 86
+        },
+        "AST": {
+          "val": 1.7,
+          "pr": 48
+        },
+        "STL": {
+          "val": 1.7,
+          "pr": 80
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 47.9,
+          "pr": 46
+        },
+        "TS%": {
+          "val": 50.6,
+          "pr": 43
+        },
+        "USG%": {
+          "val": 31.1,
+          "pr": 83
+        },
+        "GmSC": {
+          "val": 11.8,
+          "pr": 74
+        }
+      }
+    },
+    {
+      "rank": 20,
+      "id": 552,
+      "name": "高錦瑋",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "5",
+      "position": "PG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 34.8,
+      "badges": {
+        "PTS": {
+          "val": 16.7,
+          "pr": 78
+        },
+        "REB": {
+          "val": 3.3,
+          "pr": 51
+        },
+        "AST": {
+          "val": 5.0,
+          "pr": 92
+        },
+        "STL": {
+          "val": 1.7,
+          "pr": 80
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 59.8,
+          "pr": 77
+        },
+        "TS%": {
+          "val": 58.5,
+          "pr": 65
+        },
+        "USG%": {
+          "val": 25.7,
+          "pr": 65
+        },
+        "GmSC": {
+          "val": 11.7,
+          "pr": 72
+        }
+      }
+    },
+    {
+      "rank": 21,
+      "id": 522,
       "name": "李愷諺",
       "team_name": "新北國王",
       "jersey_number": "9",
@@ -4243,11 +4390,11 @@
       "badges": {
         "PTS": {
           "val": 14.0,
-          "pr": 69
+          "pr": 67
         },
         "REB": {
           "val": 5.2,
-          "pr": 63
+          "pr": 67
         },
         "AST": {
           "val": 3.2,
@@ -4259,15 +4406,15 @@
         },
         "BLK": {
           "val": 0.2,
-          "pr": 60
+          "pr": 59
         },
         "eFG%": {
           "val": 55.5,
-          "pr": 65
+          "pr": 62
         },
         "TS%": {
           "val": 59.8,
-          "pr": 68
+          "pr": 72
         },
         "USG%": {
           "val": 22.7,
@@ -4275,62 +4422,13 @@
         },
         "GmSC": {
           "val": 11.7,
-          "pr": 74
+          "pr": 72
         }
       }
     },
     {
-      "rank": 20,
-      "id": 545,
-      "name": "奧獅頓",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "32",
-      "position": "F",
-      "identity": "洋將",
-      "games_played": 1,
-      "mpg": 22.0,
-      "badges": {
-        "PTS": {
-          "val": 17.0,
-          "pr": 78
-        },
-        "REB": {
-          "val": 10.0,
-          "pr": 90
-        },
-        "AST": {
-          "val": 0.0,
-          "pr": 6
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 53.9,
-          "pr": 56
-        },
-        "TS%": {
-          "val": 55.9,
-          "pr": 59
-        },
-        "USG%": {
-          "val": 42.8,
-          "pr": 100
-        },
-        "GmSC": {
-          "val": 11.3,
-          "pr": 71
-        }
-      }
-    },
-    {
-      "rank": 21,
-      "id": 519,
+      "rank": 22,
+      "id": 520,
       "name": "肯刀爾",
       "team_name": "新北國王",
       "jersey_number": "2",
@@ -4341,23 +4439,23 @@
       "badges": {
         "PTS": {
           "val": 16.7,
-          "pr": 75
+          "pr": 78
         },
         "REB": {
           "val": 10.5,
-          "pr": 91
+          "pr": 90
         },
         "AST": {
           "val": 1.8,
-          "pr": 50
+          "pr": 54
         },
         "STL": {
           "val": 2.0,
-          "pr": 85
+          "pr": 88
         },
         "BLK": {
           "val": 0.2,
-          "pr": 60
+          "pr": 59
         },
         "eFG%": {
           "val": 37.2,
@@ -4365,21 +4463,119 @@
         },
         "TS%": {
           "val": 44.4,
-          "pr": 28
+          "pr": 30
         },
         "USG%": {
           "val": 32.7,
-          "pr": 87
+          "pr": 86
         },
         "GmSC": {
           "val": 11.3,
-          "pr": 71
+          "pr": 70
         }
       }
     },
     {
-      "rank": 22,
-      "id": 569,
+      "rank": 23,
+      "id": 541,
+      "name": "盧冠軒",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "42",
+      "position": "G/SG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 28.1,
+      "badges": {
+        "PTS": {
+          "val": 17.0,
+          "pr": 81
+        },
+        "REB": {
+          "val": 3.0,
+          "pr": 46
+        },
+        "AST": {
+          "val": 2.0,
+          "pr": 59
+        },
+        "STL": {
+          "val": 1.0,
+          "pr": 52
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 59.0,
+          "pr": 72
+        },
+        "TS%": {
+          "val": 60.6,
+          "pr": 74
+        },
+        "USG%": {
+          "val": 29.6,
+          "pr": 74
+        },
+        "GmSC": {
+          "val": 11.1,
+          "pr": 68
+        }
+      }
+    },
+    {
+      "rank": 24,
+      "id": 602,
+      "name": "于煥亞",
+      "team_name": "高雄全家海神",
+      "jersey_number": "7",
+      "position": "SG",
+      "identity": "本土",
+      "games_played": 5,
+      "mpg": 30.5,
+      "badges": {
+        "PTS": {
+          "val": 13.2,
+          "pr": 62
+        },
+        "REB": {
+          "val": 2.6,
+          "pr": 35
+        },
+        "AST": {
+          "val": 4.6,
+          "pr": 90
+        },
+        "STL": {
+          "val": 2.0,
+          "pr": 88
+        },
+        "BLK": {
+          "val": 0.2,
+          "pr": 59
+        },
+        "eFG%": {
+          "val": 59.4,
+          "pr": 74
+        },
+        "TS%": {
+          "val": 59.5,
+          "pr": 70
+        },
+        "USG%": {
+          "val": 22.1,
+          "pr": 47
+        },
+        "GmSC": {
+          "val": 10.9,
+          "pr": 67
+        }
+      }
+    },
+    {
+      "rank": 25,
+      "id": 570,
       "name": "馬建豪",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "2",
@@ -4390,27 +4586,27 @@
       "badges": {
         "PTS": {
           "val": 17.0,
-          "pr": 78
+          "pr": 81
         },
         "REB": {
           "val": 4.3,
-          "pr": 62
+          "pr": 64
         },
         "AST": {
           "val": 1.7,
-          "pr": 47
+          "pr": 48
         },
         "STL": {
           "val": 1.7,
-          "pr": 79
+          "pr": 80
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 55.1,
-          "pr": 63
+          "pr": 61
         },
         "TS%": {
           "val": 55.4,
@@ -4418,66 +4614,17 @@
         },
         "USG%": {
           "val": 28.8,
-          "pr": 74
+          "pr": 72
         },
         "GmSC": {
           "val": 10.5,
-          "pr": 69
+          "pr": 65
         }
       }
     },
     {
-      "rank": 23,
-      "id": 600,
-      "name": "加爾文",
-      "team_name": "高雄全家海神",
-      "jersey_number": "52",
-      "position": "C",
-      "identity": "洋將",
-      "games_played": 4,
-      "mpg": 22.6,
-      "badges": {
-        "PTS": {
-          "val": 14.2,
-          "pr": 72
-        },
-        "REB": {
-          "val": 9.2,
-          "pr": 88
-        },
-        "AST": {
-          "val": 2.3,
-          "pr": 60
-        },
-        "STL": {
-          "val": 1.5,
-          "pr": 72
-        },
-        "BLK": {
-          "val": 0.2,
-          "pr": 60
-        },
-        "eFG%": {
-          "val": 54.2,
-          "pr": 59
-        },
-        "TS%": {
-          "val": 54.0,
-          "pr": 50
-        },
-        "USG%": {
-          "val": 38.3,
-          "pr": 97
-        },
-        "GmSC": {
-          "val": 10.4,
-          "pr": 68
-        }
-      }
-    },
-    {
-      "rank": 24,
-      "id": 572,
+      "rank": 26,
+      "id": 573,
       "name": "霍爾曼",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "35",
@@ -4488,15 +4635,15 @@
       "badges": {
         "PTS": {
           "val": 14.0,
-          "pr": 69
+          "pr": 67
         },
         "REB": {
           "val": 6.0,
-          "pr": 70
+          "pr": 72
         },
         "AST": {
           "val": 2.5,
-          "pr": 65
+          "pr": 67
         },
         "STL": {
           "val": 1.0,
@@ -4504,7 +4651,7 @@
         },
         "BLK": {
           "val": 1.5,
-          "pr": 90
+          "pr": 91
         },
         "eFG%": {
           "val": 43.8,
@@ -4512,21 +4659,70 @@
         },
         "TS%": {
           "val": 50.1,
-          "pr": 39
+          "pr": 41
         },
         "USG%": {
           "val": 24.6,
-          "pr": 65
+          "pr": 64
         },
         "GmSC": {
           "val": 10.3,
-          "pr": 66
+          "pr": 64
         }
       }
     },
     {
-      "rank": 25,
-      "id": 523,
+      "rank": 27,
+      "id": 601,
+      "name": "加爾文",
+      "team_name": "高雄全家海神",
+      "jersey_number": "52",
+      "position": "C",
+      "identity": "洋將",
+      "games_played": 5,
+      "mpg": 22.6,
+      "badges": {
+        "PTS": {
+          "val": 13.8,
+          "pr": 65
+        },
+        "REB": {
+          "val": 8.4,
+          "pr": 80
+        },
+        "AST": {
+          "val": 1.8,
+          "pr": 54
+        },
+        "STL": {
+          "val": 1.4,
+          "pr": 69
+        },
+        "BLK": {
+          "val": 0.2,
+          "pr": 59
+        },
+        "eFG%": {
+          "val": 56.1,
+          "pr": 66
+        },
+        "TS%": {
+          "val": 55.8,
+          "pr": 59
+        },
+        "USG%": {
+          "val": 35.6,
+          "pr": 96
+        },
+        "GmSC": {
+          "val": 9.7,
+          "pr": 62
+        }
+      }
+    },
+    {
+      "rank": 28,
+      "id": 524,
       "name": "沃許本",
       "team_name": "新北國王",
       "jersey_number": "42",
@@ -4537,45 +4733,45 @@
       "badges": {
         "PTS": {
           "val": 13.7,
-          "pr": 66
+          "pr": 64
         },
         "REB": {
           "val": 9.0,
-          "pr": 85
+          "pr": 84
         },
         "AST": {
           "val": 3.0,
-          "pr": 74
+          "pr": 72
         },
         "STL": {
           "val": 0.7,
-          "pr": 42
+          "pr": 41
         },
         "BLK": {
           "val": 1.0,
-          "pr": 85
+          "pr": 88
         },
         "eFG%": {
           "val": 43.6,
-          "pr": 37
+          "pr": 36
         },
         "TS%": {
           "val": 46.8,
-          "pr": 34
+          "pr": 33
         },
         "USG%": {
           "val": 30.0,
-          "pr": 75
+          "pr": 78
         },
         "GmSC": {
           "val": 9.6,
-          "pr": 65
+          "pr": 61
         }
       }
     },
     {
-      "rank": 26,
-      "id": 526,
+      "rank": 29,
+      "id": 527,
       "name": "林彥廷",
       "team_name": "新北國王",
       "jersey_number": "12",
@@ -4586,15 +4782,15 @@
       "badges": {
         "PTS": {
           "val": 11.8,
-          "pr": 59
+          "pr": 58
         },
         "REB": {
           "val": 2.8,
-          "pr": 40
+          "pr": 43
         },
         "AST": {
           "val": 2.0,
-          "pr": 54
+          "pr": 59
         },
         "STL": {
           "val": 1.5,
@@ -4602,29 +4798,78 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 61.6,
-          "pr": 79
+          "pr": 83
         },
         "TS%": {
           "val": 62.6,
-          "pr": 75
+          "pr": 78
         },
         "USG%": {
           "val": 19.2,
-          "pr": 34
+          "pr": 32
         },
         "GmSC": {
           "val": 9.4,
-          "pr": 63
+          "pr": 59
         }
       }
     },
     {
-      "rank": 27,
-      "id": 525,
+      "rank": 30,
+      "id": 506,
+      "name": "強斯",
+      "team_name": "新北中信特攻",
+      "jersey_number": "17",
+      "position": "PF/C",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 24.6,
+      "badges": {
+        "PTS": {
+          "val": 11.3,
+          "pr": 54
+        },
+        "REB": {
+          "val": 7.0,
+          "pr": 75
+        },
+        "AST": {
+          "val": 1.0,
+          "pr": 28
+        },
+        "STL": {
+          "val": 1.0,
+          "pr": 52
+        },
+        "BLK": {
+          "val": 0.7,
+          "pr": 83
+        },
+        "eFG%": {
+          "val": 40.4,
+          "pr": 26
+        },
+        "TS%": {
+          "val": 52.9,
+          "pr": 45
+        },
+        "USG%": {
+          "val": 26.1,
+          "pr": 68
+        },
+        "GmSC": {
+          "val": 9.3,
+          "pr": 58
+        }
+      }
+    },
+    {
+      "rank": 31,
+      "id": 526,
       "name": "林書緯",
       "team_name": "新北國王",
       "jersey_number": "1",
@@ -4639,89 +4884,40 @@
         },
         "REB": {
           "val": 3.7,
-          "pr": 56
+          "pr": 57
         },
         "AST": {
           "val": 5.0,
-          "pr": 93
+          "pr": 92
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 52.1,
-          "pr": 53
+          "pr": 54
         },
         "TS%": {
           "val": 56.7,
-          "pr": 60
+          "pr": 61
         },
         "USG%": {
           "val": 19.5,
-          "pr": 36
+          "pr": 33
         },
         "GmSC": {
           "val": 9.2,
-          "pr": 61
+          "pr": 57
         }
       }
     },
     {
-      "rank": 28,
-      "id": 555,
-      "name": "莫騰",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "10",
-      "position": "F",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 31.6,
-      "badges": {
-        "PTS": {
-          "val": 17.0,
-          "pr": 78
-        },
-        "REB": {
-          "val": 8.5,
-          "pr": 81
-        },
-        "AST": {
-          "val": 0.5,
-          "pr": 20
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 48.2,
-          "pr": 47
-        },
-        "TS%": {
-          "val": 53.9,
-          "pr": 49
-        },
-        "USG%": {
-          "val": 33.2,
-          "pr": 90
-        },
-        "GmSC": {
-          "val": 9.2,
-          "pr": 61
-        }
-      }
-    },
-    {
-      "rank": 29,
+      "rank": 32,
       "id": 517,
       "name": "林韋翰",
       "team_name": "新北中信特攻",
@@ -4733,15 +4929,15 @@
       "badges": {
         "PTS": {
           "val": 10.0,
-          "pr": 50
+          "pr": 49
         },
         "REB": {
           "val": 2.5,
-          "pr": 30
+          "pr": 32
         },
         "AST": {
           "val": 2.5,
-          "pr": 65
+          "pr": 67
         },
         "STL": {
           "val": 1.5,
@@ -4749,15 +4945,15 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 90.9,
-          "pr": 99
+          "pr": 100
         },
         "TS%": {
           "val": 90.9,
-          "pr": 99
+          "pr": 100
         },
         "USG%": {
           "val": 23.5,
@@ -4765,258 +4961,209 @@
         },
         "GmSC": {
           "val": 9.0,
-          "pr": 59
-        }
-      }
-    },
-    {
-      "rank": 30,
-      "id": 540,
-      "name": "盧冠軒",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "42",
-      "position": "G/SG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 24.9,
-      "badges": {
-        "PTS": {
-          "val": 14.0,
-          "pr": 69
-        },
-        "REB": {
-          "val": 3.0,
-          "pr": 44
-        },
-        "AST": {
-          "val": 2.0,
-          "pr": 54
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 50.0,
-          "pr": 50
-        },
-        "TS%": {
-          "val": 52.5,
-          "pr": 44
-        },
-        "USG%": {
-          "val": 31.8,
-          "pr": 82
-        },
-        "GmSC": {
-          "val": 8.5,
-          "pr": 57
-        }
-      }
-    },
-    {
-      "rank": 31,
-      "id": 506,
-      "name": "強斯",
-      "team_name": "新北中信特攻",
-      "jersey_number": "17",
-      "position": "PF/C",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 25.1,
-      "badges": {
-        "PTS": {
-          "val": 11.0,
-          "pr": 52
-        },
-        "REB": {
-          "val": 7.5,
-          "pr": 76
-        },
-        "AST": {
-          "val": 0.5,
-          "pr": 20
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 41.7,
-          "pr": 29
-        },
-        "TS%": {
-          "val": 51.1,
-          "pr": 41
-        },
-        "USG%": {
-          "val": 24.3,
-          "pr": 60
-        },
-        "GmSC": {
-          "val": 8.5,
-          "pr": 57
-        }
-      }
-    },
-    {
-      "rank": 32,
-      "id": 504,
-      "name": "謝亞軒",
-      "team_name": "新北中信特攻",
-      "jersey_number": "10",
-      "position": "G/SG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 26.1,
-      "badges": {
-        "PTS": {
-          "val": 6.5,
-          "pr": 36
-        },
-        "REB": {
-          "val": 3.0,
-          "pr": 44
-        },
-        "AST": {
-          "val": 2.5,
-          "pr": 65
-        },
-        "STL": {
-          "val": 3.0,
-          "pr": 97
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 54.2,
-          "pr": 57
-        },
-        "TS%": {
-          "val": 54.2,
-          "pr": 51
-        },
-        "USG%": {
-          "val": 12.9,
-          "pr": 10
-        },
-        "GmSC": {
-          "val": 8.2,
-          "pr": 54
+          "pr": 55
         }
       }
     },
     {
       "rank": 33,
-      "id": 543,
-      "name": "傅友",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "14",
-      "position": "G/F",
-      "identity": "本土",
-      "games_played": 1,
-      "mpg": 10.2,
+      "id": 561,
+      "name": "溫布許",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "20",
+      "position": "F",
+      "identity": "洋將",
+      "games_played": 3,
+      "mpg": 32.3,
       "badges": {
         "PTS": {
-          "val": 9.0,
-          "pr": 46
+          "val": 16.0,
+          "pr": 74
         },
         "REB": {
-          "val": 3.0,
-          "pr": 44
+          "val": 9.7,
+          "pr": 88
         },
         "AST": {
-          "val": 0.0,
-          "pr": 6
+          "val": 2.3,
+          "pr": 64
         },
         "STL": {
-          "val": 0.0,
-          "pr": 10
+          "val": 0.3,
+          "pr": 24
         },
         "BLK": {
-          "val": 1.0,
-          "pr": 85
+          "val": 0.0,
+          "pr": 28
         },
         "eFG%": {
-          "val": 75.0,
-          "pr": 93
+          "val": 34.3,
+          "pr": 19
         },
         "TS%": {
-          "val": 75.0,
-          "pr": 91
+          "val": 41.4,
+          "pr": 23
         },
         "USG%": {
-          "val": 30.4,
-          "pr": 76
+          "val": 34.7,
+          "pr": 93
         },
         "GmSC": {
-          "val": 8.0,
-          "pr": 53
+          "val": 8.6,
+          "pr": 54
         }
       }
     },
     {
       "rank": 34,
-      "id": 601,
-      "name": "于煥亞",
-      "team_name": "高雄全家海神",
-      "jersey_number": "7",
+      "id": 563,
+      "name": "錢肯尼",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "23",
       "position": "SG",
-      "identity": "本土",
-      "games_played": 4,
-      "mpg": 29.4,
+      "identity": "華裔/本土",
+      "games_played": 3,
+      "mpg": 29.5,
       "badges": {
         "PTS": {
-          "val": 11.7,
-          "pr": 57
+          "val": 10.3,
+          "pr": 51
         },
         "REB": {
-          "val": 2.2,
-          "pr": 24
+          "val": 1.7,
+          "pr": 18
         },
         "AST": {
-          "val": 3.7,
-          "pr": 82
+          "val": 1.3,
+          "pr": 38
         },
         "STL": {
           "val": 1.3,
           "pr": 63
         },
         "BLK": {
-          "val": 0.2,
-          "pr": 60
+          "val": 0.3,
+          "pr": 69
         },
         "eFG%": {
-          "val": 57.6,
-          "pr": 68
+          "val": 58.3,
+          "pr": 70
         },
         "TS%": {
-          "val": 57.0,
-          "pr": 62
+          "val": 59.2,
+          "pr": 67
         },
         "USG%": {
-          "val": 22.1,
-          "pr": 47
+          "val": 16.5,
+          "pr": 23
         },
         "GmSC": {
-          "val": 7.9,
-          "pr": 51
+          "val": 7.6,
+          "pr": 52
         }
       }
     },
     {
       "rank": 35,
-      "id": 592,
+      "id": 504,
+      "name": "謝亞軒",
+      "team_name": "新北中信特攻",
+      "jersey_number": "10",
+      "position": "G/SG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 29.3,
+      "badges": {
+        "PTS": {
+          "val": 6.0,
+          "pr": 36
+        },
+        "REB": {
+          "val": 3.7,
+          "pr": 57
+        },
+        "AST": {
+          "val": 3.3,
+          "pr": 79
+        },
+        "STL": {
+          "val": 2.7,
+          "pr": 97
+        },
+        "BLK": {
+          "val": 0.3,
+          "pr": 69
+        },
+        "eFG%": {
+          "val": 52.9,
+          "pr": 55
+        },
+        "TS%": {
+          "val": 52.9,
+          "pr": 46
+        },
+        "USG%": {
+          "val": 13.0,
+          "pr": 9
+        },
+        "GmSC": {
+          "val": 7.2,
+          "pr": 51
+        }
+      }
+    },
+    {
+      "rank": 36,
+      "id": 609,
+      "name": "蘇文儒",
+      "team_name": "高雄全家海神",
+      "jersey_number": "24",
+      "position": "SG",
+      "identity": "本土",
+      "games_played": 4,
+      "mpg": 28.4,
+      "badges": {
+        "PTS": {
+          "val": 9.3,
+          "pr": 47
+        },
+        "REB": {
+          "val": 3.5,
+          "pr": 54
+        },
+        "AST": {
+          "val": 4.0,
+          "pr": 86
+        },
+        "STL": {
+          "val": 1.2,
+          "pr": 58
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 44.0,
+          "pr": 39
+        },
+        "TS%": {
+          "val": 48.2,
+          "pr": 36
+        },
+        "USG%": {
+          "val": 20.4,
+          "pr": 35
+        },
+        "GmSC": {
+          "val": 7.0,
+          "pr": 49
+        }
+      }
+    },
+    {
+      "rank": 37,
+      "id": 593,
       "name": "雷蒙恩",
       "team_name": "臺北台新戰神",
       "jersey_number": "33",
@@ -5027,94 +5174,45 @@
       "badges": {
         "PTS": {
           "val": 12.7,
-          "pr": 63
+          "pr": 59
         },
         "REB": {
           "val": 5.7,
-          "pr": 67
+          "pr": 69
         },
         "AST": {
           "val": 1.7,
-          "pr": 47
+          "pr": 48
         },
         "STL": {
           "val": 2.3,
-          "pr": 90
+          "pr": 93
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 41.2,
-          "pr": 25
+          "pr": 29
         },
         "TS%": {
           "val": 42.4,
-          "pr": 25
+          "pr": 26
         },
         "USG%": {
           "val": 23.4,
-          "pr": 54
+          "pr": 55
         },
         "GmSC": {
           "val": 6.9,
-          "pr": 50
+          "pr": 48
         }
       }
     },
     {
-      "rank": 36,
-      "id": 503,
-      "name": "猛士",
-      "team_name": "新北中信特攻",
-      "jersey_number": "61",
-      "position": "F",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 33.1,
-      "badges": {
-        "PTS": {
-          "val": 12.5,
-          "pr": 62
-        },
-        "REB": {
-          "val": 6.5,
-          "pr": 72
-        },
-        "AST": {
-          "val": 3.5,
-          "pr": 79
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 2.0,
-          "pr": 95
-        },
-        "eFG%": {
-          "val": 30.6,
-          "pr": 12
-        },
-        "TS%": {
-          "val": 33.1,
-          "pr": 10
-        },
-        "USG%": {
-          "val": 32.6,
-          "pr": 85
-        },
-        "GmSC": {
-          "val": 6.6,
-          "pr": 49
-        }
-      }
-    },
-    {
-      "rank": 37,
-      "id": 582,
+      "rank": 38,
+      "id": 583,
       "name": "丁聖儒",
       "team_name": "臺北台新戰神",
       "jersey_number": "2",
@@ -5125,15 +5223,15 @@
       "badges": {
         "PTS": {
           "val": 5.0,
-          "pr": 21
+          "pr": 22
         },
         "REB": {
           "val": 1.3,
-          "pr": 18
+          "pr": 13
         },
         "AST": {
           "val": 5.3,
-          "pr": 96
+          "pr": 94
         },
         "STL": {
           "val": 1.3,
@@ -5141,11 +5239,11 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 46.4,
-          "pr": 44
+          "pr": 43
         },
         "TS%": {
           "val": 47.6,
@@ -5153,164 +5251,66 @@
         },
         "USG%": {
           "val": 12.7,
-          "pr": 9
+          "pr": 7
         },
         "GmSC": {
           "val": 6.1,
-          "pr": 47
-        }
-      }
-    },
-    {
-      "rank": 38,
-      "id": 608,
-      "name": "蘇文儒",
-      "team_name": "高雄全家海神",
-      "jersey_number": "24",
-      "position": "SG",
-      "identity": "本土",
-      "games_played": 3,
-      "mpg": 26.8,
-      "badges": {
-        "PTS": {
-          "val": 7.7,
-          "pr": 41
-        },
-        "REB": {
-          "val": 3.3,
-          "pr": 49
-        },
-        "AST": {
-          "val": 4.3,
-          "pr": 88
-        },
-        "STL": {
-          "val": 1.3,
-          "pr": 63
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 41.7,
-          "pr": 29
-        },
-        "TS%": {
-          "val": 44.6,
-          "pr": 29
-        },
-        "USG%": {
-          "val": 19.9,
-          "pr": 38
-        },
-        "GmSC": {
-          "val": 5.8,
           "pr": 46
         }
       }
     },
     {
       "rank": 39,
-      "id": 514,
-      "name": "林任鴻",
-      "team_name": "新北中信特攻",
-      "jersey_number": "12",
-      "position": "F",
+      "id": 544,
+      "name": "傅友",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "14",
+      "position": "G/F",
       "identity": "本土",
       "games_played": 2,
-      "mpg": 11.0,
+      "mpg": 8.7,
       "badges": {
         "PTS": {
-          "val": 6.0,
-          "pr": 31
+          "val": 7.0,
+          "pr": 40
         },
         "REB": {
           "val": 2.0,
           "pr": 22
         },
         "AST": {
-          "val": 0.5,
-          "pr": 20
+          "val": 0.0,
+          "pr": 4
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
-          "val": 0.0,
-          "pr": 29
+          "val": 0.5,
+          "pr": 79
         },
         "eFG%": {
-          "val": 66.7,
-          "pr": 85
+          "val": 70.0,
+          "pr": 92
         },
         "TS%": {
-          "val": 77.3,
-          "pr": 93
+          "val": 70.0,
+          "pr": 91
         },
         "USG%": {
-          "val": 18.2,
-          "pr": 29
+          "val": 29.7,
+          "pr": 76
         },
         "GmSC": {
-          "val": 5.7,
-          "pr": 44
+          "val": 5.8,
+          "pr": 45
         }
       }
     },
     {
       "rank": 40,
-      "id": 560,
-      "name": "溫布許",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "20",
-      "position": "F",
-      "identity": "洋將",
-      "games_played": 2,
-      "mpg": 27.6,
-      "badges": {
-        "PTS": {
-          "val": 11.0,
-          "pr": 52
-        },
-        "REB": {
-          "val": 8.5,
-          "pr": 81
-        },
-        "AST": {
-          "val": 3.0,
-          "pr": 74
-        },
-        "STL": {
-          "val": 0.0,
-          "pr": 10
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 34.0,
-          "pr": 19
-        },
-        "TS%": {
-          "val": 39.8,
-          "pr": 21
-        },
-        "USG%": {
-          "val": 30.7,
-          "pr": 79
-        },
-        "GmSC": {
-          "val": 5.6,
-          "pr": 43
-        }
-      }
-    },
-    {
-      "rank": 41,
-      "id": 524,
+      "id": 525,
       "name": "蘇士軒",
       "team_name": "新北國王",
       "jersey_number": "17",
@@ -5321,27 +5321,27 @@
       "badges": {
         "PTS": {
           "val": 5.2,
-          "pr": 22
+          "pr": 25
         },
         "REB": {
           "val": 4.2,
-          "pr": 60
+          "pr": 62
         },
         "AST": {
           "val": 0.2,
-          "pr": 12
+          "pr": 9
         },
         "STL": {
           "val": 2.0,
-          "pr": 85
+          "pr": 88
         },
         "BLK": {
           "val": 1.8,
-          "pr": 91
+          "pr": 93
         },
         "eFG%": {
           "val": 42.2,
-          "pr": 31
+          "pr": 32
         },
         "TS%": {
           "val": 46.5,
@@ -5349,66 +5349,66 @@
         },
         "USG%": {
           "val": 13.1,
-          "pr": 13
+          "pr": 12
         },
         "GmSC": {
           "val": 5.2,
-          "pr": 40
+          "pr": 43
+        }
+      }
+    },
+    {
+      "rank": 41,
+      "id": 514,
+      "name": "林任鴻",
+      "team_name": "新北中信特攻",
+      "jersey_number": "12",
+      "position": "F",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 10.5,
+      "badges": {
+        "PTS": {
+          "val": 5.7,
+          "pr": 33
+        },
+        "REB": {
+          "val": 2.3,
+          "pr": 28
+        },
+        "AST": {
+          "val": 0.7,
+          "pr": 20
+        },
+        "STL": {
+          "val": 0.0,
+          "pr": 9
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 71.4,
+          "pr": 94
+        },
+        "TS%": {
+          "val": 80.8,
+          "pr": 99
+        },
+        "USG%": {
+          "val": 20.6,
+          "pr": 36
+        },
+        "GmSC": {
+          "val": 5.1,
+          "pr": 42
         }
       }
     },
     {
       "rank": 42,
-      "id": 538,
-      "name": "蔡宸綱",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "17",
-      "position": "F/PF",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 24.5,
-      "badges": {
-        "PTS": {
-          "val": 9.0,
-          "pr": 46
-        },
-        "REB": {
-          "val": 2.5,
-          "pr": 30
-        },
-        "AST": {
-          "val": 1.5,
-          "pr": 42
-        },
-        "STL": {
-          "val": 2.5,
-          "pr": 94
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 44.1,
-          "pr": 40
-        },
-        "TS%": {
-          "val": 45.8,
-          "pr": 31
-        },
-        "USG%": {
-          "val": 26.0,
-          "pr": 68
-        },
-        "GmSC": {
-          "val": 5.2,
-          "pr": 40
-        }
-      }
-    },
-    {
-      "rank": 43,
-      "id": 599,
+      "id": 600,
       "name": "賀丹",
       "team_name": "高雄全家海神",
       "jersey_number": "3",
@@ -5419,143 +5419,45 @@
       "badges": {
         "PTS": {
           "val": 11.5,
-          "pr": 54
+          "pr": 55
         },
         "REB": {
           "val": 3.3,
-          "pr": 49
+          "pr": 51
         },
         "AST": {
           "val": 0.5,
-          "pr": 20
+          "pr": 14
         },
         "STL": {
           "val": 0.7,
-          "pr": 42
+          "pr": 41
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 47.3,
-          "pr": 46
+          "val": 47.5,
+          "pr": 45
         },
         "TS%": {
-          "val": 53.7,
-          "pr": 47
+          "val": 53.4,
+          "pr": 51
         },
         "USG%": {
-          "val": 30.5,
-          "pr": 78
+          "val": 30.6,
+          "pr": 81
         },
         "GmSC": {
-          "val": 5.1,
-          "pr": 38
+          "val": 5.0,
+          "pr": 41
         }
       }
     },
     {
-      "rank": 44,
-      "id": 547,
-      "name": "朱雲豪",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "28",
-      "position": "F/SF",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 14.0,
-      "badges": {
-        "PTS": {
-          "val": 6.5,
-          "pr": 36
-        },
-        "REB": {
-          "val": 0.5,
-          "pr": 7
-        },
-        "AST": {
-          "val": 0.0,
-          "pr": 6
-        },
-        "STL": {
-          "val": 1.5,
-          "pr": 72
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 65.0,
-          "pr": 84
-        },
-        "TS%": {
-          "val": 65.0,
-          "pr": 82
-        },
-        "USG%": {
-          "val": 18.5,
-          "pr": 31
-        },
-        "GmSC": {
-          "val": 5.1,
-          "pr": 38
-        }
-      }
-    },
-    {
-      "rank": 45,
-      "id": 562,
-      "name": "錢肯尼",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "23",
-      "position": "SG",
-      "identity": "華裔/本土",
-      "games_played": 2,
-      "mpg": 30.7,
-      "badges": {
-        "PTS": {
-          "val": 9.0,
-          "pr": 46
-        },
-        "REB": {
-          "val": 1.0,
-          "pr": 14
-        },
-        "AST": {
-          "val": 1.0,
-          "pr": 34
-        },
-        "STL": {
-          "val": 1.0,
-          "pr": 52
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 53.1,
-          "pr": 54
-        },
-        "TS%": {
-          "val": 53.3,
-          "pr": 46
-        },
-        "USG%": {
-          "val": 15.9,
-          "pr": 22
-        },
-        "GmSC": {
-          "val": 4.9,
-          "pr": 35
-        }
-      }
-    },
-    {
-      "rank": 46,
-      "id": 574,
+      "rank": 43,
+      "id": 575,
       "name": "陳振傑",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "0",
@@ -5566,15 +5468,15 @@
       "badges": {
         "PTS": {
           "val": 5.7,
-          "pr": 29
+          "pr": 33
         },
         "REB": {
           "val": 2.3,
-          "pr": 25
+          "pr": 28
         },
         "AST": {
           "val": 1.7,
-          "pr": 47
+          "pr": 48
         },
         "STL": {
           "val": 1.3,
@@ -5582,29 +5484,29 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 29.4,
-          "pr": 9
+          "pr": 13
         },
         "TS%": {
           "val": 41.4,
-          "pr": 24
+          "pr": 25
         },
         "USG%": {
           "val": 21.2,
-          "pr": 44
+          "pr": 41
         },
         "GmSC": {
           "val": 4.6,
-          "pr": 34
+          "pr": 39
         }
       }
     },
     {
-      "rank": 47,
-      "id": 604,
+      "rank": 44,
+      "id": 605,
       "name": "胡瓏貿",
       "team_name": "高雄全家海神",
       "jersey_number": "10",
@@ -5615,45 +5517,45 @@
       "badges": {
         "PTS": {
           "val": 5.7,
-          "pr": 29
+          "pr": 33
         },
         "REB": {
           "val": 3.8,
-          "pr": 57
+          "pr": 59
         },
         "AST": {
           "val": 1.5,
-          "pr": 42
+          "pr": 41
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 71.2,
-          "pr": 90
+          "val": 70.0,
+          "pr": 92
         },
         "TS%": {
-          "val": 71.5,
-          "pr": 88
+          "val": 70.5,
+          "pr": 93
         },
         "USG%": {
-          "val": 15.7,
-          "pr": 21
+          "val": 15.8,
+          "pr": 22
         },
         "GmSC": {
-          "val": 4.3,
-          "pr": 32
+          "val": 4.2,
+          "pr": 37
         }
       }
     },
     {
-      "rank": 48,
-      "id": 522,
+      "rank": 45,
+      "id": 523,
       "name": "熊祥泰",
       "team_name": "新北國王",
       "jersey_number": "20",
@@ -5664,45 +5566,143 @@
       "badges": {
         "PTS": {
           "val": 5.3,
-          "pr": 24
+          "pr": 27
         },
         "REB": {
           "val": 1.0,
-          "pr": 14
+          "pr": 11
         },
         "AST": {
           "val": 0.7,
-          "pr": 27
+          "pr": 20
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.3,
-          "pr": 67
+          "pr": 69
         },
         "eFG%": {
           "val": 48.6,
-          "pr": 49
+          "pr": 48
         },
         "TS%": {
           "val": 57.9,
-          "pr": 63
+          "pr": 62
         },
         "USG%": {
           "val": 13.6,
-          "pr": 15
+          "pr": 16
         },
         "GmSC": {
           "val": 4.2,
-          "pr": 31
+          "pr": 37
         }
       }
     },
     {
-      "rank": 49,
-      "id": 594,
+      "rank": 46,
+      "id": 558,
+      "name": "林信寬",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "12",
+      "position": "SF",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 28.9,
+      "badges": {
+        "PTS": {
+          "val": 9.0,
+          "pr": 44
+        },
+        "REB": {
+          "val": 7.3,
+          "pr": 77
+        },
+        "AST": {
+          "val": 1.0,
+          "pr": 28
+        },
+        "STL": {
+          "val": 0.7,
+          "pr": 41
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 40.6,
+          "pr": 28
+        },
+        "TS%": {
+          "val": 40.0,
+          "pr": 17
+        },
+        "USG%": {
+          "val": 23.2,
+          "pr": 52
+        },
+        "GmSC": {
+          "val": 4.0,
+          "pr": 35
+        }
+      }
+    },
+    {
+      "rank": 47,
+      "id": 610,
+      "name": "邱子軒",
+      "team_name": "高雄全家海神",
+      "jersey_number": "8",
+      "position": "SG",
+      "identity": "本土",
+      "games_played": 2,
+      "mpg": 17.9,
+      "badges": {
+        "PTS": {
+          "val": 7.0,
+          "pr": 40
+        },
+        "REB": {
+          "val": 1.5,
+          "pr": 15
+        },
+        "AST": {
+          "val": 1.5,
+          "pr": 41
+        },
+        "STL": {
+          "val": 0.5,
+          "pr": 32
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 55.0,
+          "pr": 59
+        },
+        "TS%": {
+          "val": 59.5,
+          "pr": 71
+        },
+        "USG%": {
+          "val": 21.3,
+          "pr": 42
+        },
+        "GmSC": {
+          "val": 3.8,
+          "pr": 33
+        }
+      }
+    },
+    {
+      "rank": 48,
+      "id": 595,
       "name": "陳冠全",
       "team_name": "臺北台新戰神",
       "jersey_number": "62",
@@ -5713,94 +5713,94 @@
       "badges": {
         "PTS": {
           "val": 5.5,
-          "pr": 26
+          "pr": 29
         },
         "REB": {
           "val": 1.5,
-          "pr": 20
+          "pr": 15
         },
         "AST": {
           "val": 0.0,
-          "pr": 6
+          "pr": 4
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 78.6,
-          "pr": 95
+          "pr": 98
         },
         "TS%": {
           "val": 78.6,
-          "pr": 94
+          "pr": 96
         },
         "USG%": {
           "val": 20.7,
-          "pr": 43
+          "pr": 38
         },
         "GmSC": {
           "val": 3.5,
-          "pr": 29
+          "pr": 31
+        }
+      }
+    },
+    {
+      "rank": 49,
+      "id": 539,
+      "name": "蔡宸綱",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "17",
+      "position": "F/PF",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 26.8,
+      "badges": {
+        "PTS": {
+          "val": 9.3,
+          "pr": 47
+        },
+        "REB": {
+          "val": 3.3,
+          "pr": 51
+        },
+        "AST": {
+          "val": 1.3,
+          "pr": 38
+        },
+        "STL": {
+          "val": 1.7,
+          "pr": 80
+        },
+        "BLK": {
+          "val": 1.0,
+          "pr": 88
+        },
+        "eFG%": {
+          "val": 39.1,
+          "pr": 23
+        },
+        "TS%": {
+          "val": 40.4,
+          "pr": 19
+        },
+        "USG%": {
+          "val": 27.5,
+          "pr": 71
+        },
+        "GmSC": {
+          "val": 3.5,
+          "pr": 31
         }
       }
     },
     {
       "rank": 50,
-      "id": 573,
-      "name": "張宗憲",
-      "team_name": "福爾摩沙夢想家",
-      "jersey_number": "3",
-      "position": "SG",
-      "identity": "本土",
-      "games_played": 3,
-      "mpg": 19.0,
-      "badges": {
-        "PTS": {
-          "val": 6.3,
-          "pr": 32
-        },
-        "REB": {
-          "val": 2.7,
-          "pr": 37
-        },
-        "AST": {
-          "val": 1.0,
-          "pr": 34
-        },
-        "STL": {
-          "val": 0.7,
-          "pr": 42
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 42.9,
-          "pr": 32
-        },
-        "TS%": {
-          "val": 43.4,
-          "pr": 26
-        },
-        "USG%": {
-          "val": 24.4,
-          "pr": 62
-        },
-        "GmSC": {
-          "val": 3.3,
-          "pr": 27
-        }
-      }
-    },
-    {
-      "rank": 51,
-      "id": 571,
+      "id": 572,
       "name": "蔣淯安",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "41",
@@ -5811,15 +5811,15 @@
       "badges": {
         "PTS": {
           "val": 9.0,
-          "pr": 46
+          "pr": 44
         },
         "REB": {
           "val": 4.0,
-          "pr": 59
+          "pr": 61
         },
         "AST": {
           "val": 2.3,
-          "pr": 60
+          "pr": 64
         },
         "STL": {
           "val": 1.0,
@@ -5827,7 +5827,7 @@
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 43.5,
@@ -5835,158 +5835,207 @@
         },
         "TS%": {
           "val": 50.1,
-          "pr": 39
+          "pr": 41
         },
         "USG%": {
           "val": 23.3,
-          "pr": 53
+          "pr": 54
         },
         "GmSC": {
           "val": 3.3,
-          "pr": 27
+          "pr": 28
+        }
+      }
+    },
+    {
+      "rank": 51,
+      "id": 574,
+      "name": "張宗憲",
+      "team_name": "福爾摩沙夢想家",
+      "jersey_number": "3",
+      "position": "SG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 19.0,
+      "badges": {
+        "PTS": {
+          "val": 6.3,
+          "pr": 38
+        },
+        "REB": {
+          "val": 2.7,
+          "pr": 40
+        },
+        "AST": {
+          "val": 1.0,
+          "pr": 28
+        },
+        "STL": {
+          "val": 0.7,
+          "pr": 41
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 42.9,
+          "pr": 33
+        },
+        "TS%": {
+          "val": 43.4,
+          "pr": 29
+        },
+        "USG%": {
+          "val": 24.4,
+          "pr": 62
+        },
+        "GmSC": {
+          "val": 3.3,
+          "pr": 28
         }
       }
     },
     {
       "rank": 52,
-      "id": 602,
-      "name": "陳懷安",
-      "team_name": "高雄全家海神",
-      "jersey_number": "66",
-      "position": "PG",
+      "id": 557,
+      "name": "莊博元",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "11",
+      "position": "G",
       "identity": "本土",
-      "games_played": 4,
-      "mpg": 15.8,
+      "games_played": 3,
+      "mpg": 27.2,
       "badges": {
         "PTS": {
-          "val": 1.2,
-          "pr": 6
+          "val": 5.3,
+          "pr": 27
         },
         "REB": {
-          "val": 2.5,
-          "pr": 30
+          "val": 1.7,
+          "pr": 18
         },
         "AST": {
-          "val": 3.8,
-          "pr": 84
+          "val": 0.7,
+          "pr": 20
         },
         "STL": {
-          "val": 0.2,
-          "pr": 21
+          "val": 0.0,
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 29.8,
-          "pr": 10
+          "val": 53.3,
+          "pr": 58
         },
         "TS%": {
-          "val": 31.6,
-          "pr": 9
+          "val": 53.3,
+          "pr": 49
         },
         "USG%": {
-          "val": 9.9,
-          "pr": 1
+          "val": 10.2,
+          "pr": 4
         },
         "GmSC": {
-          "val": 2.7,
-          "pr": 25
+          "val": 2.9,
+          "pr": 26
         }
       }
     },
     {
       "rank": 53,
-      "id": 605,
-      "name": "施晉堯",
-      "team_name": "高雄全家海神",
-      "jersey_number": "11",
-      "position": "SF",
+      "id": 548,
+      "name": "朱雲豪",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "28",
+      "position": "F/SF",
       "identity": "本土",
-      "games_played": 4,
-      "mpg": 15.2,
+      "games_played": 3,
+      "mpg": 12.6,
       "badges": {
         "PTS": {
-          "val": 4.3,
-          "pr": 19
+          "val": 5.0,
+          "pr": 22
         },
         "REB": {
           "val": 0.7,
-          "pr": 9
+          "pr": 7
         },
         "AST": {
-          "val": 1.5,
-          "pr": 42
+          "val": 0.0,
+          "pr": 4
         },
         "STL": {
-          "val": 0.0,
-          "pr": 10
+          "val": 1.0,
+          "pr": 52
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 61.1,
-          "pr": 74
+          "val": 50.0,
+          "pr": 51
         },
         "TS%": {
-          "val": 61.1,
-          "pr": 69
+          "val": 50.0,
+          "pr": 39
         },
         "USG%": {
-          "val": 15.4,
-          "pr": 19
+          "val": 21.9,
+          "pr": 45
         },
         "GmSC": {
-          "val": 2.5,
-          "pr": 23
+          "val": 2.8,
+          "pr": 25
         }
       }
     },
     {
       "rank": 54,
-      "id": 603,
-      "name": "呂威霆",
-      "team_name": "高雄全家海神",
-      "jersey_number": "21",
-      "position": "C",
+      "id": 536,
+      "name": "劉丞勳",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "13",
+      "position": "G/F",
       "identity": "本土",
-      "games_played": 4,
-      "mpg": 11.9,
+      "games_played": 3,
+      "mpg": 36.0,
       "badges": {
         "PTS": {
-          "val": 4.0,
-          "pr": 18
+          "val": 8.0,
+          "pr": 42
         },
         "REB": {
-          "val": 2.5,
-          "pr": 30
+          "val": 4.3,
+          "pr": 64
         },
         "AST": {
-          "val": 0.7,
-          "pr": 27
+          "val": 2.3,
+          "pr": 64
         },
         "STL": {
-          "val": 0.0,
-          "pr": 10
+          "val": 1.7,
+          "pr": 80
         },
         "BLK": {
-          "val": 0.5,
-          "pr": 76
+          "val": 0.3,
+          "pr": 69
         },
         "eFG%": {
-          "val": 55.0,
-          "pr": 62
+          "val": 29.7,
+          "pr": 14
         },
         "TS%": {
-          "val": 58.9,
-          "pr": 65
+          "val": 31.0,
+          "pr": 13
         },
         "USG%": {
-          "val": 20.2,
-          "pr": 40
+          "val": 21.5,
+          "pr": 43
         },
         "GmSC": {
           "val": 2.5,
@@ -5996,203 +6045,105 @@
     },
     {
       "rank": 55,
-      "id": 542,
-      "name": "曾柏喻",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "7",
-      "position": "G/SG",
+      "id": 603,
+      "name": "陳懷安",
+      "team_name": "高雄全家海神",
+      "jersey_number": "66",
+      "position": "PG",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 33.7,
+      "games_played": 5,
+      "mpg": 15.0,
       "badges": {
         "PTS": {
-          "val": 6.5,
-          "pr": 36
+          "val": 1.6,
+          "pr": 7
         },
         "REB": {
-          "val": 3.0,
-          "pr": 44
+          "val": 2.6,
+          "pr": 35
         },
         "AST": {
-          "val": 7.0,
-          "pr": 99
+          "val": 3.2,
+          "pr": 76
         },
         "STL": {
-          "val": 1.0,
-          "pr": 52
+          "val": 0.6,
+          "pr": 33
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 31.2,
-          "pr": 13
+          "val": 28.3,
+          "pr": 12
         },
         "TS%": {
-          "val": 34.9,
-          "pr": 13
+          "val": 27.5,
+          "pr": 10
         },
         "USG%": {
-          "val": 22.0,
-          "pr": 46
+          "val": 13.2,
+          "pr": 13
         },
         "GmSC": {
           "val": 2.3,
-          "pr": 21
+          "pr": 22
         }
       }
     },
     {
       "rank": 56,
-      "id": 556,
-      "name": "莊博元",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "11",
-      "position": "G",
+      "id": 604,
+      "name": "呂威霆",
+      "team_name": "高雄全家海神",
+      "jersey_number": "21",
+      "position": "C",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 25.5,
+      "games_played": 5,
+      "mpg": 12.1,
       "badges": {
         "PTS": {
-          "val": 5.5,
-          "pr": 26
+          "val": 3.8,
+          "pr": 19
         },
         "REB": {
-          "val": 0.5,
-          "pr": 7
+          "val": 2.6,
+          "pr": 35
         },
         "AST": {
-          "val": 0.0,
-          "pr": 6
+          "val": 0.6,
+          "pr": 16
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
-          "val": 0.0,
-          "pr": 29
+          "val": 0.4,
+          "pr": 77
         },
         "eFG%": {
-          "val": 55.0,
-          "pr": 60
+          "val": 62.3,
+          "pr": 87
         },
         "TS%": {
-          "val": 55.0,
-          "pr": 54
+          "val": 64.4,
+          "pr": 87
         },
         "USG%": {
-          "val": 11.2,
-          "pr": 6
+          "val": 18.5,
+          "pr": 28
         },
         "GmSC": {
           "val": 2.2,
-          "pr": 19
+          "pr": 20
         }
       }
     },
     {
       "rank": 57,
-      "id": 535,
-      "name": "劉丞勳",
-      "team_name": "新竹御嵿攻城獅",
-      "jersey_number": "13",
-      "position": "G/F",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 39.5,
-      "badges": {
-        "PTS": {
-          "val": 7.0,
-          "pr": 40
-        },
-        "REB": {
-          "val": 5.5,
-          "pr": 65
-        },
-        "AST": {
-          "val": 2.5,
-          "pr": 65
-        },
-        "STL": {
-          "val": 2.0,
-          "pr": 85
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 25.0,
-          "pr": 7
-        },
-        "TS%": {
-          "val": 27.2,
-          "pr": 7
-        },
-        "USG%": {
-          "val": 19.5,
-          "pr": 36
-        },
-        "GmSC": {
-          "val": 2.0,
-          "pr": 18
-        }
-      }
-    },
-    {
-      "rank": 58,
-      "id": 557,
-      "name": "林信寬",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "12",
-      "position": "SF",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 28.1,
-      "badges": {
-        "PTS": {
-          "val": 6.5,
-          "pr": 36
-        },
-        "REB": {
-          "val": 8.0,
-          "pr": 78
-        },
-        "AST": {
-          "val": 0.5,
-          "pr": 20
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 35.3,
-          "pr": 21
-        },
-        "TS%": {
-          "val": 36.4,
-          "pr": 16
-        },
-        "USG%": {
-          "val": 20.2,
-          "pr": 40
-        },
-        "GmSC": {
-          "val": 1.8,
-          "pr": 15
-        }
-      }
-    },
-    {
-      "rank": 59,
-      "id": 587,
+      "id": 588,
       "name": "黃聰翰",
       "team_name": "臺北台新戰神",
       "jersey_number": "11",
@@ -6203,143 +6154,290 @@
       "badges": {
         "PTS": {
           "val": 3.7,
-          "pr": 16
+          "pr": 17
         },
         "REB": {
           "val": 1.0,
-          "pr": 14
+          "pr": 11
         },
         "AST": {
           "val": 0.3,
-          "pr": 14
+          "pr": 12
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 61.1,
-          "pr": 76
+          "pr": 80
         },
         "TS%": {
           "val": 61.1,
-          "pr": 71
+          "pr": 75
         },
         "USG%": {
           "val": 16.8,
-          "pr": 24
+          "pr": 25
         },
         "GmSC": {
           "val": 1.8,
-          "pr": 15
+          "pr": 18
+        }
+      }
+    },
+    {
+      "rank": 58,
+      "id": 606,
+      "name": "施晉堯",
+      "team_name": "高雄全家海神",
+      "jersey_number": "11",
+      "position": "SF",
+      "identity": "本土",
+      "games_played": 5,
+      "mpg": 16.7,
+      "badges": {
+        "PTS": {
+          "val": 4.2,
+          "pr": 20
+        },
+        "REB": {
+          "val": 0.8,
+          "pr": 9
+        },
+        "AST": {
+          "val": 1.2,
+          "pr": 34
+        },
+        "STL": {
+          "val": 0.0,
+          "pr": 9
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 53.2,
+          "pr": 57
+        },
+        "TS%": {
+          "val": 53.3,
+          "pr": 48
+        },
+        "USG%": {
+          "val": 15.5,
+          "pr": 20
+        },
+        "GmSC": {
+          "val": 1.8,
+          "pr": 18
+        }
+      }
+    },
+    {
+      "rank": 59,
+      "id": 607,
+      "name": "吳曉謹",
+      "team_name": "高雄全家海神",
+      "jersey_number": "57",
+      "position": "SF",
+      "identity": "本土",
+      "games_played": 5,
+      "mpg": 12.1,
+      "badges": {
+        "PTS": {
+          "val": 2.2,
+          "pr": 10
+        },
+        "REB": {
+          "val": 0.6,
+          "pr": 6
+        },
+        "AST": {
+          "val": 1.2,
+          "pr": 34
+        },
+        "STL": {
+          "val": 0.4,
+          "pr": 30
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 35.0,
+          "pr": 20
+        },
+        "TS%": {
+          "val": 40.7,
+          "pr": 20
+        },
+        "USG%": {
+          "val": 13.5,
+          "pr": 14
+        },
+        "GmSC": {
+          "val": 1.6,
+          "pr": 16
         }
       }
     },
     {
       "rank": 60,
+      "id": 566,
+      "name": "曹薰襄",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "57",
+      "position": "PG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 14.7,
+      "badges": {
+        "PTS": {
+          "val": 1.3,
+          "pr": 6
+        },
+        "REB": {
+          "val": 2.3,
+          "pr": 28
+        },
+        "AST": {
+          "val": 4.0,
+          "pr": 86
+        },
+        "STL": {
+          "val": 0.7,
+          "pr": 41
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 11.1,
+          "pr": 4
+        },
+        "TS%": {
+          "val": 20.2,
+          "pr": 4
+        },
+        "USG%": {
+          "val": 18.6,
+          "pr": 29
+        },
+        "GmSC": {
+          "val": 1.4,
+          "pr": 14
+        }
+      }
+    },
+    {
+      "rank": 61,
       "id": 509,
       "name": "簡廷兆",
       "team_name": "新北中信特攻",
       "jersey_number": "24",
       "position": "G",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 20.0,
+      "games_played": 3,
+      "mpg": 21.4,
       "badges": {
         "PTS": {
-          "val": 3.0,
+          "val": 2.7,
           "pr": 12
         },
         "REB": {
-          "val": 1.0,
-          "pr": 14
+          "val": 2.0,
+          "pr": 22
         },
         "AST": {
-          "val": 0.0,
-          "pr": 6
+          "val": 1.0,
+          "pr": 28
         },
         "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 37.5,
+          "val": 0.3,
           "pr": 24
         },
-        "TS%": {
-          "val": 37.5,
-          "pr": 18
-        },
-        "USG%": {
-          "val": 10.3,
-          "pr": 3
-        },
-        "GmSC": {
-          "val": 1.4,
-          "pr": 12
-        }
-      }
-    },
-    {
-      "rank": 61,
-      "id": 606,
-      "name": "吳曉謹",
-      "team_name": "高雄全家海神",
-      "jersey_number": "57",
-      "position": "SF",
-      "identity": "本土",
-      "games_played": 4,
-      "mpg": 12.9,
-      "badges": {
-        "PTS": {
-          "val": 2.3,
-          "pr": 9
-        },
-        "REB": {
-          "val": 0.8,
-          "pr": 10
-        },
-        "AST": {
-          "val": 1.0,
-          "pr": 34
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 31.3,
-          "pr": 15
+          "val": 26.7,
+          "pr": 9
         },
         "TS%": {
-          "val": 38.9,
-          "pr": 19
+          "val": 26.7,
+          "pr": 9
         },
         "USG%": {
-          "val": 13.6,
-          "pr": 15
+          "val": 12.1,
+          "pr": 6
         },
         "GmSC": {
-          "val": 1.4,
-          "pr": 12
+          "val": 1.3,
+          "pr": 13
         }
       }
     },
     {
       "rank": 62,
-      "id": 584,
+      "id": 543,
+      "name": "曾柏喻",
+      "team_name": "新竹御嵿攻城獅",
+      "jersey_number": "7",
+      "position": "G/SG",
+      "identity": "本土",
+      "games_played": 3,
+      "mpg": 32.9,
+      "badges": {
+        "PTS": {
+          "val": 5.7,
+          "pr": 33
+        },
+        "REB": {
+          "val": 2.7,
+          "pr": 40
+        },
+        "AST": {
+          "val": 6.0,
+          "pr": 97
+        },
+        "STL": {
+          "val": 0.7,
+          "pr": 41
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 28.3,
+          "pr": 10
+        },
+        "TS%": {
+          "val": 32.0,
+          "pr": 14
+        },
+        "USG%": {
+          "val": 20.7,
+          "pr": 38
+        },
+        "GmSC": {
+          "val": 1.1,
+          "pr": 11
+        }
+      }
+    },
+    {
+      "rank": 63,
+      "id": 585,
       "name": "劉彥廷",
       "team_name": "臺北台新戰神",
       "jersey_number": "7",
@@ -6350,27 +6448,27 @@
       "badges": {
         "PTS": {
           "val": 3.3,
-          "pr": 15
+          "pr": 16
         },
         "REB": {
           "val": 2.7,
-          "pr": 37
+          "pr": 40
         },
         "AST": {
           "val": 0.3,
-          "pr": 14
+          "pr": 12
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 45.0,
-          "pr": 43
+          "pr": 42
         },
         "TS%": {
           "val": 41.0,
@@ -6382,62 +6480,13 @@
         },
         "GmSC": {
           "val": 1.1,
-          "pr": 10
-        }
-      }
-    },
-    {
-      "rank": 63,
-      "id": 565,
-      "name": "曹薰襄",
-      "team_name": "桃園台啤永豐雲豹",
-      "jersey_number": "57",
-      "position": "PG",
-      "identity": "本土",
-      "games_played": 2,
-      "mpg": 15.2,
-      "badges": {
-        "PTS": {
-          "val": 1.0,
-          "pr": 4
-        },
-        "REB": {
-          "val": 2.5,
-          "pr": 30
-        },
-        "AST": {
-          "val": 4.0,
-          "pr": 86
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 0.0,
-          "pr": 29
-        },
-        "eFG%": {
-          "val": 16.7,
-          "pr": 4
-        },
-        "TS%": {
-          "val": 16.7,
-          "pr": 4
-        },
-        "USG%": {
-          "val": 17.1,
-          "pr": 25
-        },
-        "GmSC": {
-          "val": 1.0,
-          "pr": 9
+          "pr": 11
         }
       }
     },
     {
       "rank": 64,
-      "id": 575,
+      "id": 576,
       "name": "忻沃克",
       "team_name": "福爾摩沙夢想家",
       "jersey_number": "42",
@@ -6448,23 +6497,23 @@
       "badges": {
         "PTS": {
           "val": 3.0,
-          "pr": 12
+          "pr": 14
         },
         "REB": {
           "val": 5.7,
-          "pr": 67
+          "pr": 69
         },
         "AST": {
           "val": 0.7,
-          "pr": 27
+          "pr": 20
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 33.3,
@@ -6472,31 +6521,80 @@
         },
         "TS%": {
           "val": 36.2,
-          "pr": 15
+          "pr": 16
         },
         "USG%": {
           "val": 13.0,
-          "pr": 12
+          "pr": 9
         },
         "GmSC": {
           "val": 0.9,
-          "pr": 7
+          "pr": 9
         }
       }
     },
     {
       "rank": 65,
-      "id": 564,
+      "id": 555,
+      "name": "張兆辰",
+      "team_name": "桃園台啤永豐雲豹",
+      "jersey_number": "9",
+      "position": "PF",
+      "identity": "本土",
+      "games_played": 2,
+      "mpg": 8.8,
+      "badges": {
+        "PTS": {
+          "val": 0.0,
+          "pr": 2
+        },
+        "REB": {
+          "val": 2.0,
+          "pr": 22
+        },
+        "AST": {
+          "val": 0.0,
+          "pr": 4
+        },
+        "STL": {
+          "val": 0.0,
+          "pr": 9
+        },
+        "BLK": {
+          "val": 0.0,
+          "pr": 28
+        },
+        "eFG%": {
+          "val": 0.0,
+          "pr": 2
+        },
+        "TS%": {
+          "val": 0.0,
+          "pr": 2
+        },
+        "USG%": {
+          "val": 2.9,
+          "pr": 1
+        },
+        "GmSC": {
+          "val": 0.2,
+          "pr": 7
+        }
+      }
+    },
+    {
+      "rank": 66,
+      "id": 565,
       "name": "董永全",
       "team_name": "桃園台啤永豐雲豹",
       "jersey_number": "31",
       "position": "SF",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 9.5,
+      "games_played": 3,
+      "mpg": 9.4,
       "badges": {
         "PTS": {
-          "val": 1.0,
+          "val": 0.7,
           "pr": 4
         },
         "REB": {
@@ -6505,135 +6603,135 @@
         },
         "AST": {
           "val": 0.0,
-          "pr": 6
-        },
-        "STL": {
-          "val": 0.5,
-          "pr": 34
-        },
-        "BLK": {
-          "val": 0.5,
-          "pr": 76
-        },
-        "eFG%": {
-          "val": 33.3,
-          "pr": 17
-        },
-        "TS%": {
-          "val": 33.3,
-          "pr": 12
-        },
-        "USG%": {
-          "val": 10.9,
           "pr": 4
         },
+        "STL": {
+          "val": 0.3,
+          "pr": 24
+        },
+        "BLK": {
+          "val": 0.3,
+          "pr": 69
+        },
+        "eFG%": {
+          "val": 25.0,
+          "pr": 7
+        },
+        "TS%": {
+          "val": 25.0,
+          "pr": 7
+        },
+        "USG%": {
+          "val": 9.2,
+          "pr": 3
+        },
         "GmSC": {
-          "val": 0.1,
+          "val": -0.3,
           "pr": 6
         }
       }
     },
     {
-      "rank": 66,
+      "rank": 67,
       "id": 511,
       "name": "李沛澄",
       "team_name": "新北中信特攻",
       "jersey_number": "77",
       "position": "G",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 10.7,
+      "games_played": 3,
+      "mpg": 11.5,
       "badges": {
         "PTS": {
-          "val": 1.5,
-          "pr": 7
+          "val": 2.0,
+          "pr": 9
         },
         "REB": {
           "val": 0.0,
           "pr": 2
         },
         "AST": {
-          "val": 0.5,
-          "pr": 20
+          "val": 0.3,
+          "pr": 12
         },
         "STL": {
           "val": 0.0,
-          "pr": 10
+          "pr": 9
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 25.0,
-          "pr": 7
+          "val": 30.0,
+          "pr": 16
         },
         "TS%": {
-          "val": 25.0,
-          "pr": 6
+          "val": 30.0,
+          "pr": 12
         },
         "USG%": {
-          "val": 14.6,
-          "pr": 18
+          "val": 15.0,
+          "pr": 19
         },
         "GmSC": {
-          "val": -1.0,
+          "val": -0.6,
           "pr": 4
         }
       }
     },
     {
-      "rank": 67,
-      "id": 541,
+      "rank": 68,
+      "id": 542,
       "name": "陳力生",
       "team_name": "新竹御嵿攻城獅",
       "jersey_number": "3",
       "position": "G/PG",
       "identity": "本土",
-      "games_played": 2,
-      "mpg": 14.9,
+      "games_played": 3,
+      "mpg": 15.2,
       "badges": {
         "PTS": {
-          "val": 2.5,
-          "pr": 10
+          "val": 2.7,
+          "pr": 12
         },
         "REB": {
-          "val": 3.5,
-          "pr": 53
+          "val": 3.0,
+          "pr": 46
         },
         "AST": {
-          "val": 2.0,
-          "pr": 54
+          "val": 1.7,
+          "pr": 48
         },
         "STL": {
-          "val": 1.0,
-          "pr": 52
+          "val": 0.7,
+          "pr": 41
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
-          "val": 6.7,
-          "pr": 3
+          "val": 11.8,
+          "pr": 6
         },
         "TS%": {
-          "val": 14.9,
-          "pr": 3
+          "val": 20.8,
+          "pr": 6
         },
         "USG%": {
-          "val": 36.1,
-          "pr": 96
+          "val": 29.7,
+          "pr": 76
         },
         "GmSC": {
-          "val": -1.5,
+          "val": -1.0,
           "pr": 3
         }
       }
     },
     {
-      "rank": 68,
-      "id": 527,
+      "rank": 69,
+      "id": 528,
       "name": "周儀翔",
       "team_name": "新北國王",
       "jersey_number": "6",
@@ -6644,7 +6742,7 @@
       "badges": {
         "PTS": {
           "val": 0.0,
-          "pr": 1
+          "pr": 2
         },
         "REB": {
           "val": 0.3,
@@ -6652,27 +6750,27 @@
         },
         "AST": {
           "val": 0.7,
-          "pr": 27
+          "pr": 20
         },
         "STL": {
           "val": 0.3,
-          "pr": 25
+          "pr": 24
         },
         "BLK": {
           "val": 0.0,
-          "pr": 29
+          "pr": 28
         },
         "eFG%": {
           "val": 0.0,
-          "pr": 1
+          "pr": 2
         },
         "TS%": {
           "val": 0.0,
-          "pr": 1
+          "pr": 2
         },
         "USG%": {
           "val": 17.5,
-          "pr": 27
+          "pr": 26
         },
         "GmSC": {
           "val": -2.2,

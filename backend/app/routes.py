@@ -217,6 +217,43 @@ def _find_team_excel_file(season_folder: str, team_name: str) -> Optional[Path]:
     return None
 
 
+def _get_pbp_lineup_json_path() -> Optional[Path]:
+    for cand in (
+        BACKEND_DIR / "data" / "pbp_lineup_stats.json",
+        PROJECT_ROOT / "frontend" / "public" / "pbp_lineup_stats.json",
+    ):
+        if cand.exists():
+            return cand
+    return None
+
+
+def _load_pbp_lineup_json() -> dict:
+    p = _get_pbp_lineup_json_path()
+    if not p:
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _find_pbp_game(stage: str, game_id: str, game_code: str, away_team: str, home_team: str) -> Optional[dict]:
+    if stage != "2026-2027 例行賽":
+        return None
+    pbp_data = _load_pbp_lineup_json()
+    games_map = pbp_data.get("games", {})
+    if str(game_id) in games_map:
+        return games_map[str(game_id)]
+    for g in games_map.values():
+        if (
+            str(g.get("game_id", "")).upper() == game_code.upper()
+            and normalize_team_name(g.get("away_team", "")) == away_team
+            and normalize_team_name(g.get("home_team", "")) == home_team
+        ):
+            return g
+    return None
+
+
 def _get_official_starting_players(game_id: str, home_team: str = "", away_team: str = "") -> dict:
     """從 raw_game_stats/game_{gid}_stats.json 精確讀取官方標記之先發名單 (is_starting: true)"""
     raw_dirs = [
@@ -1273,6 +1310,17 @@ def _find_db_game(cur, game_id: str):
     if g:
         return g
 
+    # 支援直接以官網 schedule_id (例如 27554, 27555) 查詢 2026-2027 例行賽
+    pbp_g = _load_pbp_lineup_json().get("games", {}).get(str(game_id).strip())
+    if pbp_g and pbp_g.get("game_id"):
+        cur.execute(
+            "SELECT * FROM games WHERE stage = ? AND id LIKE ? LIMIT 1",
+            ("2026-2027 例行賽", f"%-{pbp_g['game_id']}"),
+        )
+        g = cur.fetchone()
+        if g:
+            return g
+
     gid_match = re.search(r"(G\d+)", str(game_id), re.IGNORECASE)
     game_code = gid_match.group(1).upper() if gid_match else str(game_id).strip()
 
@@ -1386,6 +1434,7 @@ def get_game_detail(game_id: str):
 
     home_box, home_on_off, home_l, home_p = _parse_real_excel_game(home_excel, game_code)
     away_box, away_on_off, away_l, away_p = _parse_real_excel_game(away_excel, game_code)
+    home_worst_l, away_worst_l = [], []
 
     if not home_box or not away_box:
         home_aliases = get_team_search_keywords(home_team)
@@ -1480,9 +1529,63 @@ def get_game_detail(game_id: str):
     home_top = [p for p in home_box if p["seconds"] > 0][:5]
     away_top = [p for p in away_box if p["seconds"] > 0][:5]
 
-    # 無 Excel On/Off 精算資料時一律回傳空，不使用估算
+    # 優先從真實 PBP 精算結果 (pbp_lineup_stats.json) 讀取單場 On/Off 與五人/雙人陣容；無資料時退回 Excel
+    pbp_game = _find_pbp_game(stage, game_id, game_code, away_team, home_team)
+    if pbp_game and pbp_game.get("all"):
+        pbp_all = pbp_game["all"]
+        away_pbp = pbp_all.get("away", {})
+        home_pbp = pbp_all.get("home", {})
 
-    # 無 Excel On/Off 精算資料時一律回傳空，不使用估算
+        def _fmt_pbp_items(items: list, id_offset: int = 0):
+            out = []
+            for idx, item in enumerate(items):
+                out.append({
+                    "id": id_offset + idx + 1,
+                    "lineup_name": item.get("lineup_name", ""),
+                    "minutes": item.get("minutes", "00:00"),
+                    "plus_minus": item.get("plus_minus", 0),
+                    "ortg": item.get("ortg", 0.0),
+                    "drtg": item.get("drtg", 0.0),
+                    "netrtg": item.get("netrtg", 0.0),
+                    "lineup_ortg": item.get("ortg", 0.0),
+                    "lineup_drtg": item.get("drtg", 0.0),
+                    "lineup_netrtg": item.get("netrtg", 0.0),
+                })
+            return out
+
+        def _select_best_and_worst_lineups(items: list):
+            qualified = [x for x in items if int(x.get("seconds", 0)) >= 120]
+            best = sorted(
+                qualified,
+                key=lambda x: (-float(x.get("netrtg", 0.0)), -int(x.get("seconds", 0))),
+            )[:3]
+            best_keys = {tuple(x.get("player_ids", [])) or x.get("lineup_name") for x in best}
+            worst_candidates = [
+                x
+                for x in qualified
+                if (tuple(x.get("player_ids", [])) or x.get("lineup_name")) not in best_keys
+                and float(x.get("netrtg", 0.0)) < 0
+            ]
+            worst = sorted(
+                worst_candidates,
+                key=lambda x: (float(x.get("netrtg", 0.0)), -int(x.get("seconds", 0))),
+            )[:2]
+            return _fmt_pbp_items(best, id_offset=0), _fmt_pbp_items(worst, id_offset=100)
+
+        def _select_best_pairs(items: list):
+            qualified = [x for x in items if int(x.get("seconds", 0)) >= 480]
+            best = sorted(
+                qualified,
+                key=lambda x: (-float(x.get("netrtg", 0.0)), -int(x.get("seconds", 0))),
+            )[:3]
+            return _fmt_pbp_items(best, id_offset=200)
+
+        away_on_off = [p for p in away_pbp.get("player_onoff", []) if int(p.get("seconds_on", 0)) >= 480]
+        home_on_off = [p for p in home_pbp.get("player_onoff", []) if int(p.get("seconds_on", 0)) >= 480]
+        away_l, away_worst_l = _select_best_and_worst_lineups(away_pbp.get("five_man_lineups", []))
+        away_p = _select_best_pairs(away_pbp.get("two_man_pairs", []))
+        home_l, home_worst_l = _select_best_and_worst_lineups(home_pbp.get("five_man_lineups", []))
+        home_p = _select_best_pairs(home_pbp.get("two_man_pairs", []))
 
     player_onoff = {
         "away": away_on_off,
@@ -1518,10 +1621,12 @@ def get_game_detail(game_id: str):
         "lineups_and_pairs": {
             "away": {
                 "lineups": away_l,
+                "worst_lineups": away_worst_l,
                 "pairs": away_p,
             },
             "home": {
                 "lineups": home_l,
+                "worst_lineups": home_worst_l,
                 "pairs": home_p,
             },
         },
@@ -1877,21 +1982,53 @@ def get_team_pbp(
         _mtime = _xl.stat().st_mtime if _xl else 0
     except OSError:
         _mtime = 0
-    cache_key = (stage, team_name, exclude_garbage_time, _mtime)
+    _pbp_json = _get_pbp_lineup_json_path()
+    try:
+        _pbp_mtime = _pbp_json.stat().st_mtime if _pbp_json else 0
+    except OSError:
+        _pbp_mtime = 0
+    cache_key = (stage, team_name, exclude_garbage_time, _mtime, _pbp_mtime)
     cached = _PBP_CACHE.get(cache_key)
     if cached is not None:
         return cached
-    result = _build_team_pbp(team_name, stage)
+    result = _build_team_pbp(team_name, stage, exclude_garbage_time=exclude_garbage_time)
     _PBP_CACHE[cache_key] = result
     return result
 
 
-def _build_team_pbp(team_name: str, stage: str):
+def _build_team_pbp(team_name: str, stage: str, exclude_garbage_time: bool = False):
     players = _fetch_team_players(team_name, stage)
+    std_team = normalize_team_name(team_name)
+
+    if stage == "2026-2027 例行賽":
+        pbp_data = _load_pbp_lineup_json()
+        team_entry = pbp_data.get("teams", {}).get(std_team)
+        if team_entry:
+            mode_key = "non_garbage" if exclude_garbage_time else "all"
+            mode_data = team_entry.get(mode_key) or team_entry.get("all") or {}
+            on_off_players = mode_data.get("on_off_players", [])
+            five_man_lineups = mode_data.get("five_man_lineups", [])
+            foreign_duos = [
+                {**d, "features_and_advice": d.get("features_and_advice", "")}
+                for d in mode_data.get("foreign_duos", [])
+            ]
+            return {
+                "team_name": team_name,
+                "stage": stage,
+                "exclude_garbage_time": exclude_garbage_time,
+                "garbage_time_filter_supported": True,
+                "data_limitation_note": "已啟用官方逐球文字直播 (Broadcasts PBP) 真實精算；支援動態過濾垃圾時間 (Q4 最後 5 分鐘且分差 >= 20 分)。",
+                "on_off_players": on_off_players,
+                "wowy_players": on_off_players,
+                "five_man_lineups": five_man_lineups,
+                "foreign_duos": foreign_duos,
+                "player_boxscore": players,
+                "player_stats": players,
+            }
 
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
     team_excel = _find_team_excel_file(season_folder, team_name)
-    # 完全忠實讀取 Excel 精算結果，不使用任何估算公式或備援
+    # 歷史賽季忠實讀取 Excel 精算結果，不使用任何估算公式或備援
     on_off_players = _parse_season_onoff_from_excel(team_excel)
     five_man_lineups, foreign_duos = _parse_season_pbp_from_excel(team_excel)
 

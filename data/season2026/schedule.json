@@ -108,5 +108,27 @@
     "home_score": 102,
     "sheet_name": "2026-11-08 G12 雲豹 vs 戰神",
     "status": "FINAL"
+  },
+  {
+    "game_id": "G13",
+    "date": "2026-11-14",
+    "time": "17:00",
+    "away_team": "新竹御嵿攻城獅",
+    "away_score": 95,
+    "home_team": "桃園台啤永豐雲豹",
+    "home_score": 100,
+    "sheet_name": "2026-11-14 G13 攻城獅 vs 雲豹",
+    "status": "FINAL"
+  },
+  {
+    "game_id": "G14",
+    "date": "2026-11-14",
+    "time": "17:00",
+    "away_team": "高雄全家海神",
+    "away_score": 106,
+    "home_team": "新北中信特攻",
+    "home_score": 104,
+    "sheet_name": "2026-11-14 G14 海神 vs 中信特攻",
+    "status": "FINAL"
   }
 ]
