@@ -130,5 +130,27 @@
     "home_score": 104,
     "sheet_name": "2026-11-14 G14 海神 vs 中信特攻",
     "status": "FINAL"
+  },
+  {
+    "game_id": "G15",
+    "date": "2026-11-15",
+    "time": "17:00",
+    "away_team": "新北國王",
+    "away_score": 110,
+    "home_team": "桃園台啤永豐雲豹",
+    "home_score": 93,
+    "sheet_name": "2026-11-15 G15 國王 vs 雲豹",
+    "status": "FINAL"
+  },
+  {
+    "game_id": "G16",
+    "date": "2026-11-15",
+    "time": "17:00",
+    "away_team": "臺北台新戰神",
+    "away_score": 87,
+    "home_team": "新北中信特攻",
+    "home_score": 94,
+    "sheet_name": "2026-11-15 G16 戰神 vs 中信特攻",
+    "status": "FINAL"
   }
 ]

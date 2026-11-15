@@ -1,7 +1,7 @@
 {
   "meta": {
     "season": "2026-2027 例行賽",
-    "total_games": 12
+    "total_games": 14
   },
   "teams": [
     {
@@ -38,39 +38,6 @@
       }
     },
     {
-      "team_name": "臺北台新戰神",
-      "games_played": 3,
-      "ppg": 108.7,
-      "starter": {
-        "ppg": 72.3,
-        "share_pct": 66.6
-      },
-      "bench": {
-        "ppg": 36.3,
-        "share_pct": 33.4
-      },
-      "local": {
-        "ppg": 58.7,
-        "share_pct": 54.0
-      },
-      "import": {
-        "ppg": 50.0,
-        "share_pct": 46.0
-      },
-      "shot_distribution": {
-        "two_pt_fga_pg": 44.0,
-        "two_pt_share_pct": 51.2,
-        "three_pt_fga_pg": 42.0,
-        "three_pt_share_pct": 48.8
-      },
-      "situations": {
-        "paint_ppg": 41.3,
-        "paint_share_pct": 38.0,
-        "fast_break_ppg": 5.0,
-        "fast_break_share_pct": 4.6
-      }
-    },
-    {
       "team_name": "新竹御嵿攻城獅",
       "games_played": 3,
       "ppg": 106.3,
@@ -101,39 +68,6 @@
         "paint_share_pct": 53.9,
         "fast_break_ppg": 11.7,
         "fast_break_share_pct": 11.0
-      }
-    },
-    {
-      "team_name": "新北中信特攻",
-      "games_played": 3,
-      "ppg": 104.3,
-      "starter": {
-        "ppg": 74.7,
-        "share_pct": 71.6
-      },
-      "bench": {
-        "ppg": 29.7,
-        "share_pct": 28.4
-      },
-      "local": {
-        "ppg": 54.3,
-        "share_pct": 52.1
-      },
-      "import": {
-        "ppg": 50.0,
-        "share_pct": 47.9
-      },
-      "shot_distribution": {
-        "two_pt_fga_pg": 55.3,
-        "two_pt_share_pct": 61.9,
-        "three_pt_fga_pg": 34.0,
-        "three_pt_share_pct": 38.1
-      },
-      "situations": {
-        "paint_ppg": 54.7,
-        "paint_share_pct": 52.4,
-        "fast_break_ppg": 17.3,
-        "fast_break_share_pct": 16.6
       }
     },
     {
@@ -170,69 +104,135 @@
       }
     },
     {
-      "team_name": "新北國王",
+      "team_name": "臺北台新戰神",
       "games_played": 4,
-      "ppg": 94.0,
+      "ppg": 103.2,
       "starter": {
-        "ppg": 51.8,
-        "share_pct": 55.1
+        "ppg": 70.2,
+        "share_pct": 68.0
       },
       "bench": {
-        "ppg": 42.2,
-        "share_pct": 44.9
+        "ppg": 33.0,
+        "share_pct": 32.0
       },
       "local": {
-        "ppg": 46.8,
-        "share_pct": 49.7
+        "ppg": 58.8,
+        "share_pct": 56.9
       },
       "import": {
-        "ppg": 47.2,
-        "share_pct": 50.3
+        "ppg": 44.5,
+        "share_pct": 43.1
       },
       "shot_distribution": {
-        "two_pt_fga_pg": 50.5,
-        "two_pt_share_pct": 61.8,
-        "three_pt_fga_pg": 31.2,
-        "three_pt_share_pct": 38.2
+        "two_pt_fga_pg": 39.0,
+        "two_pt_share_pct": 49.1,
+        "three_pt_fga_pg": 40.5,
+        "three_pt_share_pct": 50.9
       },
       "situations": {
-        "paint_ppg": 33.5,
-        "paint_share_pct": 35.6,
-        "fast_break_ppg": 12.0,
-        "fast_break_share_pct": 12.8
+        "paint_ppg": 39.0,
+        "paint_share_pct": 37.8,
+        "fast_break_ppg": 6.0,
+        "fast_break_share_pct": 5.8
+      }
+    },
+    {
+      "team_name": "新北中信特攻",
+      "games_played": 4,
+      "ppg": 101.8,
+      "starter": {
+        "ppg": 73.0,
+        "share_pct": 71.7
+      },
+      "bench": {
+        "ppg": 28.8,
+        "share_pct": 28.3
+      },
+      "local": {
+        "ppg": 53.5,
+        "share_pct": 52.6
+      },
+      "import": {
+        "ppg": 48.2,
+        "share_pct": 47.4
+      },
+      "shot_distribution": {
+        "two_pt_fga_pg": 49.8,
+        "two_pt_share_pct": 59.9,
+        "three_pt_fga_pg": 33.2,
+        "three_pt_share_pct": 40.1
+      },
+      "situations": {
+        "paint_ppg": 49.5,
+        "paint_share_pct": 48.6,
+        "fast_break_ppg": 14.0,
+        "fast_break_share_pct": 13.8
+      }
+    },
+    {
+      "team_name": "新北國王",
+      "games_played": 5,
+      "ppg": 97.2,
+      "starter": {
+        "ppg": 53.2,
+        "share_pct": 54.7
+      },
+      "bench": {
+        "ppg": 44.0,
+        "share_pct": 45.3
+      },
+      "local": {
+        "ppg": 48.4,
+        "share_pct": 49.8
+      },
+      "import": {
+        "ppg": 48.8,
+        "share_pct": 50.2
+      },
+      "shot_distribution": {
+        "two_pt_fga_pg": 48.0,
+        "two_pt_share_pct": 60.8,
+        "three_pt_fga_pg": 31.0,
+        "three_pt_share_pct": 39.2
+      },
+      "situations": {
+        "paint_ppg": 35.2,
+        "paint_share_pct": 36.2,
+        "fast_break_ppg": 11.0,
+        "fast_break_share_pct": 11.3
       }
     },
     {
       "team_name": "桃園台啤永豐雲豹",
-      "games_played": 3,
-      "ppg": 93.3,
+      "games_played": 4,
+      "ppg": 93.2,
       "starter": {
-        "ppg": 69.7,
-        "share_pct": 74.6
+        "ppg": 70.2,
+        "share_pct": 75.3
       },
       "bench": {
-        "ppg": 23.7,
-        "share_pct": 25.4
+        "ppg": 23.0,
+        "share_pct": 24.7
       },
       "local": {
-        "ppg": 43.3,
-        "share_pct": 46.4
+        "ppg": 45.5,
+        "share_pct": 48.8
       },
       "import": {
-        "ppg": 50.0,
-        "share_pct": 53.6
+        "ppg": 47.8,
+        "share_pct": 51.2
       },
       "shot_distribution": {
-        "two_pt_fga_pg": 54.3,
-        "two_pt_share_pct": 63.7,
-        "three_pt_fga_pg": 31.0,
-        "three_pt_share_pct": 36.3
+        "two_pt_fga_pg": 55.8,
+        "two_pt_share_pct": 64.8,
+        "three_pt_fga_pg": 30.2,
+        "three_pt_share_pct": 35.2
       },
       "situations": {
-        "paint_ppg": 43.3,
-        "paint_share_pct": 46.4,
-        "fast_break_ppg": 11.3,
-        "fast_break_share_pct": 12.1
+        "paint_ppg": 47.0,
+        "paint_share_pct": 50.4,
+        "fast_break_ppg": 13.0,
+        "fast_break_share_pct": 13.9
       }
     }
   ]
