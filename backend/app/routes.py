@@ -2,10 +2,13 @@ import os
 import re
 import json
 import math
+import subprocess
+import sys
+import time as _time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, time
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal, Union
 from fastapi import APIRouter, File, Header, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel
 import openpyxl
@@ -254,8 +257,88 @@ def _find_pbp_game(stage: str, game_id: str, game_code: str, away_team: str, hom
     return None
 
 
-def _get_official_starting_players(game_id: str, home_team: str = "", away_team: str = "") -> dict:
-    """從 raw_game_stats/game_{gid}_stats.json 精確讀取官方標記之先發名單 (is_starting: true)"""
+def _resolve_raw_stats_schedule_id(game_id: str, home_team: str = "", away_team: str = "", schedule_id: Optional[int] = None) -> Optional[str]:
+    """精準解析該場次對應的官網 schedule_id（避免誤抓賽季年份 '2026' 或同對戰組合的早期場次）"""
+    if schedule_id:
+        return str(schedule_id)
+
+    raw_str = str(game_id or "").strip()
+    if raw_str.isdigit() and len(raw_str) >= 5:
+        return raw_str
+
+    gcode_match = re.search(r"(G\d+)", raw_str, re.IGNORECASE)
+    game_code = gcode_match.group(1).upper() if gcode_match else ""
+
+    if game_code:
+        # 1. 優先從 pbp_lineup_stats.json 精準比對 game_id (Gxx)
+        pbp_data = _load_pbp_lineup_json()
+        for sid_key, g_entry in (pbp_data.get("games") or {}).items():
+            if str(g_entry.get("game_id", "")).upper() == game_code:
+                return str(g_entry.get("schedule_id") or sid_key)
+
+        # 2. 次之從 upcoming_schedule.json 精準比對 game_id (Gxx)
+        for cand in (
+            DATA_DIR / "season2026" / "upcoming_schedule.json",
+            BACKEND_DIR / "data" / "season2026" / "upcoming_schedule.json",
+        ):
+            if cand.exists():
+                try:
+                    for item in json.loads(cand.read_text(encoding="utf-8")):
+                        if str(item.get("game_id", "")).upper() == game_code and item.get("official_id"):
+                            return str(item["official_id"])
+                except Exception:
+                    pass
+
+        # 3. 對照 OFFICIAL_ID_MAP
+        for off_id, g_val in OFFICIAL_ID_MAP.items():
+            if g_val == game_code:
+                return str(off_id)
+
+    return None
+
+
+def _extract_starters_from_broadcasts(bcast_path: Path, home_team: str, away_team: str) -> dict:
+    """備援：從 game_{sid}_broadcasts.json 第一節開賽最初在場 5 人推斷先發名單"""
+    home_starters, away_starters = set(), set()
+    if not bcast_path.exists():
+        return {"home_starters": home_starters, "away_starters": away_starters}
+    try:
+        bdata = json.loads(bcast_path.read_text(encoding="utf-8"))
+        rounds = bdata.get("rounds") or []
+        if not rounds:
+            return {"home_starters": home_starters, "away_starters": away_starters}
+        q1_events = rounds[0].get("events") or []
+        home_kw = get_team_search_keywords(home_team) if home_team else []
+        away_kw = get_team_search_keywords(away_team) if away_team else []
+        for ev in q1_events:
+            ev_type = str(ev.get("event_type") or ev.get("action") or "")
+            if ev_type != "Rotation":
+                # 一旦進入正式比賽事件且雙方都已有先發，停止掃描
+                if len(home_starters) >= 5 and len(away_starters) >= 5:
+                    break
+                continue
+            t_name = normalize_team_name((ev.get("team") or {}).get("name", ""))
+            p_name = str((ev.get("player") or {}).get("name") or "").split(" ")[0].split("(")[0].strip()
+            if not p_name:
+                continue
+            if home_team and any(k in t_name or t_name in k for k in home_kw):
+                if len(home_starters) < 5:
+                    home_starters.add(p_name)
+            elif away_team and any(k in t_name or t_name in k for k in away_kw):
+                if len(away_starters) < 5:
+                    away_starters.add(p_name)
+    except Exception:
+        pass
+    return {"home_starters": home_starters, "away_starters": away_starters}
+
+
+def _get_official_starting_players(
+    game_id: str,
+    home_team: str = "",
+    away_team: str = "",
+    schedule_id: Optional[int] = None,
+) -> dict:
+    """從 raw_game_stats/game_{sid}_stats.json 讀取官方先發 (is_starting)，若缺少則從 broadcasts.json Q1 反推"""
     raw_dirs = [
         BACKEND_DIR / "data" / "raw_game_stats",
         PROJECT_ROOT / "data" / "raw_game_stats",
@@ -265,63 +348,75 @@ def _get_official_starting_players(game_id: str, home_team: str = "", away_team:
     if not raw_dir:
         return {"home_starters": set(), "away_starters": set()}
 
-    gid_match = re.search(r"(\d+)", str(game_id))
-    num_id = gid_match.group(1) if gid_match else ""
-
+    resolved_sid = _resolve_raw_stats_schedule_id(game_id, home_team, away_team, schedule_id=schedule_id)
     candidates = []
-    if num_id:
-        cand = raw_dir / f"game_{num_id}_stats.json"
+    if resolved_sid:
+        cand = raw_dir / f"game_{resolved_sid}_stats.json"
         if cand.exists():
             candidates.append(cand)
 
-    if not candidates:
-        gid_upper = str(game_id).upper()
-        for off_id, g_code in OFFICIAL_ID_MAP.items():
-            if g_code in gid_upper or gid_upper.endswith(g_code):
-                cand = raw_dir / f"game_{off_id}_stats.json"
-                if cand.exists():
-                    candidates.append(cand)
-                    break
-
     if not candidates and home_team and away_team:
-        for f in raw_dir.glob("game_*_stats.json"):
+        # 最後備援：僅在無法解析 schedule_id 時比對主客隊（優先完全同向）
+        fallback_swap = None
+        for f in sorted(raw_dir.glob("game_*_stats.json"), reverse=True):
             try:
                 with open(f, "r", encoding="utf-8") as fp:
                     d = json.load(fp)
                     h_name = normalize_team_name(d.get("home_team", {}).get("name", ""))
                     a_name = normalize_team_name(d.get("away_team", {}).get("name", ""))
-                    if (h_name == home_team and a_name == away_team) or (h_name == away_team and a_name == home_team):
+                    if h_name == home_team and a_name == away_team:
                         candidates.append(f)
                         break
+                    if fallback_swap is None and h_name == away_team and a_name == home_team:
+                        fallback_swap = f
             except Exception:
                 continue
+        if not candidates and fallback_swap is not None:
+            candidates.append(fallback_swap)
 
-    if not candidates:
-        return {"home_starters": set(), "away_starters": set()}
+    home_starters = set()
+    away_starters = set()
 
-    try:
-        with open(candidates[0], "r", encoding="utf-8") as fp:
-            data = json.load(fp)
+    if candidates:
+        stats_path = candidates[0]
+        try:
+            with open(stats_path, "r", encoding="utf-8") as fp:
+                data = json.load(fp)
 
-        home_starters = set()
-        away_starters = set()
+            json_home = normalize_team_name(data.get("home_team", {}).get("name", ""))
+            json_away = normalize_team_name(data.get("away_team", {}).get("name", ""))
+            swapped = bool(home_team and away_team and json_home == away_team and json_away == home_team)
 
-        for p in data.get("home_team", {}).get("players", {}).get("total", {}).values():
-            if isinstance(p, dict) and p.get("is_starting"):
-                p_name = str(p.get("name") or "").split(" ")[0].split("(")[0].strip()
-                if p_name:
-                    home_starters.add(p_name)
+            def _extract_side(side_obj: dict) -> set:
+                out = set()
+                players_obj = side_obj.get("players") or {}
+                items = players_obj.get("total", {}).values() if isinstance(players_obj, dict) else players_obj
+                for p in items:
+                    if isinstance(p, dict) and p.get("is_starting"):
+                        p_name = str(p.get("name") or (p.get("player") or {}).get("name") or "").split(" ")[0].split("(")[0].strip()
+                        if p_name:
+                            out.add(p_name)
+                return out
 
-        for p in data.get("away_team", {}).get("players", {}).get("total", {}).values():
-            if isinstance(p, dict) and p.get("is_starting"):
-                p_name = str(p.get("name") or "").split(" ")[0].split("(")[0].strip()
-                if p_name:
-                    away_starters.add(p_name)
+            raw_h_starters = _extract_side(data.get("home_team", {}))
+            raw_a_starters = _extract_side(data.get("away_team", {}))
+            if swapped:
+                home_starters, away_starters = raw_a_starters, raw_h_starters
+            else:
+                home_starters, away_starters = raw_h_starters, raw_a_starters
+        except Exception as e:
+            print(f"讀取官方先發名單失敗 ({stats_path.name}): {e}")
 
-        return {"home_starters": home_starters, "away_starters": away_starters}
-    except Exception as e:
-        print(f"讀取官方先發名單失敗 ({candidates[0].name}): {e}")
-        return {"home_starters": set(), "away_starters": set()}
+    # 若 stats.json 缺少 is_starting（不滿 5 人），從對應 broadcasts.json 開賽 Q1 Rotation 反推
+    if (len(home_starters) < 5 or len(away_starters) < 5) and resolved_sid:
+        bcast_path = raw_dir / f"game_{resolved_sid}_broadcasts.json"
+        fb = _extract_starters_from_broadcasts(bcast_path, home_team, away_team)
+        if len(home_starters) < 5 and fb["home_starters"]:
+            home_starters = fb["home_starters"]
+        if len(away_starters) < 5 and fb["away_starters"]:
+            away_starters = fb["away_starters"]
+
+    return {"home_starters": home_starters, "away_starters": away_starters}
 
 
 def _parse_real_excel_game(excel_path: Path, game_code: str):
@@ -1510,7 +1605,12 @@ def get_game_detail(game_id: str):
         if not home_box: home_box = fb_home
         if not away_box: away_box = fb_away
 
-    official_starters = _get_official_starting_players(real_db_id, home_team, away_team)
+    official_starters = _get_official_starting_players(
+        real_db_id,
+        home_team,
+        away_team,
+        schedule_id=g["schedule_id"] if "schedule_id" in g.keys() else None,
+    )
     h_starters = official_starters["home_starters"]
     a_starters = official_starters["away_starters"]
 
@@ -2422,3 +2522,297 @@ def admin_ping_gemini(
     _require_admin_secret(x_admin_secret)
     from app.services.scouting_generator import ping_gemini_api
     return ping_gemini_api()
+
+
+# =====================================================================
+# 賽後一鍵硬數據同步 + AI 質化戰術短評生成管線
+# =====================================================================
+
+class PipelineUpdateStatsRequest(BaseModel):
+    fetch_latest: bool = True
+    game_ids: Optional[List[int]] = None
+
+
+class PipelineGenerateReviewsRequest(BaseModel):
+    game_id: Union[int, str]
+    model_name: str = ""
+    action: Literal["preview", "commit"] = "preview"
+    edited_payload: Optional[Dict[str, Any]] = None
+
+
+def _get_recent_finished_games(limit: int = 10) -> List[Dict[str, Any]]:
+    from app.services.scouting_generator import resolve_schedule_id_for_game
+
+    pbp_data = _load_pbp_lineup_json()
+    with db_session() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status
+            FROM games
+            WHERE COALESCE(status, 'FINAL') LIKE 'FINAL%'
+            ORDER BY date DESC, id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        sid = resolve_schedule_id_for_game(r, pbp_data)
+        gid_match = re.search(r"(G\d+)", str(r.get("id", "")), re.IGNORECASE)
+        game_code = gid_match.group(1).upper() if gid_match else str(r.get("id", ""))
+        out.append({
+            "id": r["id"],
+            "game_code": game_code,
+            "schedule_id": sid,
+            "stage": r["stage"],
+            "date": r["date"],
+            "home_team": r["home_team"],
+            "away_team": r["away_team"],
+            "home_score": r["home_score"],
+            "away_score": r["away_score"],
+        })
+    return out
+
+
+def _detect_fetch_targets(game_ids: Optional[List[int]]) -> List[Dict[str, int]]:
+    """決定要抓取的 (schedule_id, g_num) 清單"""
+    raw_dir = BACKEND_DIR / "data" / "raw_game_stats"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+
+    sched_map_by_sid: Dict[int, int] = {}
+    for cand in (
+        DATA_DIR / "season2026" / "upcoming_schedule.json",
+        BACKEND_DIR / "data" / "season2026" / "upcoming_schedule.json",
+    ):
+        if cand.exists():
+            try:
+                items = json.loads(cand.read_text(encoding="utf-8"))
+                for it in items:
+                    oid = it.get("official_id")
+                    gm = re.search(r"G(\d+)", str(it.get("game_id", "")), re.IGNORECASE)
+                    if oid and gm:
+                        sched_map_by_sid[int(oid)] = int(gm.group(1))
+                break
+            except Exception:
+                pass
+
+    if game_ids:
+        return [{"sid": int(sid), "g_num": sched_map_by_sid.get(int(sid), 1)} for sid in game_ids]
+
+    # 自動偵測：找出 upcoming_schedule.json 中日期 <= 今天且缺少 stats 或 broadcasts 的場次，外加 max_existing + 1..2
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    targets: List[Dict[str, int]] = []
+    seen_sids = set()
+
+    for cand in (
+        DATA_DIR / "season2026" / "upcoming_schedule.json",
+        BACKEND_DIR / "data" / "season2026" / "upcoming_schedule.json",
+    ):
+        if cand.exists():
+            try:
+                items = json.loads(cand.read_text(encoding="utf-8"))
+                for it in items:
+                    oid = it.get("official_id")
+                    gdate = str(it.get("date", ""))[:10]
+                    if not oid or not gdate or gdate > today_str:
+                        continue
+                    sid = int(oid)
+                    stats_p = raw_dir / f"game_{sid}_stats.json"
+                    bcast_p = raw_dir / f"game_{sid}_broadcasts.json"
+                    if not (stats_p.exists() and stats_p.stat().st_size > 500 and bcast_p.exists() and bcast_p.stat().st_size > 500):
+                        if sid not in seen_sids:
+                            seen_sids.add(sid)
+                            targets.append({"sid": sid, "g_num": sched_map_by_sid.get(sid, 1)})
+                break
+            except Exception:
+                pass
+
+    if not targets:
+        existing_sids = []
+        for f in raw_dir.glob("game_*_stats.json"):
+            m = re.search(r"game_(\d+)_stats\.json", f.name)
+            if m:
+                existing_sids.append(int(m.group(1)))
+        max_sid = max(existing_sids) if existing_sids else 27557
+        for offset in (1, 2):
+            sid = max_sid + offset
+            targets.append({"sid": sid, "g_num": sched_map_by_sid.get(sid, 1)})
+
+    return targets
+
+
+def _collect_missing_raw_files(recent_games: List[Dict[str, Any]], explicit_game_ids: Optional[List[int]]) -> List[str]:
+    raw_dir = BACKEND_DIR / "data" / "raw_game_stats"
+    missing: List[str] = []
+    checked_sids = set()
+
+    if explicit_game_ids:
+        for sid in explicit_game_ids:
+            checked_sids.add(int(sid))
+            if not (raw_dir / f"game_{sid}_stats.json").exists():
+                missing.append(f"指定場次 schedule_id={sid} 缺少 game_{sid}_stats.json")
+            if not (raw_dir / f"game_{sid}_broadcasts.json").exists():
+                missing.append(f"指定場次 schedule_id={sid} 缺少 game_{sid}_broadcasts.json")
+
+    for g in recent_games:
+        if g.get("stage") != "2026-2027 例行賽":
+            continue
+        sid = g.get("schedule_id")
+        label = f"{g.get('game_code')} ({g.get('date')} {g.get('away_team')} vs {g.get('home_team')})"
+        if not sid:
+            missing.append(f"{label}: 無法對應官網 schedule_id，缺少 stats.json / broadcasts.json")
+            continue
+        if int(sid) in checked_sids:
+            continue
+        checked_sids.add(int(sid))
+        if not (raw_dir / f"game_{sid}_stats.json").exists():
+            missing.append(f"{label}: 缺少 game_{sid}_stats.json")
+        if not (raw_dir / f"game_{sid}_broadcasts.json").exists():
+            missing.append(f"{label}: 缺少 game_{sid}_broadcasts.json")
+
+    return missing
+
+
+@router.get("/admin/pipeline/recent-games", summary="取得資料庫最近已完賽賽事清單（供 AI 短評選單使用）")
+def admin_pipeline_recent_games(
+    limit: int = Query(10, ge=1, le=50),
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    return {"recent_games": _get_recent_finished_games(limit=limit)}
+
+
+@router.post("/admin/pipeline/update-stats", summary="一鍵抓取官方數據、建庫並重算全站進階指標 JSON")
+def admin_pipeline_update_stats(
+    req: PipelineUpdateStatsRequest,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    t0 = _time.time()
+    log_chunks: List[str] = []
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+
+    def _run_subprocess(label: str, cmd: List[str]) -> bool:
+        log_chunks.append(f"▶ {label}\n$ {' '.join(cmd)}")
+        proc = subprocess.run(
+            cmd,
+            cwd=str(BACKEND_DIR),
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if proc.stdout:
+            log_chunks.append(proc.stdout.strip())
+        if proc.stderr:
+            log_chunks.append(f"[stderr]\n{proc.stderr.strip()}")
+        if proc.returncode != 0:
+            log_chunks.append(f"❌ 步驟失敗 (exit code={proc.returncode})，管線已中止。")
+            return False
+        log_chunks.append(f"✅ {label} 完成")
+        return True
+
+    if req.fetch_latest:
+        targets = _detect_fetch_targets(req.game_ids)
+        for t in targets:
+            cmd = [
+                sys.executable,
+                str(BACKEND_DIR / "fetch_tpbl_boxscores.py"),
+                str(t["sid"]),
+                "-g",
+                str(t["g_num"]),
+                "-c",
+                "1",
+            ]
+            if not req.game_ids:
+                cmd.append("--skip-existing")
+            ok = _run_subprocess(f"步驟 1：抓取官方數據 (schedule_id={t['sid']})", cmd)
+            if not ok:
+                recent_games = _get_recent_finished_games(10)
+                return {
+                    "status": "error",
+                    "duration_sec": round(_time.time() - t0, 2),
+                    "logs": "\n\n".join(log_chunks),
+                    "missing_files": _collect_missing_raw_files(recent_games, req.game_ids),
+                    "recent_games": recent_games,
+                }
+
+    if not _run_subprocess("步驟 2：重建/更新 SQLite 資料庫 (build_db.py)", [sys.executable, str(BACKEND_DIR / "build_db.py")]):
+        recent_games = _get_recent_finished_games(10)
+        return {
+            "status": "error",
+            "duration_sec": round(_time.time() - t0, 2),
+            "logs": "\n\n".join(log_chunks),
+            "missing_files": _collect_missing_raw_files(recent_games, req.game_ids),
+            "recent_games": recent_games,
+        }
+
+    if not _run_subprocess("步驟 3：重算全站進階指標並同步至 frontend/public (update_all_stats.py)", [sys.executable, str(BACKEND_DIR / "update_all_stats.py")]):
+        recent_games = _get_recent_finished_games(10)
+        return {
+            "status": "error",
+            "duration_sec": round(_time.time() - t0, 2),
+            "logs": "\n\n".join(log_chunks),
+            "missing_files": _collect_missing_raw_files(recent_games, req.game_ids),
+            "recent_games": recent_games,
+        }
+
+    clear_pbp_cache()
+    log_chunks.append("✅ 步驟 4：已清除後端記憶體 PBP 快取 (clear_pbp_cache)")
+
+    recent_games = _get_recent_finished_games(10)
+    missing_files = _collect_missing_raw_files(recent_games, req.game_ids)
+
+    return {
+        "status": "ok",
+        "duration_sec": round(_time.time() - t0, 2),
+        "logs": "\n\n".join(log_chunks),
+        "missing_files": missing_files,
+        "recent_games": recent_games,
+    }
+
+
+@router.post("/admin/pipeline/generate-reviews", summary="生成或寫入賽後 AI 質化戰術短評（單場 WOWY + 兩隊總評 + 全員賽季短評）")
+def admin_pipeline_generate_reviews(
+    req: PipelineGenerateReviewsRequest,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    from app.services.scouting_generator import (
+        PostGameDataMissingError,
+        commit_post_game_reviews,
+        generate_post_game_reviews,
+    )
+
+    try:
+        if req.action == "preview":
+            return generate_post_game_reviews(req.game_id, model_name=req.model_name)
+
+        # action == "commit"
+        payload = req.edited_payload
+        if payload is None:
+            payload = generate_post_game_reviews(req.game_id, model_name=req.model_name)
+        result = commit_post_game_reviews(req.game_id, payload)
+        clear_pbp_cache()
+        return result
+    except PostGameDataMissingError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": str(e),
+                "missing_items": e.missing_items,
+            },
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {str(e)}")

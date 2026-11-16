@@ -40,6 +40,36 @@ TEAM_ALIASES = {
     "新北國王": ["新北國王", "國王"],
 }
 
+VALID_TPBL_TEAMS = set(TEAM_ALIASES.keys())
+OFFICIAL_ID_MAP = {
+    "27550": "G09",
+    "27551": "G10",
+}
+
+
+def validate_game_record(
+    game_id: str,
+    home_team: str,
+    away_team: str,
+    home_score: int,
+    away_score: int,
+    status: str,
+) -> bool:
+    """防禦性寫入校驗：拒絕同隊互打、非 TPBL 合法 7 隊、或已完賽卻為 0:0 的鬼比賽"""
+    if not home_team or not away_team:
+        print(f"  [!] 拒絕寫入異常賽程 ({game_id})：主隊或客隊名稱為空")
+        return False
+    if home_team == away_team:
+        print(f"  [!] 拒絕寫入異常賽程 ({game_id})：主客隊不可相同 ({home_team})")
+        return False
+    if home_team not in VALID_TPBL_TEAMS or away_team not in VALID_TPBL_TEAMS:
+        print(f"  [!] 拒絕寫入異常賽程 ({game_id})：隊名不在 TPBL 合法 7 隊名單 ({away_team} vs {home_team})")
+        return False
+    if home_score == 0 and away_score == 0 and "FINAL" in str(status or "FINAL").upper():
+        print(f"  [!] 拒絕寫入異常賽程 ({game_id})：已完賽賽事比分為 0 : 0 ({away_team} vs {home_team})")
+        return False
+    return True
+
 def normalize_team(raw_name: str) -> str:
     c = str(raw_name).strip()
     for std, aliases in TEAM_ALIASES.items():
@@ -211,6 +241,14 @@ def process_schedules(conn: sqlite3.Connection, folder: Path, stage_name: str):
             raw_gid = str(g.get("game_id") or g.get("id") or "")
             unique_id = f"{stage_name}-{raw_gid}" if not raw_gid.startswith(stage_name) else raw_gid
             raw_date = str(g.get("date", ""))[:10].replace(".", "-")
+            h_team = normalize_team(g.get("home_team", ""))
+            a_team = normalize_team(g.get("away_team", ""))
+            h_score = int(clean_num(g.get("home_score", 0), 0))
+            a_score = int(clean_num(g.get("away_score", 0), 0))
+            g_status = g.get("status", "FINAL")
+
+            if not validate_game_record(unique_id, h_team, a_team, h_score, a_score, g_status):
+                continue
 
             cur.execute("""
             INSERT OR REPLACE INTO games (id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status)
@@ -220,11 +258,11 @@ def process_schedules(conn: sqlite3.Connection, folder: Path, stage_name: str):
                 g.get("schedule_id"),
                 stage_name,
                 raw_date,
-                normalize_team(g.get("home_team", "")),
-                normalize_team(g.get("away_team", "")),
-                int(clean_num(g.get("home_score", 0), 0)),
-                int(clean_num(g.get("away_score", 0), 0)),
-                g.get("status", "FINAL")
+                h_team,
+                a_team,
+                h_score,
+                a_score,
+                g_status,
             ))
         conn.commit()
         print(f"  [OK] 賽程匯入成功: {folder.name} (共寫入 {len(items)} 場)")
@@ -403,20 +441,44 @@ def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: st
                 if sname in ["平均數據", "球員進階數據 (Advanced Stats)"]:
                     continue
                 gid_match = re.search(r"(G\d+)", sname, re.IGNORECASE)
-                game_code = gid_match.group(1).upper() if gid_match else sname.strip()
+                if gid_match:
+                    game_code = gid_match.group(1).upper()
+                else:
+                    mapped_code = next((g_val for off_id, g_val in OFFICIAL_ID_MAP.items() if off_id in sname), None)
+                    if not mapped_code:
+                        print(f"  [!] 略過非標準 Gxx 賽程工作表 ({ef.name} -> {sname})")
+                        continue
+                    game_code = mapped_code
+
+                raw_game = pd.read_excel(ef, sheet_name=sname, header=None)
 
                 if any(k in sname for k in [" vs ", " VS "]):
                     parts = sname.replace("VS", "vs").split("vs")
-                    away_t = normalize_team(parts[1].strip() if len(parts) > 1 else "客隊")
-                    date_match = re.search(r"(\d{4}[.-]\d{2}[.-]\d{2})", parts[0])
+                    left_part = parts[0].strip()
+                    right_part = parts[1].strip() if len(parts) > 1 else ""
+                    date_match = re.search(r"(\d{4}[.-]\d{2}[.-]\d{2})", left_part)
                     gdate = date_match.group(1).replace(".", "-") if date_match else "2025-01-01"
-                    u_id = f"{stage_name}-{game_code}"
-                    cur.execute("""
-                    INSERT OR IGNORE INTO games (id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status)
-                    VALUES (?, NULL, ?, ?, ?, ?, 0, 0, 'FINAL')
-                    """, (u_id, stage_name, gdate, team_name, away_t))
 
-                raw_game = pd.read_excel(ef, sheet_name=sname, header=None)
+                    left_tokens = left_part.split()
+                    away_t = normalize_team(left_tokens[-1]) if left_tokens else team_name
+                    home_t = normalize_team(right_part) if right_part else team_name
+
+                    title_cell = str(raw_game.iloc[0, 0]) if len(raw_game) > 0 else ""
+                    score_m = re.search(r"\((\d+)\s*:\s*(\d+)\)", title_cell)
+                    a_score, h_score = 0, 0
+                    if score_m:
+                        s1, s2 = int(score_m.group(1)), int(score_m.group(2))
+                        if normalize_team(team_name) == away_t:
+                            a_score, h_score = s1, s2
+                        else:
+                            h_score, a_score = s1, s2
+
+                    u_id = f"{stage_name}-{game_code}"
+                    if validate_game_record(u_id, home_t, away_t, h_score, a_score, "FINAL"):
+                        cur.execute("""
+                        INSERT OR IGNORE INTO games (id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status)
+                        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 'FINAL')
+                        """, (u_id, stage_name, gdate, home_t, away_t, h_score, a_score))
                 c_scen, c_desc = None, None
                 for c in range(len(raw_game.columns)):
                     col_header_str = " ".join([str(x) for x in raw_game.iloc[:6, c].dropna().values])

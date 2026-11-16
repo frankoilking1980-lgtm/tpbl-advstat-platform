@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useStage } from '@/context/StageContext';
+import PostGamePipelineCenter from '@/components/PostGamePipelineCenter';
 import {
   Zap,
   Download,
@@ -61,7 +62,7 @@ export default function SystemConsolePage() {
   const [verifying, setVerifying] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
   const [isLocalhost, setIsLocalhost] = useState<boolean>(true);
 
   // 檢查目前工作階段 (Session) 是否已解鎖過，並判斷是否為本機環境
@@ -695,13 +696,24 @@ export default function SystemConsolePage() {
       </div>
 
       {/* ================================================================= */}
+      {/* 賽後數據與 AI 短評更新中心 */}
+      {/* ================================================================= */}
+      <PostGamePipelineCenter
+        apiBase={apiBase}
+        adminSecret={adminSecret}
+        selectedModel={selectedGeminiModel}
+        onScanModels={() => handlePingGemini()}
+        scanningModels={pingingGemini}
+      />
+
+      {/* ================================================================= */}
       {/* 週預測 & 傷兵名單管理三大功能區塊 */}
       {/* ================================================================= */}
       <div className="space-y-6">
         {/* Gemini API 連線狀態測試燈號 + 近期未開打賽程一鍵帶入 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* ① Gemini API 連線狀態測試 */}
-          <section className="lg:col-span-5 rounded-3xl border border-[#30363D] bg-[#161B22] p-6 shadow-xl space-y-4">
+          <section id="gemini-api-tester" className="lg:col-span-5 rounded-3xl border border-[#30363D] bg-[#161B22] p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span

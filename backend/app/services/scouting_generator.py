@@ -5,7 +5,7 @@ import shutil
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -1260,3 +1260,776 @@ def ping_gemini_api() -> Dict:
             "available_models": [],
             "message": f"Gemini API 連線測試失敗：{e}",
         }
+
+
+# =====================================================================
+# 賽後 AI 質化戰術短評生成與原子性寫入模組 (對齊 v3 規範)
+# =====================================================================
+
+class WowyMatchupItem(BaseModel):
+    scenario_item: str = Field(description="對位情境項目名稱（精簡標題，含關鍵數據）")
+    tactical_desc: str = Field(description="攻防表現與命中率變化分析（必須引用輸入中的真實數據）")
+
+
+class TeamSeasonSummaryReview(BaseModel):
+    high_usg_core: str = Field(description="高球權核心名單與簡評（嚴格依程式預篩名單，無符合者填「暫無符合門檻球員」）")
+    high_eff_finisher: str = Field(description="高效終結者名單與簡評（嚴格依程式預篩名單，無符合者填「暫無符合門檻球員」）")
+    system_notes: str = Field(description="球隊全季滾動戰力總評")
+
+
+class PlayerSeasonReviewItem(BaseModel):
+    player_name: str = Field(description="球員姓名，必須與輸入名單完全一致")
+    shot_chart_review: str = Field(description="第 34 欄：投籃分布與進攻區域短評（全季宏觀視角）")
+    performance_review: str = Field(description="第 35 欄：本季整體攻防表現與定位短評（全季宏觀視角）")
+
+
+class PostGameReviewPayload(BaseModel):
+    """Gemini Structured Output：賽後單場 WOWY + 兩隊滾動總評 + 全員賽季短評"""
+    away_wowy: List[WowyMatchupItem] = Field(min_length=2, max_length=3)
+    home_wowy: List[WowyMatchupItem] = Field(min_length=2, max_length=3)
+    away_team_summary: TeamSeasonSummaryReview
+    home_team_summary: TeamSeasonSummaryReview
+    away_player_reviews: List[PlayerSeasonReviewItem]
+    home_player_reviews: List[PlayerSeasonReviewItem]
+
+
+class PostGameDataMissingError(ValueError):
+    """前置資料不完整時拋出，攜帶具體缺失清單"""
+    def __init__(self, missing_items: List[str]):
+        self.missing_items = missing_items
+        super().__init__("前置資料不完整，無法生成 AI 短評：\n" + "\n".join(f"- {m}" for m in missing_items))
+
+
+def _raw_game_stats_dir() -> Path:
+    for cand in (
+        DATA_DIR / "raw_game_stats",
+        PROJECT_ROOT / "data" / "raw_game_stats",
+    ):
+        if cand.exists():
+            return cand
+    return DATA_DIR / "raw_game_stats"
+
+
+def _pbp_lineup_json_path() -> Optional[Path]:
+    for cand in (
+        DATA_DIR / "pbp_lineup_stats.json",
+        PROJECT_ROOT / "frontend" / "public" / "pbp_lineup_stats.json",
+    ):
+        if cand.exists():
+            return cand
+    return None
+
+
+def _upcoming_schedule_json_path() -> Optional[Path]:
+    for cand in (
+        DATA_DIR / "season2026" / "upcoming_schedule.json",
+        PROJECT_ROOT / "data" / "season2026" / "upcoming_schedule.json",
+    ):
+        if cand.exists():
+            return cand
+    return None
+
+
+def resolve_schedule_id_for_game(
+    game_row: Dict[str, Any],
+    pbp_data: Optional[Dict[str, Any]] = None,
+) -> Optional[int]:
+    """依序從 games.schedule_id、pbp_lineup_stats.json、upcoming_schedule.json 解析官網 schedule_id"""
+    if game_row.get("schedule_id"):
+        try:
+            return int(game_row["schedule_id"])
+        except (TypeError, ValueError):
+            pass
+
+    gid_str = str(game_row.get("id", ""))
+    m = re.search(r"(G\d+)", gid_str, re.IGNORECASE)
+    game_code = m.group(1).upper() if m else ""
+
+    if pbp_data is None:
+        pbp_path = _pbp_lineup_json_path()
+        if pbp_path:
+            try:
+                pbp_data = json.loads(pbp_path.read_text(encoding="utf-8"))
+            except Exception:
+                pbp_data = {}
+        else:
+            pbp_data = {}
+
+    for sid_key, g_entry in (pbp_data.get("games") or {}).items():
+        if game_code and str(g_entry.get("game_id", "")).upper() == game_code:
+            try:
+                return int(g_entry.get("schedule_id") or sid_key)
+            except (TypeError, ValueError):
+                continue
+
+    sched_path = _upcoming_schedule_json_path()
+    if sched_path and game_code:
+        try:
+            sched_items = json.loads(sched_path.read_text(encoding="utf-8"))
+            for item in sched_items:
+                if str(item.get("game_id", "")).upper() == game_code and item.get("official_id"):
+                    return int(item["official_id"])
+        except Exception:
+            pass
+
+    return None
+
+
+def resolve_game_record(conn: sqlite3.Connection, game_id: Union[int, str]) -> Optional[Dict[str, Any]]:
+    """從 tpbl_stats.db 精準查找目標場次（支援 games.id 字串、Gxx 代號或 schedule_id 整數）"""
+    cur = conn.cursor()
+    target_str = str(game_id).strip()
+
+    cur.execute("SELECT * FROM games WHERE id = ? LIMIT 1", (target_str,))
+    row = cur.fetchone()
+    if row:
+        return dict(row)
+
+    if target_str.isdigit():
+        sid_int = int(target_str)
+        cur.execute("SELECT * FROM games WHERE schedule_id = ? LIMIT 1", (sid_int,))
+        row = cur.fetchone()
+        if row:
+            return dict(row)
+
+        # 從 pbp_lineup_stats.json 或 upcoming_schedule.json 反查 Gxx 代號
+        pbp_path = _pbp_lineup_json_path()
+        found_code = None
+        if pbp_path:
+            try:
+                pbp_data = json.loads(pbp_path.read_text(encoding="utf-8"))
+                entry = (pbp_data.get("games") or {}).get(target_str)
+                if entry and entry.get("game_id"):
+                    found_code = str(entry["game_id"]).upper()
+            except Exception:
+                pass
+        if not found_code:
+            sched_path = _upcoming_schedule_json_path()
+            if sched_path:
+                try:
+                    for item in json.loads(sched_path.read_text(encoding="utf-8")):
+                        if str(item.get("official_id", "")) == target_str and item.get("game_id"):
+                            found_code = str(item["game_id"]).upper()
+                            break
+                except Exception:
+                    pass
+        if found_code:
+            cur.execute(
+                "SELECT * FROM games WHERE id LIKE ? ORDER BY date DESC LIMIT 1",
+                (f"%-{found_code}",),
+            )
+            row = cur.fetchone()
+            if row:
+                return dict(row)
+
+    if re.fullmatch(r"G\d+", target_str, re.IGNORECASE):
+        cur.execute(
+            "SELECT * FROM games WHERE id LIKE ? ORDER BY date DESC LIMIT 1",
+            (f"%-{target_str.upper()}",),
+        )
+        row = cur.fetchone()
+        if row:
+            return dict(row)
+
+    return None
+
+
+def _pct_100_val(val: Any) -> float:
+    try:
+        v = float(val or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+    return round(v * 100.0, 2) if (0.0 < v <= 1.0) else round(v, 2)
+
+
+def _compute_team_pre_filters(players: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """由 Python 嚴格計算硬指標門檻，避免 LLM 自行心算：
+    - 高球權核心：USG% > 25% 且 TS% > 55%
+    - 高效終結者：GmSc 隊內前二 且 eFG% > 60%
+    """
+    active = [p for p in players if int(p.get("games_played") or 0) > 0]
+    high_usg_core = []
+    for p in active:
+        usg = _pct_100_val(p.get("usg_pct"))
+        ts = _pct_100_val(p.get("ts_pct"))
+        if usg > 25.0 and ts > 55.0:
+            high_usg_core.append({
+                "player_name": p["player_name"],
+                "usg_pct": usg,
+                "ts_pct": ts,
+                "ppg": round(float(p.get("ppg") or 0.0), 1),
+            })
+
+    top2_gmsc = sorted(active, key=lambda x: float(x.get("gmsc") or 0.0), reverse=True)[:2]
+    high_eff_finisher = []
+    for p in top2_gmsc:
+        efg = _pct_100_val(p.get("efg_pct"))
+        gmsc = round(float(p.get("gmsc") or 0.0), 1)
+        if efg > 60.0:
+            high_eff_finisher.append({
+                "player_name": p["player_name"],
+                "gmsc": gmsc,
+                "efg_pct": efg,
+                "ppg": round(float(p.get("ppg") or 0.0), 1),
+            })
+
+    return {
+        "high_usg_core": high_usg_core,
+        "high_eff_finisher": high_eff_finisher,
+    }
+
+
+def _load_and_validate_post_game_inputs(game_id: Union[int, str]) -> Dict[str, Any]:
+    """嚴格驗證該場次所有資料庫紀錄與原始 JSON 檔案是否齊全，缺一即拋出 PostGameDataMissingError"""
+    missing: List[str] = []
+
+    with get_db_connection() as conn:
+        game_row = resolve_game_record(conn, game_id)
+        if not game_row:
+            raise PostGameDataMissingError([f"資料庫 games 表中找不到場次 {game_id}"])
+
+        stage = game_row["stage"]
+        home_team = game_row["home_team"]
+        away_team = game_row["away_team"]
+        gid_match = re.search(r"(G\d+)", str(game_row["id"]), re.IGNORECASE)
+        game_code = gid_match.group(1).upper() if gid_match else str(game_row["id"])
+
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM team_summary WHERE season_stage = ? AND team_name = ? LIMIT 1",
+            (stage, away_team),
+        )
+        away_summary_row = cur.fetchone()
+        if not away_summary_row:
+            missing.append(f"資料庫 team_summary 缺少客隊「{away_team}」({stage}) 紀錄")
+
+        cur.execute(
+            "SELECT * FROM team_summary WHERE season_stage = ? AND team_name = ? LIMIT 1",
+            (stage, home_team),
+        )
+        home_summary_row = cur.fetchone()
+        if not home_summary_row:
+            missing.append(f"資料庫 team_summary 缺少主隊「{home_team}」({stage}) 紀錄")
+
+        # 依 id ASC 維持對應隊伍 Excel「平均數據」工作表由上而下的球員名單順序
+        cur.execute(
+            "SELECT * FROM player_stats WHERE season_stage = ? AND team_name = ? ORDER BY id ASC",
+            (stage, away_team),
+        )
+        away_players = [dict(r) for r in cur.fetchall()]
+        if not away_players:
+            missing.append(f"資料庫 player_stats 缺少客隊「{away_team}」({stage}) 球員名單與數據")
+
+        cur.execute(
+            "SELECT * FROM player_stats WHERE season_stage = ? AND team_name = ? ORDER BY id ASC",
+            (stage, home_team),
+        )
+        home_players = [dict(r) for r in cur.fetchall()]
+        if not home_players:
+            missing.append(f"資料庫 player_stats 缺少主隊「{home_team}」({stage}) 球員名單與數據")
+
+    pbp_path = _pbp_lineup_json_path()
+    pbp_data: Dict[str, Any] = {}
+    if not pbp_path:
+        missing.append("缺少 pbp_lineup_stats.json，無法進行真實 PBP 對位與 On/Off 分析")
+    else:
+        try:
+            pbp_data = json.loads(pbp_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            missing.append(f"pbp_lineup_stats.json 解析失敗：{e}")
+
+    schedule_id = resolve_schedule_id_for_game(game_row, pbp_data)
+    if not schedule_id:
+        missing.append(f"場次 {game_code} 無法對應官網 schedule_id，無法讀取 raw_game_stats JSON")
+        raise PostGameDataMissingError(missing)
+
+    raw_dir = _raw_game_stats_dir()
+    stats_path = raw_dir / f"game_{schedule_id}_stats.json"
+    bcast_path = raw_dir / f"game_{schedule_id}_broadcasts.json"
+
+    stats_data: Dict[str, Any] = {}
+    if not stats_path.exists() or stats_path.stat().st_size < 100:
+        missing.append(f"缺少 game_{schedule_id}_stats.json，無法讀取單場 Box Score 數據")
+    else:
+        try:
+            stats_data = json.loads(stats_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            missing.append(f"game_{schedule_id}_stats.json 解析失敗：{e}")
+
+    bcast_data: Dict[str, Any] = {}
+    if not bcast_path.exists() or bcast_path.stat().st_size < 100:
+        missing.append(f"缺少 game_{schedule_id}_broadcasts.json，無法進行真實 PBP 對位分析")
+    else:
+        try:
+            bcast_data = json.loads(bcast_path.read_text(encoding="utf-8"))
+            if not bcast_data.get("rounds"):
+                missing.append(f"game_{schedule_id}_broadcasts.json 的 rounds 為空，缺少逐球文字直播事件")
+        except Exception as e:
+            missing.append(f"game_{schedule_id}_broadcasts.json 解析失敗：{e}")
+
+    pbp_game_entry = (pbp_data.get("games") or {}).get(str(schedule_id))
+    if pbp_path and not pbp_game_entry:
+        missing.append(
+            f"pbp_lineup_stats.json 中尚未包含 schedule_id={schedule_id} ({game_code}) 的精算資料，請先執行硬數據同步重算"
+        )
+
+    if missing:
+        raise PostGameDataMissingError(missing)
+
+    return {
+        "game": game_row,
+        "game_code": game_code,
+        "stage": stage,
+        "schedule_id": schedule_id,
+        "away_team": away_team,
+        "home_team": home_team,
+        "away_summary": dict(away_summary_row),
+        "home_summary": dict(home_summary_row),
+        "away_players": away_players,
+        "home_players": home_players,
+        "away_pre_filters": _compute_team_pre_filters(away_players),
+        "home_pre_filters": _compute_team_pre_filters(home_players),
+        "stats_data": stats_data,
+        "pbp_game": pbp_game_entry,
+        "pbp_teams": {
+            away_team: (pbp_data.get("teams") or {}).get(away_team, {}),
+            home_team: (pbp_data.get("teams") or {}).get(home_team, {}),
+        },
+    }
+
+
+def _compact_boxscore_for_prompt(stats_data: Dict[str, Any]) -> Dict[str, Any]:
+    """濃縮單場 Box Score 給 LLM，僅保留真實欄位（相容 dict['total'] 與 list 結構）"""
+    if not isinstance(stats_data, dict):
+        return {}
+    out = {}
+    for side in ("away_team", "home_team"):
+        t = stats_data.get(side)
+        if not isinstance(t, dict):
+            continue
+
+        raw_players = t.get("players")
+        if isinstance(raw_players, dict):
+            total_block = raw_players.get("total")
+            if isinstance(total_block, dict):
+                player_iter = list(total_block.values())
+            else:
+                player_iter = [v for v in raw_players.values() if isinstance(v, dict)]
+        elif isinstance(raw_players, list):
+            player_iter = raw_players
+        else:
+            player_iter = []
+
+        players_compact = []
+        for p in player_iter:
+            if not isinstance(p, dict):
+                continue
+            p_name = p.get("name") or p.get("player_name") or ""
+            if not p_name:
+                continue
+            fg_m = p.get("field_goals_made", p.get("two_pointers_made", 0) + p.get("three_pointers_made", 0))
+            fg_a = p.get("field_goals_attempted", p.get("two_pointers_attempted", 0) + p.get("three_pointers_attempted", 0))
+            players_compact.append({
+                "name": p_name,
+                "starter": bool(p.get("is_starting")),
+                "min": p.get("time_on_court") or p.get("minutes") or p.get("time") or "00:00",
+                "pts": p.get("score", p.get("points", 0)),
+                "reb": p.get("rebounds", 0),
+                "ast": p.get("assists", 0),
+                "stl": p.get("steals", 0),
+                "blk": p.get("blocks", 0),
+                "tov": p.get("turnovers", 0),
+                "fg": f"{fg_m}/{fg_a}",
+                "3pt": f"{p.get('three_pointers_made', 0)}/{p.get('three_pointers_attempted', 0)}",
+                "ft": f"{p.get('free_throws_made', 0)}/{p.get('free_throws_attempted', 0)}",
+                "plus_minus": p.get("plus_minus", 0),
+            })
+
+        teams_block = t.get("teams")
+        team_totals = {}
+        if isinstance(teams_block, dict) and isinstance(teams_block.get("total"), dict):
+            team_totals = teams_block.get("total") or {}
+        elif isinstance(t.get("totals"), dict):
+            team_totals = t.get("totals") or {}
+        elif isinstance(t.get("total"), dict):
+            team_totals = t.get("total") or {}
+
+        core_total_keys = (
+            "score", "rebounds", "offensive_rebounds", "defensive_rebounds",
+            "assists", "steals", "blocks", "turnovers", "personal_fouls",
+            "field_goals_made", "field_goals_attempted", "field_goals_percentage",
+            "three_pointers_made", "three_pointers_attempted", "three_pointers_percentage",
+            "free_throws_made", "free_throws_attempted", "free_throws_percentage",
+            "points_in_paint", "second_chance_points", "fast_break_points", "points_off_turnovers",
+            "efg", "tsp",
+        )
+        compact_totals = {k: team_totals[k] for k in core_total_keys if k in team_totals}
+
+        out[side] = {
+            "name": t.get("name", ""),
+            "score": team_totals.get("score", t.get("score", 0)),
+            "totals": compact_totals,
+            "players": players_compact,
+        }
+    return out
+
+
+def _compact_season_players_for_prompt(players: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [
+        {
+            "player_name": p["player_name"],
+            "jersey_number": p.get("jersey_number", ""),
+            "position": p.get("position", ""),
+            "identity": p.get("identity", ""),
+            "games_played": p.get("games_played", 0),
+            "mpg": p.get("mpg", 0.0),
+            "ppg": p.get("ppg", 0.0),
+            "rpg": p.get("rpg", 0.0),
+            "apg": p.get("apg", 0.0),
+            "spg": p.get("spg", 0.0),
+            "bpg": p.get("bpg", 0.0),
+            "efg_pct": _pct_100_val(p.get("efg_pct")),
+            "ts_pct": _pct_100_val(p.get("ts_pct")),
+            "usg_pct": _pct_100_val(p.get("usg_pct")),
+            "gmsc": p.get("gmsc", 0.0),
+        }
+        for p in players
+    ]
+
+
+def build_excel_tsv(player_reviews: Dict[str, List[Dict[str, str]]]) -> Dict[str, str]:
+    """將兩隊球員第 34、35 欄短評轉為 Tab 分隔純文字，方便一鍵貼回 Excel"""
+    tsv_map: Dict[str, str] = {}
+    for team_name, reviews in player_reviews.items():
+        lines = []
+        for item in reviews:
+            col34 = str(item.get("shot_chart_review") or "").replace("\t", " ").replace("\r", " ").replace("\n", " ").strip()
+            col35 = str(item.get("performance_review") or "").replace("\t", " ").replace("\r", " ").replace("\n", " ").strip()
+            lines.append(f"{col34}\t{col35}")
+        tsv_map[team_name] = "\n".join(lines)
+    return tsv_map
+
+
+def _normalize_player_reviews_order(
+    raw_reviews: List[PlayerSeasonReviewItem],
+    db_players: List[Dict[str, Any]],
+) -> List[Dict[str, str]]:
+    """強制 100% 覆蓋 db_players 名單並維持由上而下的精確順序，嚴禁跳漏或輸出 None"""
+    by_name: Dict[str, PlayerSeasonReviewItem] = {}
+    for item in raw_reviews:
+        key = str(item.player_name or "").strip()
+        if key and key not in by_name:
+            by_name[key] = item
+
+    fallback_note = "待例行賽賽程展開 / 先列入註冊名單與數據架構"
+    normalized: List[Dict[str, str]] = []
+    for p in db_players:
+        p_name = p["player_name"]
+        matched = by_name.get(p_name)
+        gp = int(p.get("games_played") or 0)
+        mpg = float(p.get("mpg") or 0.0)
+        if matched and matched.shot_chart_review and matched.performance_review:
+            shot_rev = str(matched.shot_chart_review).strip()
+            perf_rev = str(matched.performance_review).strip()
+        elif gp == 0 or mpg < 3.0:
+            pos = p.get("position") or "輪替"
+            ident = p.get("identity") or "本土"
+            shot_rev = f"{ident}{pos}球員，目前出賽樣本極少或尚未登板；{fallback_note}。"
+            perf_rev = f"目前累積出賽 {gp} 場、場均 {mpg} 分鐘；{fallback_note}。"
+        else:
+            shot_rev = f"本季場均 {p.get('ppg', 0)} 分（eFG% {_pct_100_val(p.get('efg_pct'))}% / TS% {_pct_100_val(p.get('ts_pct'))}%），持續觀察出手熱區分布。"
+            perf_rev = f"出賽 {gp} 場場均 {mpg} 分鐘，貢獻 {p.get('ppg', 0)} 分 {p.get('rpg', 0)} 籃板 {p.get('apg', 0)} 助攻（GmSc {p.get('gmsc', 0)}）。"
+        normalized.append({
+            "player_name": p_name,
+            "shot_chart_review": shot_rev,
+            "performance_review": perf_rev,
+        })
+    return normalized
+
+
+def generate_post_game_reviews(
+    game_id: Union[int, str],
+    model_name: str = "gemini-2.5-flash",
+) -> Dict[str, Any]:
+    """檢查資料完整性 -> 呼叫 Gemini Structured Output -> 回傳標準化預覽結構與 Excel TSV"""
+    inputs = _load_and_validate_post_game_inputs(game_id)
+
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("伺服器尚未設定 GEMINI_API_KEY 環境變數，無法呼叫 Gemini 生成短評。")
+
+    from google import genai
+    from google.genai import types
+
+    away_team = inputs["away_team"]
+    home_team = inputs["home_team"]
+    game = inputs["game"]
+
+    pbp_game_all = (inputs["pbp_game"] or {}).get("all") or {}
+    pbp_away_season = ((inputs["pbp_teams"].get(away_team) or {}).get("all") or {})
+    pbp_home_season = ((inputs["pbp_teams"].get(home_team) or {}).get("all") or {})
+
+    prompt_context = {
+        "game_info": {
+            "id": game["id"],
+            "game_code": inputs["game_code"],
+            "schedule_id": inputs["schedule_id"],
+            "stage": inputs["stage"],
+            "date": game["date"],
+            "away_team": away_team,
+            "home_team": home_team,
+            "away_score": game["away_score"],
+            "home_score": game["home_score"],
+        },
+        "single_game_boxscore": _compact_boxscore_for_prompt(inputs["stats_data"]),
+        "single_game_pbp_wowy": {
+            "on_off_players": (pbp_game_all.get("on_off_players") or [])[:16],
+            "five_man_lineups": (pbp_game_all.get("five_man_lineups") or [])[:8],
+        },
+        "season_team_summaries": {
+            away_team: {
+                "games_played": inputs["away_summary"].get("games_played"),
+                "record": inputs["away_summary"].get("record"),
+                "pace": inputs["away_summary"].get("pace"),
+                "ortg": inputs["away_summary"].get("ortg"),
+                "drtg": inputs["away_summary"].get("drtg"),
+                "net_rtg": inputs["away_summary"].get("net_rtg"),
+                "efg_pct": inputs["away_summary"].get("efg_pct"),
+                "three_par": inputs["away_summary"].get("three_par"),
+                "tov_pct": inputs["away_summary"].get("tov_pct"),
+                "orb_pct": inputs["away_summary"].get("orb_pct"),
+                "ftr": inputs["away_summary"].get("ftr"),
+                "pre_filtered_high_usg_core": inputs["away_pre_filters"]["high_usg_core"],
+                "pre_filtered_high_eff_finisher": inputs["away_pre_filters"]["high_eff_finisher"],
+            },
+            home_team: {
+                "games_played": inputs["home_summary"].get("games_played"),
+                "record": inputs["home_summary"].get("record"),
+                "pace": inputs["home_summary"].get("pace"),
+                "ortg": inputs["home_summary"].get("ortg"),
+                "drtg": inputs["home_summary"].get("drtg"),
+                "net_rtg": inputs["home_summary"].get("net_rtg"),
+                "efg_pct": inputs["home_summary"].get("efg_pct"),
+                "three_par": inputs["home_summary"].get("three_par"),
+                "tov_pct": inputs["home_summary"].get("tov_pct"),
+                "orb_pct": inputs["home_summary"].get("orb_pct"),
+                "ftr": inputs["home_summary"].get("ftr"),
+                "pre_filtered_high_usg_core": inputs["home_pre_filters"]["high_usg_core"],
+                "pre_filtered_high_eff_finisher": inputs["home_pre_filters"]["high_eff_finisher"],
+            },
+        },
+        "season_pbp_on_off": {
+            away_team: (pbp_away_season.get("on_off_players") or [])[:15],
+            home_team: (pbp_home_season.get("on_off_players") or [])[:15],
+        },
+        "season_player_rosters_ordered": {
+            away_team: _compact_season_players_for_prompt(inputs["away_players"]),
+            home_team: _compact_season_players_for_prompt(inputs["home_players"]),
+        },
+    }
+
+    system_instruction = (
+        "你是台灣 TPBL 職業籃球聯賽的首席數據球探與戰術分析師，請使用繁體中文輸出。\n"
+        "【最高零幻覺鐵則】：\n"
+        "1. 嚴禁捏造任何未出現在輸入 JSON 中的 On/Off、五人陣容、得分、命中率或球員姓名。\n"
+        "2. away_wowy 與 home_wowy 各輸出 2–3 點單場焦點對位與命中率影響（可包含最後一點「單場戰術結論」），必須直接引用 single_game_boxscore 與 single_game_pbp_wowy 的真實數字。\n"
+        "3. team_summaries 的 high_usg_core（USG%>25% 且 TS%>55%）與 high_eff_finisher（GmSc 隊內前二 且 eFG%>60%）必須 100% 嚴格依照輸入中的 pre_filtered_high_usg_core 與 pre_filtered_high_eff_finisher 名單撰寫，不可自行增減球員；若預篩清單為空，請填「暫無符合門檻球員」。\n"
+        "4. system_notes 必須以全季滾動視角總結該隊截至目前的戰績、節奏、攻防效率與體系優缺點。\n"
+        "5. away_player_reviews 與 home_player_reviews 必須 100% 覆蓋 season_player_rosters_ordered 中對應球隊的每一位球員，且順序必須完全一致，不得跳漏或亂序。\n"
+        "6. 球員短評必須採用「全季宏觀視角（非單場流水帳）」；對於 games_played == 0 或 mpg < 3.0 的未出賽／極少上場球員，請給予簡短標準球風定位並統一備註「待例行賽賽程展開 / 先列入註冊名單與數據架構」，嚴禁輸出 None 或留空。"
+    )
+
+    user_prompt = (
+        f"請根據以下 {inputs['stage']} {inputs['game_code']}（{away_team} @ {home_team}，日期 {game['date']}）的真實賽事與全季累積數據 JSON，產出結構化戰術短評：\n\n"
+        + json.dumps(prompt_context, ensure_ascii=False)
+    )
+
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=180_000))
+    chosen_model = (model_name or "").strip().replace("models/", "") or select_best_gemini_model(client)
+
+    last_err: Optional[Exception] = None
+    response = None
+    for attempt in range(2):
+        try:
+            response = client.models.generate_content(
+                model=chosen_model,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    response_mime_type="application/json",
+                    response_schema=PostGameReviewPayload,
+                    temperature=0.3,
+                ),
+            )
+            break
+        except Exception as exc:
+            last_err = exc
+            if attempt == 0 and any(k in type(exc).__name__.lower() or k in str(exc).lower() for k in ("remoteprotocol", "disconnect", "timeout", "connection")):
+                continue
+            raise
+    if response is None and last_err is not None:
+        raise last_err
+
+    parsed_obj = getattr(response, "parsed", None)
+    if isinstance(parsed_obj, PostGameReviewPayload):
+        parsed = parsed_obj
+    elif isinstance(parsed_obj, dict):
+        parsed = PostGameReviewPayload.model_validate(parsed_obj)
+    else:
+        raw_text = _strip_json_markdown_fences(getattr(response, "text", None) or "")
+        decoded = json.loads(raw_text)
+        if not isinstance(decoded, dict):
+            raise ValueError(f"Gemini 回傳非預期的 JSON 物件型別：{type(decoded).__name__}")
+        parsed = PostGameReviewPayload.model_validate(decoded)
+
+    player_reviews = {
+        away_team: _normalize_player_reviews_order(parsed.away_player_reviews, inputs["away_players"]),
+        home_team: _normalize_player_reviews_order(parsed.home_player_reviews, inputs["home_players"]),
+    }
+
+    team_summaries = {
+        away_team: parsed.away_team_summary.model_dump(),
+        home_team: parsed.home_team_summary.model_dump(),
+    }
+
+    return {
+        "status": "ok",
+        "action": "preview",
+        "model_used": chosen_model,
+        "game": {
+            "id": game["id"],
+            "game_code": inputs["game_code"],
+            "schedule_id": inputs["schedule_id"],
+            "stage": inputs["stage"],
+            "date": game["date"],
+            "away_team": away_team,
+            "home_team": home_team,
+            "away_score": game["away_score"],
+            "home_score": game["home_score"],
+        },
+        "away_wowy": [item.model_dump() for item in parsed.away_wowy],
+        "home_wowy": [item.model_dump() for item in parsed.home_wowy],
+        "team_summaries": team_summaries,
+        "player_reviews": player_reviews,
+        "excel_tsv": build_excel_tsv(player_reviews),
+    }
+
+
+def commit_post_game_reviews(
+    game_id: Union[int, str],
+    payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    """使用單一 SQLite Transaction 原子性寫入 game_matchups、team_summary 與 player_stats"""
+    if not isinstance(payload, dict):
+        raise ValueError("edited_payload 必須為 JSON 物件。")
+
+    with get_db_connection() as conn:
+        game_row = resolve_game_record(conn, game_id)
+        if not game_row:
+            raise PostGameDataMissingError([f"資料庫 games 表中找不到場次 {game_id}"])
+
+        stage = game_row["stage"]
+        home_team = game_row["home_team"]
+        away_team = game_row["away_team"]
+        gid_match = re.search(r"(G\d+)", str(game_row["id"]), re.IGNORECASE)
+        game_code = gid_match.group(1).upper() if gid_match else str(game_row["id"])
+
+        away_wowy = payload.get("away_wowy") or []
+        home_wowy = payload.get("home_wowy") or []
+        team_summaries = payload.get("team_summaries") or {}
+        player_reviews = payload.get("player_reviews") or {}
+
+        if not away_wowy and not home_wowy:
+            raise ValueError("edited_payload 缺少 away_wowy / home_wowy 內容。")
+
+        cur = conn.cursor()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+
+            # 1. 更新 game_matchups（先刪除該場次舊紀錄，再寫入客隊與主隊）
+            cur.execute(
+                "DELETE FROM game_matchups WHERE stage = ? AND game_code = ?",
+                (stage, game_code),
+            )
+            matchup_inserted = 0
+            for item in away_wowy:
+                scen = str(item.get("scenario_item") or "").strip()
+                desc = str(item.get("tactical_desc") or "").strip()
+                if scen and desc:
+                    cur.execute(
+                        "INSERT INTO game_matchups (game_code, stage, team_name, scenario_item, tactical_desc) VALUES (?, ?, ?, ?, ?)",
+                        (game_code, stage, away_team, scen, desc),
+                    )
+                    matchup_inserted += 1
+            for item in home_wowy:
+                scen = str(item.get("scenario_item") or "").strip()
+                desc = str(item.get("tactical_desc") or "").strip()
+                if scen and desc:
+                    cur.execute(
+                        "INSERT INTO game_matchups (game_code, stage, team_name, scenario_item, tactical_desc) VALUES (?, ?, ?, ?, ?)",
+                        (game_code, stage, home_team, scen, desc),
+                    )
+                    matchup_inserted += 1
+
+            # 2. 更新 team_summary
+            summary_updated = 0
+            for team_name in (away_team, home_team):
+                s_obj = team_summaries.get(team_name)
+                if not isinstance(s_obj, dict):
+                    continue
+                cur.execute(
+                    """
+                    UPDATE team_summary
+                    SET high_usg_core = ?, high_eff_finisher = ?, system_notes = ?
+                    WHERE season_stage = ? AND team_name = ?
+                    """,
+                    (
+                        str(s_obj.get("high_usg_core") or "").strip(),
+                        str(s_obj.get("high_eff_finisher") or "").strip(),
+                        str(s_obj.get("system_notes") or "").strip(),
+                        stage,
+                        team_name,
+                    ),
+                )
+                summary_updated += cur.rowcount
+
+            # 3. 更新 player_stats 第 34 / 35 欄短評
+            players_updated = 0
+            for team_name in (away_team, home_team):
+                p_list = player_reviews.get(team_name) or []
+                for p_item in p_list:
+                    p_name = str(p_item.get("player_name") or "").strip()
+                    if not p_name:
+                        continue
+                    cur.execute(
+                        """
+                        UPDATE player_stats
+                        SET shot_chart_review = ?, performance_review = ?
+                        WHERE season_stage = ? AND team_name = ? AND player_name = ?
+                        """,
+                        (
+                            str(p_item.get("shot_chart_review") or "").strip(),
+                            str(p_item.get("performance_review") or "").strip(),
+                            stage,
+                            team_name,
+                            p_name,
+                        ),
+                    )
+                    players_updated += cur.rowcount
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    return {
+        "status": "ok",
+        "action": "commit",
+        "game_id": game_row["id"],
+        "game_code": game_code,
+        "stage": stage,
+        "matchup_rows_written": matchup_inserted,
+        "team_summary_updated": summary_updated,
+        "players_updated": players_updated,
+        "excel_tsv": build_excel_tsv(player_reviews),
+    }

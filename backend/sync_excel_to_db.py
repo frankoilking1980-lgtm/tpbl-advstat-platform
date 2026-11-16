@@ -56,6 +56,33 @@ def normalize_team(name: str) -> str:
     return clean
 
 
+VALID_TPBL_TEAMS = set(STANDARD_TEAMS.values())
+
+
+def validate_game_record(
+    game_id: str,
+    home_team: str,
+    away_team: str,
+    home_score: int,
+    away_score: int,
+    status: str,
+) -> bool:
+    """防禦性寫入校驗：拒絕同隊互打、非 TPBL 合法 7 隊、或已完賽卻為 0:0 的鬼比賽"""
+    if not home_team or not away_team:
+        print(f"  [!] 拒絕寫入異常賽程 ({game_id})：主隊或客隊名稱為空")
+        return False
+    if home_team == away_team:
+        print(f"  [!] 拒絕寫入異常賽程 ({game_id})：主客隊不可相同 ({home_team})")
+        return False
+    if home_team not in VALID_TPBL_TEAMS or away_team not in VALID_TPBL_TEAMS:
+        print(f"  [!] 拒絕寫入異常賽程 ({game_id})：隊名不在 TPBL 合法 7 隊名單 ({away_team} vs {home_team})")
+        return False
+    if home_score == 0 and away_score == 0 and "FINAL" in str(status or "FINAL").upper():
+        print(f"  [!] 拒絕寫入異常賽程 ({game_id})：已完賽賽事比分為 0 : 0 ({away_team} vs {home_team})")
+        return False
+    return True
+
+
 def clean_player_name(raw_name):
     if pd.isna(raw_name):
         return ""
@@ -230,6 +257,14 @@ def process_schedules(conn: sqlite3.Connection, folder: Path, stage_name: str, a
                     raw_gid = g_code
             unique_id = f"{stage_name}-{raw_gid}" if not raw_gid.startswith(stage_name) else raw_gid
             raw_date = str(g.get("date", ""))[:10].replace(".", "-")
+            h_team = normalize_team(g.get("home_team", ""))
+            a_team = normalize_team(g.get("away_team", ""))
+            h_score = int(clean_num(g.get("home_score", 0), 0))
+            a_score = int(clean_num(g.get("away_score", 0), 0))
+            g_status = g.get("status", "FINAL")
+
+            if not validate_game_record(unique_id, h_team, a_team, h_score, a_score, g_status):
+                continue
 
             cur.execute("""
             INSERT OR REPLACE INTO games (id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status)
@@ -239,11 +274,11 @@ def process_schedules(conn: sqlite3.Connection, folder: Path, stage_name: str, a
                 g.get("schedule_id"),
                 stage_name,
                 raw_date,
-                normalize_team(g.get("home_team", "")),
-                normalize_team(g.get("away_team", "")),
-                int(clean_num(g.get("home_score", 0), 0)),
-                int(clean_num(g.get("away_score", 0), 0)),
-                g.get("status", "FINAL")
+                h_team,
+                a_team,
+                h_score,
+                a_score,
+                g_status,
             ))
         if auto_commit:
             conn.commit()
@@ -423,7 +458,14 @@ def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: st
                 if sname in ["平均數據", "球員進階數據 (Advanced Stats)"]:
                     continue
                 gid_match = re.search(r"(G\d+)", sname, re.IGNORECASE)
-                game_code = gid_match.group(1).upper() if gid_match else sname.strip()
+                if gid_match:
+                    game_code = gid_match.group(1).upper()
+                else:
+                    mapped_code = next((g_val for off_id, g_val in OFFICIAL_ID_MAP.items() if off_id in sname), None)
+                    if not mapped_code:
+                        print(f"  [!] 略過非標準 Gxx 賽程工作表 ({ef.name} -> {sname})")
+                        continue
+                    game_code = mapped_code
 
                 raw_game = pd.read_excel(ef, sheet_name=sname, header=None)
 
@@ -452,10 +494,11 @@ def process_player_excels(conn: sqlite3.Connection, folder: Path, stage_name: st
                             h_score, a_score = s1, s2
 
                     u_id = f"{stage_name}-{game_code}"
-                    cur.execute("""
-                    INSERT OR IGNORE INTO games (id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status)
-                    VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 'FINAL')
-                    """, (u_id, stage_name, gdate, home_t, away_t, h_score, a_score))
+                    if validate_game_record(u_id, home_t, away_t, h_score, a_score, "FINAL"):
+                        cur.execute("""
+                        INSERT OR IGNORE INTO games (id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status)
+                        VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 'FINAL')
+                        """, (u_id, stage_name, gdate, home_t, away_t, h_score, a_score))
 
                 c_scen, c_desc = None, None
                 for c in range(len(raw_game.columns)):

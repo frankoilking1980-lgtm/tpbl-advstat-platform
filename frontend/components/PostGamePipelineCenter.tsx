@@ -1,0 +1,763 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Database,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Terminal,
+  Zap,
+} from 'lucide-react';
+
+interface RecentGameItem {
+  id: string;
+  game_code: string;
+  schedule_id: number | null;
+  stage: string;
+  date: string;
+  home_team: string;
+  away_team: string;
+  home_score: number;
+  away_score: number;
+}
+
+interface WowyItem {
+  scenario_item: string;
+  tactical_desc: string;
+}
+
+interface TeamSummaryReview {
+  high_usg_core: string;
+  high_eff_finisher: string;
+  system_notes: string;
+}
+
+interface PlayerReviewItem {
+  player_name: string;
+  shot_chart_review: string;
+  performance_review: string;
+}
+
+interface PreviewPayload {
+  status: string;
+  model_used?: string;
+  game: RecentGameItem;
+  away_wowy: WowyItem[];
+  home_wowy: WowyItem[];
+  team_summaries: Record<string, TeamSummaryReview>;
+  player_reviews: Record<string, PlayerReviewItem[]>;
+  excel_tsv?: Record<string, string>;
+}
+
+interface Props {
+  apiBase: string;
+  adminSecret: string;
+  selectedModel: string;
+  onScanModels?: () => void;
+  scanningModels?: boolean;
+}
+
+export default function PostGamePipelineCenter({
+  apiBase,
+  adminSecret,
+  selectedModel,
+  onScanModels,
+  scanningModels = false,
+}: Props) {
+  // 區塊 A：一鍵硬數據同步
+  const [fetchLatest, setFetchLatest] = useState<boolean>(true);
+  const [gameIdsInput, setGameIdsInput] = useState<string>('');
+  const [syncRunning, setSyncRunning] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'ok' | 'error'>('idle');
+  const [syncDuration, setSyncDuration] = useState<number | null>(null);
+  const [syncLogs, setSyncLogs] = useState<string>('');
+  const [logsExpanded, setLogsExpanded] = useState<boolean>(false);
+  const [missingFiles, setMissingFiles] = useState<string[]>([]);
+  const [syncErrorMsg, setSyncErrorMsg] = useState<string>('');
+
+  // 區塊 B：AI 質化戰術短評生成
+  const [recentGames, setRecentGames] = useState<RecentGameItem[]>([]);
+  const [loadingGames, setLoadingGames] = useState<boolean>(false);
+  const [selectedGameId, setSelectedGameId] = useState<string>('');
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [commitLoading, setCommitLoading] = useState<boolean>(false);
+  const [reviewError, setReviewError] = useState<string>('');
+  const [missingItems, setMissingItems] = useState<string[]>([]);
+  const [previewData, setPreviewData] = useState<PreviewPayload | null>(null);
+  const [commitSuccessMsg, setCommitSuccessMsg] = useState<string>('');
+  const [copiedTeam, setCopiedTeam] = useState<string | null>(null);
+
+  const loadRecentGames = async () => {
+    if (!adminSecret) return;
+    setLoadingGames(true);
+    try {
+      const res = await fetch(`${apiBase}/api/admin/pipeline/recent-games?limit=10`, {
+        headers: { 'X-Admin-Secret': adminSecret },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const items: RecentGameItem[] = data.recent_games || [];
+        setRecentGames(items);
+        if (items.length > 0 && !selectedGameId) {
+          setSelectedGameId(items[0].id);
+        }
+      }
+    } catch {
+      // Ignore initial load error
+    } finally {
+      setLoadingGames(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecentGames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminSecret]);
+
+  const readApiResponse = async (res: Response): Promise<{ ok: boolean; status: number; data: any; rawText: string }> => {
+    const rawText = await res.text();
+    let data: any = null;
+    if (rawText) {
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = null;
+      }
+    }
+    return { ok: res.ok, status: res.status, data, rawText };
+  };
+
+  const parseErrorDetail = (data: any, fallbackStatus: number, rawText: string = ''): { msg: string; missing: string[] } => {
+    if (!data) {
+      const snippet = rawText ? `：${rawText.slice(0, 300)}` : '';
+      return { msg: `HTTP ${fallbackStatus} 請求失敗${snippet}`, missing: [] };
+    }
+    const detail = data.detail;
+    if (detail && typeof detail === 'object') {
+      return {
+        msg: detail.message || `HTTP ${fallbackStatus} 資料不完整`,
+        missing: Array.isArray(detail.missing_items) ? detail.missing_items : [],
+      };
+    }
+    return {
+      msg: typeof detail === 'string' ? detail : data.message || `HTTP ${fallbackStatus} 請求失敗`,
+      missing: [],
+    };
+  };
+
+  const handleRunUpdateStats = async () => {
+    setSyncRunning(true);
+    setSyncStatus('idle');
+    setSyncErrorMsg('');
+    setMissingFiles([]);
+    setSyncDuration(null);
+
+    const parsedIds = gameIdsInput
+      .split(/[,，\s]+/)
+      .map((s) => s.trim())
+      .filter((s) => /^\d+$/.test(s))
+      .map((s) => Number(s));
+
+    try {
+      const res = await fetch(`${apiBase}/api/admin/pipeline/update-stats`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Secret': adminSecret,
+        },
+        body: JSON.stringify({
+          fetch_latest: fetchLatest,
+          game_ids: parsedIds.length > 0 ? parsedIds : null,
+        }),
+      });
+      const { ok, status, data, rawText } = await readApiResponse(res);
+      if (!ok || !data) {
+        const parsed = parseErrorDetail(data, status, rawText);
+        setSyncStatus('error');
+        setSyncErrorMsg(parsed.msg);
+        return;
+      }
+      setSyncStatus(data.status === 'ok' ? 'ok' : 'error');
+      setSyncDuration(data.duration_sec ?? null);
+      setSyncLogs(data.logs || '');
+      setMissingFiles(Array.isArray(data.missing_files) ? data.missing_files : []);
+      if (data.status !== 'ok') {
+        setLogsExpanded(true);
+        setSyncErrorMsg('管線執行中斷，請展開下方終端機日誌查看錯誤原因。');
+      }
+      if (Array.isArray(data.recent_games) && data.recent_games.length > 0) {
+        setRecentGames(data.recent_games);
+        setSelectedGameId(data.recent_games[0].id);
+      }
+    } catch (err: any) {
+      setSyncStatus('error');
+      setSyncErrorMsg(err?.message || '網路連線錯誤');
+    } finally {
+      setSyncRunning(false);
+    }
+  };
+
+  const effectiveModelName = (selectedModel || '').trim();
+
+  const handleScanOrJumpModel = () => {
+    if (onScanModels) {
+      onScanModels();
+    }
+    const el = document.getElementById('gemini-api-tester');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const handleGeneratePreview = async () => {
+    if (!selectedGameId) {
+      setReviewError('請先選擇一場已完賽賽事。');
+      return;
+    }
+    setPreviewLoading(true);
+    setReviewError('');
+    setMissingItems([]);
+    setCommitSuccessMsg('');
+
+    try {
+      const res = await fetch(`${apiBase}/api/admin/pipeline/generate-reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Secret': adminSecret,
+        },
+        body: JSON.stringify({
+          game_id: selectedGameId,
+          model_name: effectiveModelName,
+          action: 'preview',
+        }),
+      });
+      const { ok, status, data, rawText } = await readApiResponse(res);
+      if (!ok || !data) {
+        const parsed = parseErrorDetail(data, status, rawText);
+        setReviewError(parsed.msg);
+        setMissingItems(parsed.missing);
+        return;
+      }
+      setPreviewData(data);
+    } catch (err: any) {
+      setReviewError(err?.message || '生成短評預覽失敗');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleCommitReviews = async () => {
+    if (!previewData) return;
+    setCommitLoading(true);
+    setReviewError('');
+    setCommitSuccessMsg('');
+
+    try {
+      const res = await fetch(`${apiBase}/api/admin/pipeline/generate-reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Secret': adminSecret,
+        },
+        body: JSON.stringify({
+          game_id: previewData.game.id,
+          model_name: effectiveModelName,
+          action: 'commit',
+          edited_payload: {
+            away_wowy: previewData.away_wowy,
+            home_wowy: previewData.home_wowy,
+            team_summaries: previewData.team_summaries,
+            player_reviews: previewData.player_reviews,
+          },
+        }),
+      });
+      const { ok, status, data, rawText } = await readApiResponse(res);
+      if (!ok || !data) {
+        const parsed = parseErrorDetail(data, status, rawText);
+        setReviewError(parsed.msg);
+        setMissingItems(parsed.missing);
+        return;
+      }
+      setCommitSuccessMsg(
+        `✅ 已原子性寫入資料庫 (${data.game_code})：更新 ${data.matchup_rows_written} 筆單場對位、${data.team_summary_updated} 隊全季總評、${data.players_updated} 位球員第 34/35 欄短評！`
+      );
+    } catch (err: any) {
+      setReviewError(err?.message || '寫入資料庫失敗');
+    } finally {
+      setCommitLoading(false);
+    }
+  };
+
+  const handleCopyTeamTsv = async (teamName: string) => {
+    if (!previewData) return;
+    const rows = previewData.player_reviews?.[teamName] || [];
+    const tsv = rows
+      .map((r) => {
+        const c34 = (r.shot_chart_review || '').replace(/[\t\r\n]+/g, ' ').trim();
+        const c35 = (r.performance_review || '').replace(/[\t\r\n]+/g, ' ').trim();
+        return `${c34}\t${c35}`;
+      })
+      .join('\n');
+
+    try {
+      await navigator.clipboard.writeText(tsv);
+      setCopiedTeam(teamName);
+      setTimeout(() => setCopiedTeam(null), 2000);
+    } catch {
+      alert('剪貼簿複製失敗，請手動選取複製。');
+    }
+  };
+
+  const updateWowyField = (
+    side: 'away_wowy' | 'home_wowy',
+    idx: number,
+    field: keyof WowyItem,
+    val: string
+  ) => {
+    setPreviewData((prev) => {
+      if (!prev) return prev;
+      const updated = [...prev[side]];
+      updated[idx] = { ...updated[idx], [field]: val };
+      return { ...prev, [side]: updated };
+    });
+  };
+
+  const updateSummaryField = (
+    teamName: string,
+    field: keyof TeamSummaryReview,
+    val: string
+  ) => {
+    setPreviewData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        team_summaries: {
+          ...prev.team_summaries,
+          [teamName]: {
+            ...prev.team_summaries[teamName],
+            [field]: val,
+          },
+        },
+      };
+    });
+  };
+
+  const updatePlayerReviewField = (
+    teamName: string,
+    idx: number,
+    field: 'shot_chart_review' | 'performance_review',
+    val: string
+  ) => {
+    setPreviewData((prev) => {
+      if (!prev) return prev;
+      const list = [...(prev.player_reviews[teamName] || [])];
+      list[idx] = { ...list[idx], [field]: val };
+      return {
+        ...prev,
+        player_reviews: {
+          ...prev.player_reviews,
+          [teamName]: list,
+        },
+      };
+    });
+  };
+
+  return (
+    <section className="rounded-3xl border border-[#FF9100]/40 bg-[#161B22] p-6 shadow-xl space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#30363D] pb-4">
+        <div>
+          <h2 className="text-xl font-black text-white flex items-center space-x-2">
+            <Zap className="w-5 h-5 text-[#FF9100]" />
+            <span>賽後數據與 AI 短評更新中心</span>
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            一鍵抓取 TPBL 官方 Box Score / PBP 並重算全站進階 JSON，再透過 Gemini 生成可微調的四區塊戰術短評並原子性寫入資料庫。
+          </p>
+        </div>
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FF9100]/10 text-[#FF9100] border border-[#FF9100]/30 self-start">
+          Mode A 本地同步管線
+        </span>
+      </div>
+
+      {/* 區塊 A：一鍵硬數據同步 */}
+      <div className="rounded-2xl border border-[#30363D] bg-[#0E1117] p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-black text-emerald-400 flex items-center space-x-2">
+            <Database className="w-4 h-4" />
+            <span>區塊 A：一鍵硬數據抓取、建庫與全量進階指標精算</span>
+          </h3>
+          {syncDuration !== null && (
+            <span className="text-xs font-mono text-gray-400">耗時 {syncDuration}s</span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <div className="md:col-span-4 flex items-center space-x-2 pb-2">
+            <input
+              type="checkbox"
+              id="pipeline_fetch_latest"
+              checked={fetchLatest}
+              onChange={(e) => setFetchLatest(e.target.checked)}
+              className="w-4 h-4 rounded border-[#30363D] text-emerald-500 cursor-pointer"
+            />
+            <label htmlFor="pipeline_fetch_latest" className="text-xs font-bold text-gray-200 cursor-pointer select-none">
+              從官方 API 抓取最新賽程 (fetch_latest)
+            </label>
+          </div>
+
+          <div className="md:col-span-4">
+            <label className="block text-xs font-bold text-gray-400 mb-1">
+              指定官網 Schedule ID（選填，留空自動偵測）
+            </label>
+            <input
+              type="text"
+              value={gameIdsInput}
+              onChange={(e) => setGameIdsInput(e.target.value)}
+              disabled={!fetchLatest}
+              placeholder="例如: 27558, 27559"
+              className="w-full bg-[#161B22] border border-[#30363D] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-40"
+            />
+          </div>
+
+          <div className="md:col-span-4">
+            <button
+              type="button"
+              onClick={handleRunUpdateStats}
+              disabled={syncRunning}
+              className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
+            >
+              {syncRunning ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>管線執行中（請勿關閉）...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  <span>一鍵抓取並重算全站數據</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {syncErrorMsg && (
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-300 font-semibold">
+            {syncErrorMsg}
+          </div>
+        )}
+
+        {missingFiles.length > 0 && (
+          <div className="rounded-xl border border-rose-500/50 bg-rose-950/40 p-4 space-y-1.5">
+            <div className="flex items-center space-x-2 text-rose-400 text-xs font-black">
+              <AlertTriangle className="w-4 h-4" />
+              <span>資料完整性警告：以下場次缺少官方原始 JSON 檔案</span>
+            </div>
+            <ul className="list-disc list-inside text-xs text-rose-200 space-y-0.5 font-mono">
+              {missingFiles.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {syncLogs && (
+          <div className="border border-[#30363D] rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setLogsExpanded(!logsExpanded)}
+              className="w-full px-3 py-2 bg-[#161B22] flex items-center justify-between text-xs font-bold text-gray-300 hover:text-white"
+            >
+              <span className="flex items-center space-x-2">
+                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  管線執行日誌 ({syncStatus === 'ok' ? '成功' : '失敗'})
+                </span>
+              </span>
+              {logsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            {logsExpanded && (
+              <pre className="p-3 bg-[#080B10] text-[11px] font-mono text-gray-300 overflow-x-auto max-h-72 whitespace-pre-wrap">
+                {syncLogs}
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 區塊 B：AI 質化戰術短評生成 */}
+      <div className="rounded-2xl border border-[#30363D] bg-[#0E1117] p-5 space-y-5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-black text-[#FF9100] flex items-center space-x-2">
+            <Sparkles className="w-4 h-4" />
+            <span>區塊 B：AI 質化戰術短評生成與原子性寫入（對齊 v3 規範）</span>
+          </h3>
+          <button
+            type="button"
+            onClick={loadRecentGames}
+            disabled={loadingGames}
+            className="text-xs text-gray-400 hover:text-white flex items-center space-x-1"
+          >
+            <RefreshCw className={`w-3 h-3 ${loadingGames ? 'animate-spin' : ''}`} />
+            <span>重新整理場次</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <div className="md:col-span-5">
+            <label className="block text-xs font-bold text-gray-400 mb-1">目標已完賽場次</label>
+            <select
+              value={selectedGameId}
+              onChange={(e) => setSelectedGameId(e.target.value)}
+              className="w-full bg-[#161B22] border border-[#30363D] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF9100]"
+            >
+              {recentGames.length === 0 && <option value="">尚無已完賽場次</option>}
+              {recentGames.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.date} {g.game_code}｜{g.away_team} {g.away_score}:{g.home_score} {g.home_team}
+                  {g.schedule_id ? ` (ID:${g.schedule_id})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="md:col-span-4">
+            <label className="block text-xs font-bold text-gray-400 mb-1">Gemini AI Model（共用設定）</label>
+            <div className="flex items-center justify-between gap-2 bg-[#161B22] border border-[#30363D] rounded-xl px-3 py-1.5">
+              <div className="min-w-0">
+                <span className="text-[11px] text-gray-400 mr-1.5">目前使用模型：</span>
+                <span className="text-xs font-mono font-bold text-[#00E676] truncate">
+                  {selectedModel ? selectedModel : '自動偵測最佳模型'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleScanOrJumpModel}
+                disabled={scanningModels}
+                className="shrink-0 px-2.5 py-1 rounded-lg bg-[#0E1117] hover:bg-[#21262D] border border-[#30363D] text-[11px] font-bold text-gray-200 flex items-center gap-1 transition-colors disabled:opacity-50"
+              >
+                {scanningModels ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-[#FF9100]" />}
+                <span>掃描 / 切換</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="md:col-span-3">
+            <button
+              type="button"
+              onClick={handleGeneratePreview}
+              disabled={previewLoading || !selectedGameId}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#FF9100] to-amber-500 hover:from-amber-400 hover:to-[#FF9100] text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
+            >
+              {previewLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>AI 生成中...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>生成短評預覽</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {reviewError && (
+          <div className="rounded-xl border border-rose-500/50 bg-rose-950/40 p-4 space-y-1.5">
+            <div className="text-xs font-bold text-rose-300 whitespace-pre-wrap">{reviewError}</div>
+            {missingItems.length > 0 && (
+              <ul className="list-disc list-inside text-xs text-rose-200 font-mono space-y-0.5">
+                {missingItems.map((m, i) => (
+                  <li key={i}>{m}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {commitSuccessMsg && (
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-300">
+            {commitSuccessMsg}
+          </div>
+        )}
+
+        {/* 四區塊預覽與微調介面 */}
+        {previewData && (
+          <div className="space-y-6 pt-2 border-t border-[#30363D]">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="text-xs text-gray-300">
+                預覽場次：<span className="font-black text-white">{previewData.game.game_code}</span>（
+                {previewData.game.away_team} vs {previewData.game.home_team}）｜使用模型：
+                <span className="font-mono text-[#FF9100] ml-1">{previewData.model_used}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCommitReviews}
+                disabled={commitLoading}
+                className="py-2 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
+              >
+                {commitLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                <span>{commitLoading ? '寫入資料庫中...' : '確認寫入資料庫'}</span>
+              </button>
+            </div>
+
+            {/* 1. 客隊 / 主隊單場 WOWY 對位表格 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {(
+                [
+                  { key: 'away_wowy' as const, team: previewData.game.away_team, label: '客隊單場 WOWY 對位' },
+                  { key: 'home_wowy' as const, team: previewData.game.home_team, label: '主隊單場 WOWY 對位' },
+                ] as const
+              ).map(({ key, team, label }) => (
+                <div key={key} className="rounded-xl border border-[#30363D] bg-[#161B22] p-4 space-y-3">
+                  <h4 className="text-xs font-black text-sky-400">
+                    {label} — {team}
+                  </h4>
+                  {(previewData[key] || []).map((item, idx) => (
+                    <div key={idx} className="space-y-1.5 border-b border-[#30363D]/60 pb-3 last:border-b-0 last:pb-0">
+                      <input
+                        type="text"
+                        value={item.scenario_item}
+                        onChange={(e) => updateWowyField(key, idx, 'scenario_item', e.target.value)}
+                        className="w-full bg-[#0E1117] border border-[#30363D] rounded-lg px-2.5 py-1.5 text-xs font-bold text-white"
+                      />
+                      <textarea
+                        rows={3}
+                        value={item.tactical_desc}
+                        onChange={(e) => updateWowyField(key, idx, 'tactical_desc', e.target.value)}
+                        className="w-full bg-[#0E1117] border border-[#30363D] rounded-lg px-2.5 py-1.5 text-xs text-gray-200"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {/* 2. 兩隊全季滾動短評 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {[previewData.game.away_team, previewData.game.home_team].map((teamName) => {
+                const summary = previewData.team_summaries?.[teamName];
+                if (!summary) return null;
+                return (
+                  <div key={teamName} className="rounded-xl border border-[#30363D] bg-[#161B22] p-4 space-y-3">
+                    <h4 className="text-xs font-black text-amber-400">全季滾動戰力總評 — {teamName}</h4>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 mb-1">高球權核心 (USG%&gt;25%, TS%&gt;55%)</label>
+                      <input
+                        type="text"
+                        value={summary.high_usg_core}
+                        onChange={(e) => updateSummaryField(teamName, 'high_usg_core', e.target.value)}
+                        className="w-full bg-[#0E1117] border border-[#30363D] rounded-lg px-2.5 py-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 mb-1">高效終結者 (GmSc 前二, eFG%&gt;60%)</label>
+                      <input
+                        type="text"
+                        value={summary.high_eff_finisher}
+                        onChange={(e) => updateSummaryField(teamName, 'high_eff_finisher', e.target.value)}
+                        className="w-full bg-[#0E1117] border border-[#30363D] rounded-lg px-2.5 py-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 mb-1">戰力總評 (system_notes)</label>
+                      <textarea
+                        rows={3}
+                        value={summary.system_notes}
+                        onChange={(e) => updateSummaryField(teamName, 'system_notes', e.target.value)}
+                        className="w-full bg-[#0E1117] border border-[#30363D] rounded-lg px-2.5 py-1.5 text-xs text-gray-200"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 3. 兩隊全員賽季短評預覽表 + 一鍵複製 TSV */}
+            <div className="space-y-4">
+              {[previewData.game.away_team, previewData.game.home_team].map((teamName) => {
+                const players = previewData.player_reviews?.[teamName] || [];
+                return (
+                  <div key={teamName} className="rounded-xl border border-[#30363D] bg-[#161B22] p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <h4 className="text-xs font-black text-emerald-400">
+                        全員賽季短評（對齊 Excel 名單順序）— {teamName}（共 {players.length} 人）
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyTeamTsv(teamName)}
+                        className="py-1.5 px-3 rounded-lg border border-[#30363D] bg-[#0E1117] hover:border-emerald-500 text-xs font-bold text-gray-200 flex items-center space-x-1.5 self-start"
+                      >
+                        {copiedTeam === teamName ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400">已複製 TSV！</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>一鍵複製 Excel 兩欄格式（TSV）</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto max-h-96 overflow-y-auto border border-[#30363D] rounded-lg">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="bg-[#0E1117] text-gray-400 sticky top-0">
+                          <tr>
+                            <th className="p-2.5 border-b border-[#30363D] w-32">球員姓名</th>
+                            <th className="p-2.5 border-b border-[#30363D]">第 34 欄：投籃分布短評</th>
+                            <th className="p-2.5 border-b border-[#30363D]">第 35 欄：賽季整體表現短評</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#30363D]/60">
+                          {players.map((p, idx) => (
+                            <tr key={p.player_name} className="hover:bg-[#0E1117]/50">
+                              <td className="p-2 font-bold text-white align-top whitespace-nowrap">
+                                {idx + 1}. {p.player_name}
+                              </td>
+                              <td className="p-2 align-top">
+                                <textarea
+                                  rows={2}
+                                  value={p.shot_chart_review}
+                                  onChange={(e) =>
+                                    updatePlayerReviewField(teamName, idx, 'shot_chart_review', e.target.value)
+                                  }
+                                  className="w-full bg-[#0E1117] border border-[#30363D] rounded px-2 py-1 text-xs text-gray-200"
+                                />
+                              </td>
+                              <td className="p-2 align-top">
+                                <textarea
+                                  rows={2}
+                                  value={p.performance_review}
+                                  onChange={(e) =>
+                                    updatePlayerReviewField(teamName, idx, 'performance_review', e.target.value)
+                                  }
+                                  className="w-full bg-[#0E1117] border border-[#30363D] rounded px-2 py-1 text-xs text-gray-200"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
