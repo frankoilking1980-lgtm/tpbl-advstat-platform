@@ -235,35 +235,38 @@ def _ensure_preview_dirs() -> None:
 
 def _rebuild_index_files() -> None:
     """重建 backend 與 frontend/public 的 index.json 清單"""
-    _ensure_preview_dirs()
-    summaries = []
-    for p in sorted(BACKEND_PREVIEWS_DIR.glob("*.json"), reverse=True):
-        if p.name in {"index.json", "team_playbook_library.json"}:
-            continue
-        try:
-            data = json.loads(p.read_text(encoding="utf-8"))
-            summaries.append({
-                "slug": data.get("slug", p.stem),
-                "game_date": data.get("game_date", ""),
-                "game_label": data.get("game_label", ""),
-                "season_stage": data.get("season_stage", ""),
-                "home_team": data.get("home_team", ""),
-                "away_team": data.get("away_team", ""),
-                "headline": data.get("headline", ""),
-                "subheadline": data.get("subheadline", ""),
-                "home_win_prob": data.get("home_win_prob", 50),
-                "away_win_prob": data.get("away_win_prob", 50),
-                "generated_at": data.get("generated_at", ""),
-                "model_used": data.get("model_used", ""),
-            })
-        except Exception:
-            continue
+    from app.services.weekly_preview_archive import PREVIEW_FILE_LOCK, atomic_write_text
 
-    summaries.sort(key=lambda x: (x.get("game_date", ""), x.get("generated_at", "")), reverse=True)
-    index_text = json.dumps(summaries, ensure_ascii=False, indent=2)
-    (BACKEND_PREVIEWS_DIR / "index.json").write_text(index_text, encoding="utf-8")
-    if _has_frontend_dir():
-        (FRONTEND_PREVIEWS_DIR / "index.json").write_text(index_text, encoding="utf-8")
+    with PREVIEW_FILE_LOCK:
+        _ensure_preview_dirs()
+        summaries = []
+        for p in sorted(BACKEND_PREVIEWS_DIR.glob("*.json"), reverse=True):
+            if p.name in {"index.json", "team_playbook_library.json"}:
+                continue
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+                summaries.append({
+                    "slug": data.get("slug", p.stem),
+                    "game_date": data.get("game_date", ""),
+                    "game_label": data.get("game_label", ""),
+                    "season_stage": data.get("season_stage", ""),
+                    "home_team": data.get("home_team", ""),
+                    "away_team": data.get("away_team", ""),
+                    "headline": data.get("headline", ""),
+                    "subheadline": data.get("subheadline", ""),
+                    "home_win_prob": data.get("home_win_prob", 50),
+                    "away_win_prob": data.get("away_win_prob", 50),
+                    "generated_at": data.get("generated_at", ""),
+                    "model_used": data.get("model_used", ""),
+                })
+            except Exception:
+                continue
+
+        summaries.sort(key=lambda x: (x.get("game_date", ""), x.get("generated_at", "")), reverse=True)
+        index_text = json.dumps(summaries, ensure_ascii=False, indent=2)
+        atomic_write_text(BACKEND_PREVIEWS_DIR / "index.json", index_text)
+        if _has_frontend_dir():
+            atomic_write_text(FRONTEND_PREVIEWS_DIR / "index.json", index_text)
 
 
 def _templatize_text(text: str, off_roster: List[str], def_roster: List[str]) -> str:
@@ -334,27 +337,38 @@ def update_team_playbook_library(report: WeeklyPreviewReport) -> Path:
         filtered = [item for item in existing if item.get("playName") != templated.get("playName")]
         team_bucket[side] = [templated, *filtered][:6]
 
+    from app.services.weekly_preview_archive import PREVIEW_FILE_LOCK, atomic_write_text
+
     lib_json = json.dumps(library, ensure_ascii=False, indent=2)
-    lib_backend.write_text(lib_json, encoding="utf-8")
-    if _has_frontend_dir():
-        lib_frontend.write_text(lib_json, encoding="utf-8")
+    with PREVIEW_FILE_LOCK:
+        atomic_write_text(lib_backend, lib_json)
+        if _has_frontend_dir():
+            atomic_write_text(lib_frontend, lib_json)
     return lib_backend
 
 
 def save_weekly_preview(report: WeeklyPreviewReport) -> Path:
     """將週報同時落盤至 backend/data/weekly_previews 與 frontend/public/weekly_previews，並更新 7 隊戰術庫"""
-    _ensure_preview_dirs()
-    payload = report.model_dump(by_alias=True)
-    json_str = json.dumps(payload, ensure_ascii=False, indent=2)
+    from app.services.weekly_preview_archive import (
+        PREVIEW_FILE_LOCK,
+        atomic_write_text,
+        sync_active_weekly_preview_from_files,
+    )
 
-    backend_file = BACKEND_PREVIEWS_DIR / f"{report.slug}.json"
-    backend_file.write_text(json_str, encoding="utf-8")
-    if _has_frontend_dir():
-        frontend_file = FRONTEND_PREVIEWS_DIR / f"{report.slug}.json"
-        shutil.copy2(backend_file, frontend_file)
-    update_team_playbook_library(report)
-    _rebuild_index_files()
-    return backend_file
+    with PREVIEW_FILE_LOCK:
+        _ensure_preview_dirs()
+        payload = report.model_dump(by_alias=True)
+        json_str = json.dumps(payload, ensure_ascii=False, indent=2)
+
+        backend_file = BACKEND_PREVIEWS_DIR / f"{report.slug}.json"
+        atomic_write_text(backend_file, json_str)
+        if _has_frontend_dir():
+            frontend_file = FRONTEND_PREVIEWS_DIR / f"{report.slug}.json"
+            atomic_write_text(frontend_file, json_str)
+        update_team_playbook_library(report)
+        _rebuild_index_files()
+        sync_active_weekly_preview_from_files()
+        return backend_file
 
 
 def list_saved_previews() -> List[Dict]:
@@ -378,17 +392,21 @@ def get_saved_preview(slug: str) -> Optional[Dict]:
 
 def delete_weekly_preview(slug: str) -> bool:
     """刪除指定週報 JSON（同步移除 backend 與 frontend/public 檔案並更新 index.json）"""
-    safe_slug = re.sub(r"[^a-zA-Z0-9_\-]", "", slug)
-    backend_file = BACKEND_PREVIEWS_DIR / f"{safe_slug}.json"
-    frontend_file = FRONTEND_PREVIEWS_DIR / f"{safe_slug}.json"
-    if not backend_file.exists() and not frontend_file.exists():
-        return False
-    if backend_file.exists():
-        backend_file.unlink()
-    if frontend_file.exists():
-        frontend_file.unlink()
-    _rebuild_index_files()
-    return True
+    from app.services.weekly_preview_archive import PREVIEW_FILE_LOCK, sync_active_weekly_preview_from_files
+
+    with PREVIEW_FILE_LOCK:
+        safe_slug = re.sub(r"[^a-zA-Z0-9_\-]", "", slug)
+        backend_file = BACKEND_PREVIEWS_DIR / f"{safe_slug}.json"
+        frontend_file = FRONTEND_PREVIEWS_DIR / f"{safe_slug}.json"
+        if not backend_file.exists() and not frontend_file.exists():
+            return False
+        if backend_file.exists():
+            backend_file.unlink()
+        if frontend_file.exists():
+            frontend_file.unlink()
+        _rebuild_index_files()
+        sync_active_weekly_preview_from_files()
+        return True
 
 
 # =====================================================================

@@ -11,6 +11,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  experimental: {
+    proxyTimeout: 300000,
+  },
   async rewrites() {
     return [
       {

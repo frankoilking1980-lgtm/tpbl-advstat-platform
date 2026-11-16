@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { useStage } from '@/context/StageContext';
 import { fetcher } from '@/lib/api';
 import ScoreBanner from '@/components/ScoreBanner';
+import TacticalPlaybookBoard, { TacticalScenario } from '@/components/TacticalPlaybookBoard';
 import { PlayerLink } from '@/components/PlayerLink';
 import {
   Calendar,
@@ -982,9 +983,41 @@ export default function GamesReviewPage() {
     player_onoff?: { away?: any[]; home?: any[] };
     tactics_wowy?: { away?: GameTacticItem[]; home?: GameTacticItem[] };
   }>(
-    selectedGameId ? `/api/games/${selectedGameId}` : null,
+    selectedGameId ? `/api/games/${encodeURIComponent(selectedGameId)}` : null,
     fetcher,
     { revalidateOnFocus: false }
+  );
+
+  const { data: tactics } = useSWR<{
+    game_id: string;
+    home_team: string;
+    away_team: string;
+    youtube_url?: string | null;
+    q1_tipoff_seconds?: number | null;
+    pbp_playbooks?: Array<{
+      id: number;
+      team_name: string;
+      side: 'offense' | 'defense';
+      play_name: string;
+      summary: string;
+      tactical_tags: string[];
+      source_quarter: string;
+      source_clock: string;
+      youtube_seconds: number | null;
+      svg_playbook: TacticalScenario;
+    }>;
+  }>(
+    selectedGameId ? `/api/games/${encodeURIComponent(selectedGameId)}/tactics` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
+  const pbpScenarios = useMemo<TacticalScenario[]>(
+    () =>
+      (tactics?.pbp_playbooks || [])
+        .map((pb) => pb.svg_playbook)
+        .filter((sc) => sc && Array.isArray(sc.phases) && sc.phases.length === 3),
+    [tactics]
   );
 
   const players = game?.player_stats ?? [];
@@ -1167,6 +1200,24 @@ export default function GamesReviewPage() {
               <TacticsWowyTable team={game.home_team} items={homeTactics} accent="emerald" />
             </div>
           </section>
+
+          {/* 3d. 核心戰術體系互動式全場 SVG 戰術板（每隊 1 攻 1 守，共 4 套 + 本場實戰案例片段） */}
+          {pbpScenarios.length > 0 ? (
+            <TacticalPlaybookBoard
+              homeTeam={game.home_team}
+              awayTeam={game.away_team}
+              homeRoster={homePlayers.slice(0, 5).map((p) => p.player_name)}
+              awayRoster={awayPlayers.slice(0, 5).map((p) => p.player_name)}
+              scenarios={pbpScenarios}
+              youtubeUrl={tactics?.youtube_url}
+              title="互動式橫向全場 SVG 戰術板｜本場 4 套核心戰術體系（每隊 1 攻 1 守）"
+              subtitle="依據本場 PBP 統計與實戰影片提煉主客隊攻守體系，下方可直接點擊對應實戰 YouTube 片段"
+            />
+          ) : (
+            <section className="bg-[#161B22] border border-[#30363D] rounded-2xl p-6 text-center text-sm text-gray-400">
+              本場賽事尚未生成 PBP 實戰錨定 8 組 SVG 戰術板，請至「系統控制台 / 賽後管線」執行 AI 戰術板生成。
+            </section>
+          )}
 
           {/* 4. 單場進階 Box Score */}
           <section className="space-y-4">

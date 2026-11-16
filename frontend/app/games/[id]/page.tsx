@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import ScoreBanner from '@/components/ScoreBanner';
 import TacticsCard from '@/components/TacticsCard';
 import FourFactorsBar from '@/components/FourFactorsBar';
+import TacticalPlaybookBoard, { TacticalScenario } from '@/components/TacticalPlaybookBoard';
 import { PlayerLink } from '@/components/PlayerLink';
 import {
   ShieldAlert,
@@ -59,14 +60,30 @@ interface PlayerStat {
   gmsc: number;
 }
 
+interface PbpPlaybookRecord {
+  id: number;
+  team_name: string;
+  side: 'offense' | 'defense';
+  play_name: string;
+  summary: string;
+  tactical_tags: string[];
+  source_quarter: string;
+  source_clock: string;
+  youtube_seconds: number | null;
+  svg_playbook: TacticalScenario;
+}
+
 interface TacticsDetail {
   game_id: string;
   home_team: string;
   away_team: string;
+  youtube_url?: string | null;
+  q1_tipoff_seconds?: number | null;
   total_tactics: number;
   home_tactics: TacticItem[];
   away_tactics: TacticItem[];
   all_tactics: TacticItem[];
+  pbp_playbooks?: PbpPlaybookRecord[];
 }
 
 interface TacticItem {
@@ -80,7 +97,8 @@ interface TacticItem {
 
 export default function GameReviewPage() {
   const params = useParams();
-  const gameId = (params?.id as string)?.toUpperCase() || 'G07';
+  const rawId = (params?.id as string) || 'G07';
+  const gameId = decodeURIComponent(rawId).toUpperCase();
 
   const [game, setGame] = useState<GameDetail | null>(null);
   const [tactics, setTactics] = useState<TacticsDetail | null>(null);
@@ -88,7 +106,7 @@ export default function GameReviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTeamTab, setActiveTeamTab] = useState<'away' | 'home'>('away');
 
-  const API_BASE = 'http://localhost:8000';
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
 
   useEffect(() => {
     async function fetchData() {
@@ -96,7 +114,8 @@ export default function GameReviewPage() {
       setError(null);
       try {
         // 1. 抓取單場基本與球員統計
-        const resGame = await fetch(`${API_BASE}/api/games/${gameId}`);
+        const encodedGameId = encodeURIComponent(gameId);
+        const resGame = await fetch(`${API_BASE}/api/games/${encodedGameId}`);
         if (!resGame.ok) {
           throw new Error(`無法取得賽事 ${gameId} 數據 (HTTP ${resGame.status})`);
         }
@@ -104,7 +123,7 @@ export default function GameReviewPage() {
         setGame(dataGame);
 
         // 2. 抓取單場戰術對位交鋒
-        const resTactics = await fetch(`${API_BASE}/api/games/${gameId}/tactics`);
+        const resTactics = await fetch(`${API_BASE}/api/games/${encodedGameId}/tactics`);
         if (!resTactics.ok) {
           throw new Error(`無法取得戰術分析數據 (HTTP ${resTactics.status})`);
         }
@@ -157,6 +176,10 @@ export default function GameReviewPage() {
     (p) => p.team_name === game.home_team
   );
   const activePlayers = activeTeamTab === 'away' ? awayPlayers : homePlayers;
+
+  const pbpScenarios: TacticalScenario[] = (tactics?.pbp_playbooks || [])
+    .map((pb) => pb.svg_playbook)
+    .filter((sc) => sc && Array.isArray(sc.phases) && sc.phases.length === 3);
 
   return (
     <div className="space-y-10">
@@ -274,6 +297,24 @@ export default function GameReviewPage() {
           </div>
         </div>
       </section>
+
+      {/* 3.5 核心戰術體系互動式全場 SVG 戰術板（每隊 1 攻 1 守，共 4 套 + 本場實戰案例片段） */}
+      {pbpScenarios.length > 0 ? (
+        <TacticalPlaybookBoard
+          homeTeam={game.home_team}
+          awayTeam={game.away_team}
+          homeRoster={homePlayers.slice(0, 5).map((p) => p.player_name)}
+          awayRoster={awayPlayers.slice(0, 5).map((p) => p.player_name)}
+          scenarios={pbpScenarios}
+          youtubeUrl={tactics?.youtube_url}
+          title="互動式橫向全場 SVG 戰術板｜本場 4 套核心戰術體系（每隊 1 攻 1 守）"
+          subtitle="依據本場 PBP 統計與實戰影片提煉主客隊攻守體系，下方可直接點擊對應實戰 YouTube 片段"
+        />
+      ) : (
+        <section className="bg-[#161B22] border border-[#30363D] rounded-2xl p-6 text-center text-sm text-gray-400">
+          本場賽事尚未生成 PBP 實戰錨定 8 組 SVG 戰術板，請至「系統控制台 / 賽後管線」執行 AI 戰術板生成。
+        </section>
+      )}
 
       {/* 4. 單場球員攻守數據 Boxscore 與進階指標 */}
       <section className="space-y-6 pt-6">

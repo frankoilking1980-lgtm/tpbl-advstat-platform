@@ -2,18 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useStage } from '@/context/StageContext';
 import PostGamePipelineCenter from '@/components/PostGamePipelineCenter';
 import {
   Zap,
   Download,
-  Copy,
-  Check,
   RefreshCw,
-  Database,
   Trash2,
   AlertTriangle,
-  XCircle,
   Lock,
   KeyRound,
   LogOut,
@@ -23,6 +18,9 @@ import {
   FileSpreadsheet,
   ExternalLink,
   Loader2,
+  Archive,
+  RotateCcw,
+  History,
 } from 'lucide-react';
 
 const TEAMS = [
@@ -52,15 +50,25 @@ interface PreviewSummaryItem {
   model_used: string;
 }
 
-export default function SystemConsolePage() {
-  const { stage: currentStage, stagesList } = useStage();
+interface WeeklyArchiveMeta {
+  id: number;
+  week_label: string;
+  stage: string;
+  title: string;
+  status: 'active' | 'archived';
+  created_at: string;
+  archived_at: string | null;
+  game_count: number;
+}
 
+export default function SystemConsolePage() {
   // 密碼保護狀態 (透過後端 POST /api/admin/verify 驗證並暫存於 sessionStorage)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [adminSecret, setAdminSecret] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [verifying, setVerifying] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [genElapsedSec, setGenElapsedSec] = useState<number>(0);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
   const [isLocalhost, setIsLocalhost] = useState<boolean>(true);
@@ -134,6 +142,10 @@ export default function SystemConsolePage() {
   const [importingJson, setImportingJson] = useState(false);
 
   const [previewsList, setPreviewsList] = useState<PreviewSummaryItem[]>([]);
+  const [activeArchiveMeta, setActiveArchiveMeta] = useState<WeeklyArchiveMeta | null>(null);
+  const [archivedWeeks, setArchivedWeeks] = useState<WeeklyArchiveMeta[]>([]);
+  const [archivingId, setArchivingId] = useState<number | null>(null);
+  const [archiveFeedback, setArchiveFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [loadingPreviews, setLoadingPreviews] = useState(false);
 
   const [upcomingSchedule, setUpcomingSchedule] = useState<
@@ -203,6 +215,8 @@ export default function SystemConsolePage() {
       if (prevRes.ok) {
         const prevData = await prevRes.json();
         setPreviewsList(prevData.items || []);
+        setActiveArchiveMeta(prevData.active || null);
+        setArchivedWeeks(prevData.archived || []);
       }
       if (schedRes.ok) {
         const schedData = await schedRes.json();
@@ -308,6 +322,7 @@ export default function SystemConsolePage() {
       return;
     }
     setGeneratingPreview(true);
+    setGenElapsedSec(0);
     try {
       const directBase = apiBase.replace(/\/+$/, '');
       const generateUrl = `${directBase}/api/weekly-previews/generate`;
@@ -318,7 +333,7 @@ export default function SystemConsolePage() {
           'Content-Type': 'application/json',
           'X-Admin-Secret': adminSecret,
         },
-        signal: AbortSignal.timeout(240000),
+        signal: AbortSignal.timeout(30000),
         body: JSON.stringify({
           home_team: genHome,
           away_team: genAway,
@@ -328,16 +343,57 @@ export default function SystemConsolePage() {
           model_name: selectedGeminiModel || null,
         }),
       });
-      const data = await parseApiResponse(res);
-      setGenResultMsg({
-        type: 'ok',
-        text: `已成功透過 ${data.model_used} 生成報告（${data.slug}），並自動更新 7 隊戰術庫！`,
-      });
-      await loadConsoleWeeklyData(adminSecret);
+      const initData = await parseApiResponse(res);
+
+      // 若後端直接回傳完整結果（向下相容）
+      if (initData.slug && !initData.job_id) {
+        setGenResultMsg({
+          type: 'ok',
+          text: `已成功透過 ${initData.model_used} 生成報告（${initData.slug}），並自動更新 7 隊戰術庫！`,
+        });
+        await loadConsoleWeeklyData(adminSecret);
+        return;
+      }
+
+      const jobId = initData.job_id;
+      if (!jobId) {
+        throw new Error('後端未回傳任務 job_id，無法追蹤生成進度。');
+      }
+
+      const startedAt = Date.now();
+      const maxPolls = 100; // 最長輪詢 5 分鐘 (100 * 3s)
+      for (let i = 0; i < maxPolls; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        setGenElapsedSec(Math.round((Date.now() - startedAt) / 1000));
+
+        const pollRes = await fetch(`${directBase}/api/weekly-previews/jobs/${jobId}`, {
+          headers: { 'X-Admin-Secret': adminSecret },
+          signal: AbortSignal.timeout(15000),
+        });
+        const jobData = await parseApiResponse(pollRes);
+        if (typeof jobData.elapsed_seconds === 'number') {
+          setGenElapsedSec(jobData.elapsed_seconds);
+        }
+
+        if (jobData.status === 'completed') {
+          const result = jobData.result || {};
+          setGenResultMsg({
+            type: 'ok',
+            text: `已成功透過 ${result.model_used || selectedGeminiModel || 'Gemini'} 生成報告（${result.slug || ''}），並自動更新 7 隊戰術庫！`,
+          });
+          await loadConsoleWeeklyData(adminSecret);
+          return;
+        }
+        if (jobData.status === 'failed') {
+          throw new Error(jobData.error || 'Gemini 生成球探報告失敗');
+        }
+      }
+
+      throw new Error('生成逾時（超過 5 分鐘），請稍後至下方已發布列表確認或重試。');
     } catch (err: any) {
       const msg =
         err?.name === 'TimeoutError'
-          ? '生成逾時（超過 4 分鐘），請稍後重試或改用較快的 Flash 模型／手動 JSON 匯入。'
+          ? '請求逾時，請稍後重試或檢查後端服務狀態。'
           : err?.message || '生成失敗';
       setGenResultMsg({ type: 'err', text: msg });
     } finally {
@@ -442,174 +498,74 @@ export default function SystemConsolePage() {
     }
   };
 
-  // A 區狀態
-  const [syncStage, setSyncStage] = useState(currentStage || '2026-2027 例行賽');
-  const [scheduleId, setScheduleId] = useState('');
-  const [matchId, setMatchId] = useState('');
-  const [matchDate, setMatchDate] = useState('');
-  const [autoGemini, setAutoGemini] = useState(false);
-  const [syncLoading, setSyncLoading] = useState(false);
-  const [syncResult, setSyncResult] = useState<string>('');
-
-  // B 區狀態
-  const [updateMatchId, setUpdateMatchId] = useState('');
-  const [jsonInput, setJsonInput] = useState('');
-  const [updateLoading, setUpdateLoading] = useState(false);
-  const [updateResult, setUpdateResult] = useState<string>('');
-  const [copied, setCopied] = useState(false);
-
-  // C 區狀態（單場刪除）
-  const [deleteGameId, setDeleteGameId] = useState('');
-  const [deleteGameLoading, setDeleteGameLoading] = useState(false);
-  const [deleteGameResult, setDeleteGameResult] = useState('');
-
-  // D 區狀態（全季重置清空）
-  const [resetStage, setResetStage] = useState(currentStage || '2026-2027 例行賽');
-  const [clearGames, setClearGames] = useState(true);
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetResult, setResetResult] = useState<string>('');
-
-  // A 區：抓取硬指標
-  const handleSyncHardMetrics = async () => {
-    if (!scheduleId || !matchId) {
-      alert('請填寫 Schedule ID 與場次代號');
-      return;
-    }
-    setSyncLoading(true);
-    setSyncResult('');
-    try {
-      const res = await fetch(`${apiBase}/api/admin/sync-game`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stage: syncStage,
-          schedule_id: scheduleId,
-          game_id: matchId,
-          date: matchDate || undefined,
-          auto_gemini: autoGemini,
-        }),
-      });
-      const data = await res.json();
-      setSyncResult(JSON.stringify(data, null, 2));
-      setUpdateMatchId(matchId);
-      setDeleteGameId(matchId);
-    } catch (err: any) {
-      setSyncResult(JSON.stringify({ status: 'error', message: err.message }, null, 2));
-    } finally {
-      setSyncLoading(false);
-    }
-  };
-
-  // B 區：貼上質化 JSON 更新
-  const handleUpdateDatabase = async () => {
-    if (!updateMatchId || !jsonInput.trim()) {
-      alert('請輸入場次代號與貼上有效的 JSON 內容');
-      return;
-    }
-    setUpdateLoading(true);
-    setUpdateResult('');
-    try {
-      let parsedData;
-      try {
-        parsedData = JSON.parse(jsonInput);
-      } catch {
-        throw new Error('貼上的內容不是合法的 JSON 格式，請檢查語法');
-      }
-
-      const res = await fetch(`${apiBase}/api/admin/update-game-qualitative`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          game_id: updateMatchId,
-          ...parsedData,
-        }),
-      });
-      const data = await res.json();
-      setUpdateResult(JSON.stringify(data, null, 2));
-    } catch (err: any) {
-      setUpdateResult(JSON.stringify({ status: 'error', message: err.message }, null, 2));
-    } finally {
-      setUpdateLoading(false);
-    }
-  };
-
-  // C 區：刪除單場比賽
-  const handleDeleteSingleGame = async () => {
-    if (!deleteGameId.trim()) {
-      alert('請輸入要刪除的場次代號 (game_id)');
-      return;
-    }
+  const handleArchiveWeek = async (meta: WeeklyArchiveMeta) => {
     if (
       !window.confirm(
-        `確定要徹底刪除單場比賽【${deleteGameId}】嗎？\n此動作將連帶刪除該場的 Box、PBP 與對位戰術，並自動倒扣總表戰績！`
+        `確定要一鍵封存「${meta.week_label}」（共 ${meta.game_count} 場）嗎？\n封存後本週前瞻將移入歷史週報存檔，前台訪客仍可透過「歷史週報回顧」瀏覽完整內容。`
       )
     ) {
       return;
     }
-
-    setDeleteGameLoading(true);
-    setDeleteGameResult('');
+    setArchivingId(meta.id);
+    setArchiveFeedback(null);
     try {
-      const res = await fetch(`${apiBase}/api/admin/delete-game`, {
+      const res = await fetch(`${apiBase}/api/admin/weekly-previews/${meta.id}/archive`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game_id: deleteGameId.trim() }),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Secret': adminSecret,
+        },
+        body: JSON.stringify({ action: 'archive' }),
       });
       const data = await res.json();
-      if (res.ok) {
-        setDeleteGameResult(JSON.stringify(data, null, 2));
-        alert(data.message || '單場刪除成功！');
-      } else {
-        setDeleteGameResult(JSON.stringify(data, null, 2));
-        alert(`刪除失敗: ${data.detail || data.message}`);
+      if (!res.ok) {
+        throw new Error(data.detail || '封存失敗');
       }
+      setArchiveFeedback({
+        type: 'ok',
+        text: `已成功封存「${meta.week_label}」，完整資料已寫入資料庫存檔。`,
+      });
+      await loadConsoleWeeklyData(adminSecret);
     } catch (err: any) {
-      setDeleteGameResult(JSON.stringify({ status: 'error', message: err.message }, null, 2));
-      alert(`連線錯誤: ${err.message}`);
+      setArchiveFeedback({ type: 'err', text: err?.message || '封存過程發生錯誤' });
     } finally {
-      setDeleteGameLoading(false);
+      setArchivingId(null);
     }
   };
 
-  // D 區：清空指定賽季數據
-  const handleResetStage = async () => {
-    const confirmText = `確定要徹底清空【${resetStage}】嗎？\n- 團隊進階總表將完全歸零 (0勝0敗)\n${
-      clearGames ? '- 該賽季所有單場賽事、Box Score、PBP 與戰術對位將全數刪除\n' : ''
-    }\n此動作無法還原！`;
-    if (!window.confirm(confirmText)) return;
-
-    setResetLoading(true);
-    setResetResult('');
+  const handleRestoreArchivedWeek = async (meta: WeeklyArchiveMeta) => {
+    if (
+      !window.confirm(
+        `確定要將「${meta.week_label}」取消封存並設為當前顯示週報嗎？\n若目前已有線上週報，系統將會自動先封存目前線上週報。`
+      )
+    ) {
+      return;
+    }
+    setArchivingId(meta.id);
+    setArchiveFeedback(null);
     try {
-      const res = await fetch(`${apiBase}/api/admin/reset-stage`, {
+      const res = await fetch(`${apiBase}/api/admin/weekly-previews/${meta.id}/archive`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stage: resetStage,
-          clear_games: clearGames,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Secret': adminSecret,
+        },
+        body: JSON.stringify({ action: 'unarchive' }),
       });
       const data = await res.json();
-      if (res.ok) {
-        setResetResult(JSON.stringify(data, null, 2));
-        alert(data.message || '重置成功！');
-      } else {
-        setResetResult(JSON.stringify(data, null, 2));
-        alert(`重置失敗: ${data.detail || data.message}`);
+      if (!res.ok) {
+        throw new Error(data.detail || '恢復失敗');
       }
+      setArchiveFeedback({
+        type: 'ok',
+        text: `已將「${meta.week_label}」恢復為當前顯示週報。`,
+      });
+      await loadConsoleWeeklyData(adminSecret);
     } catch (err: any) {
-      setResetResult(JSON.stringify({ status: 'error', message: err.message }, null, 2));
-      alert(`連線錯誤: ${err.message}`);
+      setArchiveFeedback({ type: 'err', text: err?.message || '恢復過程發生錯誤' });
     } finally {
-      setResetLoading(false);
+      setArchivingId(null);
     }
-  };
-
-  const handleCopy = () => {
-    if (!syncResult) return;
-    navigator.clipboard.writeText(syncResult);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   // =================================================================
@@ -627,7 +583,7 @@ export default function SystemConsolePage() {
             System Console 權限鎖定
           </h2>
           <p className="mt-2 text-center text-xs text-gray-400">
-            此頁面包含重置賽季與單場數據修訂等高權限功能，請輸入管理密碼解鎖存取。
+            此頁面包含賽後數據管線與週報發布／封存等高權限功能，請輸入管理密碼解鎖存取。
           </p>
 
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
@@ -1012,6 +968,13 @@ export default function SystemConsolePage() {
               </button>
             </div>
 
+            {generatingPreview && (
+              <div className="md:col-span-12 text-xs px-3 py-2 rounded-xl border bg-amber-500/10 border-amber-500/30 text-amber-300 flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                <span>AI 球探報告生成中...（已耗時 {genElapsedSec}s）</span>
+              </div>
+            )}
+
             {genResultMsg && (
               <div
                 className={`md:col-span-12 text-xs px-3 py-2 rounded-xl border ${
@@ -1065,21 +1028,59 @@ export default function SystemConsolePage() {
         </section>
 
         {/* 區塊 C：已發布預測報告管理列表 */}
-        <section className="rounded-3xl border border-[#30363D] bg-[#161B22] p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black text-white">已發布預測報告管理列表</h2>
-            <button
-              type="button"
-              onClick={() => loadConsoleWeeklyData(adminSecret)}
-              className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loadingPreviews ? 'animate-spin' : ''}`} />
-              <span>重新整理</span>
-            </button>
+        <section className="rounded-3xl border border-[#30363D] bg-[#161B22] p-6 shadow-xl space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h2 className="text-lg font-black text-white">已發布預測報告管理列表</h2>
+              {activeArchiveMeta && (
+                <span className="px-2.5 py-0.5 rounded-full bg-[#00E676]/15 border border-[#00E676]/40 text-[#00E676] text-xs font-bold font-mono">
+                  當前線上：{activeArchiveMeta.week_label}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5">
+              {activeArchiveMeta && (
+                <button
+                  type="button"
+                  disabled={archivingId === activeArchiveMeta.id}
+                  onClick={() => handleArchiveWeek(activeArchiveMeta)}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-black text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/20 transition-colors"
+                >
+                  {archivingId === activeArchiveMeta.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Archive className="w-3.5 h-3.5" />
+                  )}
+                  <span>一鍵封存本週前瞻</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => loadConsoleWeeklyData(adminSecret)}
+                className="text-xs text-gray-400 hover:text-white flex items-center gap-1 px-2 py-1.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingPreviews ? 'animate-spin' : ''}`} />
+                <span>重新整理</span>
+              </button>
+            </div>
           </div>
 
+          {archiveFeedback && (
+            <div
+              className={`rounded-xl px-4 py-2.5 text-xs font-bold border ${
+                archiveFeedback.type === 'ok'
+                  ? 'bg-emerald-950/40 border-emerald-700/50 text-emerald-300'
+                  : 'bg-rose-950/40 border-rose-700/50 text-rose-300'
+              }`}
+            >
+              {archiveFeedback.text}
+            </div>
+          )}
+
           {previewsList.length === 0 ? (
-            <div className="text-xs text-gray-500">尚無已發布之週預測報告。</div>
+            <div className="text-xs text-gray-400 bg-[#0E1117] border border-[#21262D] rounded-xl p-4">
+              目前線上無進行中的週報（可於上方生成或匯入新週報，或從下方歷史封存恢復）。
+            </div>
           ) : (
             <div className="space-y-2">
               {previewsList.map((item) => (
@@ -1117,262 +1118,68 @@ export default function SystemConsolePage() {
               ))}
             </div>
           )}
-        </section>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* A 區：單場硬指標同步 */}
-        <section className="rounded-3xl border border-[#30363D] bg-[#161B22] p-6 shadow-xl space-y-4">
-          <div className="flex items-center space-x-2 text-[#FF9100]">
-            <span className="text-lg">🏀</span>
-            <h2 className="text-lg font-black text-white">A. 單場硬指標同步與匯出</h2>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">賽季階段名稱</label>
-              <input
-                type="text"
-                value={syncStage}
-                onChange={(e) => setSyncStage(e.target.value)}
-                className="w-full bg-[#0E1117] border border-[#30363D] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FF9100]"
-                placeholder="例如: 2026-2027 例行賽"
-              />
+          {/* 歷史已封存週報列表 */}
+          <div className="pt-4 border-t border-[#21262D] space-y-3">
+            <div className="flex items-center gap-2 text-sm font-black text-gray-200">
+              <History className="w-4 h-4 text-[#FF9100]" />
+              <span>歷史已封存週報存檔 (Archived)</span>
+              <span className="text-xs font-mono text-gray-500">({archivedWeeks.length})</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1">官網 Schedule ID</label>
-                <input
-                  type="text"
-                  value={scheduleId}
-                  onChange={(e) => setScheduleId(e.target.value)}
-                  className="w-full bg-[#0E1117] border border-[#30363D] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FF9100]"
-                  placeholder="例如: 1221"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1">場次代號</label>
-                <input
-                  type="text"
-                  value={matchId}
-                  onChange={(e) => setMatchId(e.target.value)}
-                  className="w-full bg-[#0E1117] border border-[#30363D] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FF9100]"
-                  placeholder="例如: 2026-G01"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1">日期 (選填)</label>
-                <input
-                  type="text"
-                  value={matchDate}
-                  onChange={(e) => setMatchDate(e.target.value)}
-                  className="w-full bg-[#0E1117] border border-[#30363D] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FF9100]"
-                  placeholder="YYYY-MM-DD"
-                />
-              </div>
-            </div>
-
-            <label className="flex items-center space-x-2 text-xs text-gray-300 pt-1 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoGemini}
-                onChange={(e) => setAutoGemini(e.target.checked)}
-                className="rounded border-[#30363D] text-[#00E676] focus:ring-[#00E676]"
-              />
-              <span>功能 C：同步後以 Gemini 自動生成質化內容並寫入（需後端 GEMINI_API_KEY）</span>
-            </label>
-
-            <button
-              onClick={handleSyncHardMetrics}
-              disabled={syncLoading}
-              className="w-full py-2.5 rounded-xl bg-[#00E676] hover:bg-[#00c864] text-slate-950 font-black text-sm flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
-            >
-              {syncLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-              <span>{syncLoading ? '正在同步數據...' : '抓取並同步單場硬指標'}</span>
-            </button>
-          </div>
-
-          <div className="space-y-2 pt-2">
-            <div className="flex gap-2">
-              <button
-                onClick={handleCopy}
-                disabled={!syncResult}
-                className="flex-1 py-1.5 px-3 rounded-lg border border-[#30363D] bg-[#0E1117] hover:border-gray-500 text-xs font-bold text-gray-300 flex items-center justify-center space-x-1.5 transition-colors disabled:opacity-40"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-[#00E676]" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? '已複製！' : '複製 LLM 數據摘要'}</span>
-              </button>
-              <button
-                onClick={() => {
-                  if (!syncResult) return;
-                  const blob = new Blob([syncResult], { type: 'text/plain' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `${matchId || 'game'}_sync.txt`;
-                  a.click();
-                }}
-                disabled={!syncResult}
-                className="flex-1 py-1.5 px-3 rounded-lg border border-[#30363D] bg-[#0E1117] hover:border-gray-500 text-xs font-bold text-gray-300 flex items-center justify-center space-x-1.5 transition-colors disabled:opacity-40"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>下載 .txt</span>
-              </button>
-            </div>
-
-            <pre className="p-3 rounded-xl bg-[#0E1117] border border-[#30363D] text-xs font-mono text-emerald-400 overflow-x-auto max-h-56">
-              {syncResult || '// 同步回傳訊息將顯示於此...'}
-            </pre>
-          </div>
-        </section>
-
-        {/* B 區：貼上質化分析更新 */}
-        <section className="rounded-3xl border border-[#30363D] bg-[#161B22] p-6 shadow-xl space-y-4">
-          <div className="flex items-center space-x-2 text-[#FF9100]">
-            <span className="text-lg">📄</span>
-            <h2 className="text-lg font-black text-white">B. 貼上 LLM 分析結果一鍵更新</h2>
-          </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            貼上依 prompt 產生的 JSON。將精準更新：單場焦點對位 WOWY、區塊 B 高球權核心 / 高效終結者 / 戰力短評、球員第 34/35 欄。
-          </p>
-
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">場次代號</label>
-              <input
-                type="text"
-                value={updateMatchId}
-                onChange={(e) => setUpdateMatchId(e.target.value)}
-                className="w-full bg-[#0E1117] border border-[#30363D] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FF9100]"
-                placeholder="例如: G01 或 2026-G01"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1">JSON 內容</label>
-              <textarea
-                value={jsonInput}
-                onChange={(e) => setJsonInput(e.target.value)}
-                rows={9}
-                className="w-full bg-[#0E1117] border border-[#30363D] rounded-xl p-3 text-xs font-mono text-gray-200 focus:outline-none focus:border-[#FF9100]"
-                placeholder="在此貼上 LLM 生成的 JSON..."
-              />
-            </div>
-
-            <button
-              onClick={handleUpdateDatabase}
-              disabled={updateLoading}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#FF9100] to-amber-500 hover:from-amber-400 hover:to-[#FF9100] text-slate-950 font-black text-sm flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
-            >
-              {updateLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-              <span>{updateLoading ? '正在更新資料庫...' : '一鍵更新資料庫'}</span>
-            </button>
-          </div>
-
-          <pre className="p-3 rounded-xl bg-[#0E1117] border border-[#30363D] text-xs font-mono text-sky-400 overflow-x-auto max-h-36">
-            {updateResult || '// 資料庫更新回報將顯示於此...'}
-          </pre>
-        </section>
-      </div>
-
-      {/* 下方雙欄管理：C. 單場精準刪除 + D. 全賽季徹底清空 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* C 區：單場比賽刪除 */}
-        <section className="rounded-3xl border border-amber-500/30 bg-[#161B22] p-6 shadow-xl space-y-4">
-          <div className="flex items-center space-x-2 text-amber-400">
-            <XCircle className="w-6 h-6" />
-            <h2 className="text-lg font-black text-white">C. 單場比賽刪除 (修錯/重新抓取專用)</h2>
-          </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            輸入場次代號（如 <code className="text-amber-300">G01</code> 或 <code className="text-amber-300">2026-G01</code>），一鍵徹底刪除該場的 Box Score、五人陣容、On/Off 與戰術對位，並自動重算總表戰績。
-          </p>
-
-          <div className="space-y-3 pt-1">
-            <div>
-              <label className="block text-xs font-bold text-gray-300 mb-1">場次代號 (game_id)</label>
-              <input
-                type="text"
-                value={deleteGameId}
-                onChange={(e) => setDeleteGameId(e.target.value)}
-                className="w-full bg-[#0E1117] border border-[#30363D] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
-                placeholder="例如: G01 或 2026-G01"
-              />
-            </div>
-
-            <button
-              onClick={handleDeleteSingleGame}
-              disabled={deleteGameLoading}
-              className="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-sm flex items-center justify-center space-x-2 transition-all shadow-lg shadow-amber-600/20 disabled:opacity-50"
-            >
-              {deleteGameLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              <span>{deleteGameLoading ? '正在刪除該場賽事...' : '🗑️ 刪除指定單場比賽'}</span>
-            </button>
-          </div>
-
-          {deleteGameResult && (
-            <pre className="p-3 rounded-xl bg-[#0E1117] border border-[#30363D] text-xs font-mono text-amber-300 overflow-x-auto max-h-32">
-              {deleteGameResult}
-            </pre>
-          )}
-        </section>
-
-        {/* D 區：重置 / 徹底清空指定賽季 */}
-        <section className="rounded-3xl border border-red-500/30 bg-[#161B22] p-6 shadow-xl space-y-4">
-          <div className="flex items-center space-x-2 text-red-400">
-            <AlertTriangle className="w-6 h-6" />
-            <h2 className="text-lg font-black text-white">D. 重置 / 徹底清空指定賽季 (全季重整)</h2>
-          </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            徹底清空該賽季：團隊四大要素總表完全歸零（0勝0敗），同時將該賽季底下的所有單場比賽及相關進階數據徹底抹除。
-          </p>
-
-          <div className="space-y-3 pt-1">
-            <div>
-              <label className="block text-xs font-bold text-gray-300 mb-1">目標賽季名稱</label>
-              <input
-                type="text"
-                value={resetStage}
-                onChange={(e) => setResetStage(e.target.value)}
-                list="stages-datalist"
-                className="w-full bg-[#0E1117] border border-[#30363D] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                placeholder="例如: 2026-2027 例行賽"
-              />
-              <datalist id="stages-datalist">
-                {stagesList.map((s) => (
-                  <option key={s.id} value={s.id} />
+            {archivedWeeks.length === 0 ? (
+              <div className="text-xs text-gray-500">尚無已封存的歷史週報。</div>
+            ) : (
+              <div className="space-y-2">
+                {archivedWeeks.map((arch) => (
+                  <div
+                    key={arch.id}
+                    className="bg-[#0E1117]/80 border border-[#21262D] rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+                        <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">
+                          ARCHIVED
+                        </span>
+                        <span className="text-[#FF9100] font-bold">{arch.week_label}</span>
+                        <span className="text-gray-500">·</span>
+                        <span className="text-gray-400">{arch.game_count} 場</span>
+                        {arch.archived_at && (
+                          <>
+                            <span className="text-gray-500">·</span>
+                            <span className="text-gray-500">封存於 {arch.archived_at.replace('T', ' ')}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-sm font-bold text-white mt-1">{arch.title}</div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link
+                        href={`/weekly-preview?archive=${arch.id}`}
+                        className="px-3 py-1.5 rounded-lg bg-[#161B22] hover:bg-[#21262D] border border-[#30363D] text-xs font-bold text-gray-200 flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>檢視存檔</span>
+                      </Link>
+                      <button
+                        type="button"
+                        disabled={archivingId === arch.id}
+                        onClick={() => handleRestoreArchivedWeek(arch)}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/60 disabled:opacity-50 border border-emerald-700/50 text-xs font-bold text-emerald-300 flex items-center gap-1"
+                      >
+                        {archivingId === arch.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        )}
+                        <span>設為當前顯示</span>
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </datalist>
-            </div>
-
-            <div className="flex items-center space-x-2 pt-1">
-              <input
-                type="checkbox"
-                id="clear_games_toggle"
-                checked={clearGames}
-                onChange={(e) => setClearGames(e.target.checked)}
-                className="w-4 h-4 rounded border-[#30363D] text-red-500 focus:ring-red-500 cursor-pointer"
-              />
-              <label htmlFor="clear_games_toggle" className="text-xs text-gray-300 cursor-pointer select-none">
-                同時刪除該賽季所有單場賽事、Box 與 PBP 紀錄
-              </label>
-            </div>
-
-            <button
-              onClick={handleResetStage}
-              disabled={resetLoading}
-              className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-sm flex items-center justify-center space-x-2 transition-all shadow-lg shadow-red-600/20 disabled:opacity-50"
-            >
-              {resetLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              <span>{resetLoading ? '正在徹底重置賽季中...' : '🚨 執行全賽季資料徹底清空'}</span>
-            </button>
+              </div>
+            )}
           </div>
-
-          {resetResult && (
-            <pre className="p-3 rounded-xl bg-[#0E1117] border border-[#30363D] text-xs font-mono text-red-300 overflow-x-auto max-h-32">
-              {resetResult}
-            </pre>
-          )}
         </section>
       </div>
     </div>

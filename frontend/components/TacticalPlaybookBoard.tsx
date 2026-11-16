@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Play, Pause, RotateCcw, Shield, Swords, Sparkles } from 'lucide-react';
+import { Play, Pause, RotateCcw, Shield, Swords, Sparkles, Youtube, Clock } from 'lucide-react';
 
 export type TacticalPathType = 'dribble' | 'screen' | 'pass' | 'defense';
 
@@ -28,14 +28,35 @@ export interface BallFrame {
   isShot?: boolean;
 }
 
+export interface RelatedPlayItem {
+  quarter: string;
+  game_clock: string;
+  description: string;
+  youtube_seconds?: number | null;
+}
+
 export interface TacticalScenario {
-  key: 'home_offense' | 'away_counter' | 'away_offense' | 'home_counter';
+  key: string;
   label: string;
   playName: string;
   tacticalGoal: string;
   offenseTeam: 'home' | 'away';
   phases: [TacticalPhase, TacticalPhase, TacticalPhase];
   ballFrames?: BallFrame[];
+  source_type?: 'vault' | 'ai';
+  side?: 'offense' | 'defense';
+  teamName?: string;
+  sourceQuarter?: string;
+  sourceClock?: string;
+  youtubeUrl?: string | null;
+  youtubeSeconds?: number | null;
+  eventSummary?: string;
+  tacticalPattern?: string | null;
+  tacticalTags?: string[];
+  relatedPlays?: RelatedPlayItem[];
+  related_plays?: RelatedPlayItem[];
+  offenseRoster?: string[];
+  defenseRoster?: string[];
 }
 
 export interface TacticalPlaybookBoardProps {
@@ -44,12 +65,71 @@ export interface TacticalPlaybookBoardProps {
   homeRoster?: string[];
   awayRoster?: string[];
   scenarios?: TacticalScenario[];
+  youtubeUrl?: string | null;
   title?: string;
   subtitle?: string;
 }
 
+function buildYoutubeTimestampUrl(baseUrl: string, seconds: number): string {
+  const sec = Math.max(0, Math.round(seconds));
+  try {
+    const u = new URL(baseUrl);
+    u.searchParams.set('t', `${sec}s`);
+    return u.toString();
+  } catch {
+    const sep = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${sep}t=${sec}s`;
+  }
+}
+
 const POS_LABELS = ['1 PG', '2 SG', '3 SF', '4 PF', '5 C'];
-const RIM_POS: [number, number] = [250, 407];
+const RIM_POS: [number, number] = [773, 225];
+
+function isLegacyHalfCourtScenario(phases: [TacticalPhase, TacticalPhase, TacticalPhase]): boolean {
+  for (const ph of phases) {
+    for (const pt of [...ph.offense, ...ph.defense, ph.ballPos]) {
+      if (pt && (pt[0] > 105 || pt[1] > 105)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * 將標準化全場百分比座標 (x: 0~100, y: 0~100) 或舊版半場像素座標 (500x470)
+ * 統一映射到橫向全場 SVG (viewBox="0 0 840 450"，球場邊界 x=[30..810], y=[25..425])。
+ */
+function toFullCourtSvgPoint(pt: [number, number], legacyHalfCourt: boolean): [number, number] {
+  const rawX = Number(pt?.[0] ?? 50);
+  const rawY = Number(pt?.[1] ?? 50);
+  let pctX = rawX;
+  let pctY = rawY;
+  if (legacyHalfCourt) {
+    pctX = 54 + ((rawY - 40) / 380) * 41;
+    pctY = 8 + ((rawX - 45) / 410) * 84;
+  }
+  const clampedX = Math.max(2, Math.min(98, pctX));
+  const clampedY = Math.max(3, Math.min(97, pctY));
+  return [30 + (clampedX / 100) * 780, 25 + (clampedY / 100) * 400];
+}
+
+function mapPhasesToFullCourt(
+  phases: [TacticalPhase, TacticalPhase, TacticalPhase]
+): [TacticalPhase, TacticalPhase, TacticalPhase] {
+  const legacy = isLegacyHalfCourtScenario(phases);
+  return phases.map((ph) => ({
+    ...ph,
+    ballPos: toFullCourtSvgPoint(ph.ballPos, legacy),
+    offense: ph.offense.map((pt) => toFullCourtSvgPoint(pt, legacy)),
+    defense: ph.defense.map((pt) => toFullCourtSvgPoint(pt, legacy)),
+    paths: (ph.paths || []).map((p) => ({
+      ...p,
+      from: toFullCourtSvgPoint(p.from, legacy),
+      to: toFullCourtSvgPoint(p.to, legacy),
+    })),
+  })) as [TacticalPhase, TacticalPhase, TacticalPhase];
+}
 
 const TEAM_DEFAULT_ROSTERS: Record<string, string[]> = {
   新北國王: ['林書緯', '李愷諺', '克雷格', '肯刀爾', '沃許本'],
@@ -792,11 +872,13 @@ export default function TacticalPlaybookBoard({
   homeRoster,
   awayRoster,
   scenarios,
+  youtubeUrl,
   title = '互動式 SVG 半場戰術板｜雙隊互有攻守推演',
   subtitle = '連續流暢補間動畫、獨立傳球飛行軌跡與真實先發 1～5 號位名單連動',
 }: TacticalPlaybookBoardProps) {
+  const isMultiPbpMode = Boolean(scenarios && scenarios.length > 4);
   const [library, setLibrary] = useState<TeamPlaybookLibrary | null>(null);
-  const [variantIdxMap, setVariantIdxMap] = useState<Record<TacticalScenario['key'], number>>({
+  const [variantIdxMap, setVariantIdxMap] = useState<Record<string, number>>({
     home_offense: 0,
     away_counter: 0,
     away_offense: 0,
@@ -805,7 +887,7 @@ export default function TacticalPlaybookBoard({
 
   // 在 /matchup 自由模擬模式下，自動讀取累積的 7 隊戰術庫
   useEffect(() => {
-    if (scenarios && scenarios.length === 4) return;
+    if (scenarios && scenarios.length >= 4) return;
     let cancelled = false;
     fetch('/weekly_previews/team_playbook_library.json')
       .then((res) => (res.ok ? res.json() : null))
@@ -877,15 +959,17 @@ export default function TacticalPlaybookBoard({
     };
   }, [scenarios, homeTeam, awayTeam, library]);
 
-  const resolvedScenarios = useMemo(
-    () => [
+  const resolvedScenarios = useMemo(() => {
+    if (isMultiPbpMode && scenarios && scenarios.length > 0) {
+      return scenarios;
+    }
+    return [
       scenarioVariantsMap.home_offense[variantIdxMap.home_offense] || scenarioVariantsMap.home_offense[0],
       scenarioVariantsMap.away_counter[variantIdxMap.away_counter] || scenarioVariantsMap.away_counter[0],
       scenarioVariantsMap.away_offense[variantIdxMap.away_offense] || scenarioVariantsMap.away_offense[0],
       scenarioVariantsMap.home_counter[variantIdxMap.home_counter] || scenarioVariantsMap.home_counter[0],
-    ],
-    [scenarioVariantsMap, variantIdxMap]
-  );
+    ];
+  }, [isMultiPbpMode, scenarios, scenarioVariantsMap, variantIdxMap]);
 
   const resolvedHomeRoster = useMemo(() => {
     const fallback =
@@ -913,7 +997,7 @@ export default function TacticalPlaybookBoard({
     [resolvedScenarios, activeScenarioKey]
   );
 
-  const activeVariants = scenarioVariantsMap[activeScenario.key] || [activeScenario];
+  const activeVariants = (scenarioVariantsMap as Record<string, TacticalScenario[]>)[activeScenario.key] || [activeScenario];
   const activeVariantIdx = variantIdxMap[activeScenario.key] || 0;
 
   const handleSelectVariant = (idx: number) => {
@@ -1004,11 +1088,17 @@ export default function TacticalPlaybookBoard({
     };
   }, [isPlaying, speed]);
 
+  // 將目前劇本座標統一映射至橫向全場 SVG (840x450)
+  const mappedPhases = useMemo(
+    () => mapPhasesToFullCourt(activeScenario.phases),
+    [activeScenario.phases]
+  );
+
   // 計算當前雙隊球員補間座標
   const segIdx = progress < 1.0 ? 0 : 1;
   const localT = easeInOutCubic(progress < 1.0 ? progress : progress - 1.0);
-  const phaseA = activeScenario.phases[segIdx] || activeScenario.phases[0];
-  const phaseB = activeScenario.phases[segIdx + 1] || phaseA;
+  const phaseA = mappedPhases[segIdx] || mappedPhases[0];
+  const phaseB = mappedPhases[segIdx + 1] || phaseA;
 
   const interpOffense = phaseA.offense.map((pos, idx) => {
     const target = phaseB.offense[idx] || pos;
@@ -1021,25 +1111,60 @@ export default function TacticalPlaybookBoard({
   });
 
   // 獨立籃球傳球飛行軌跡 & 出手尾跡
+  const isLegacy = useMemo(
+    () => isLegacyHalfCourtScenario(activeScenario.phases),
+    [activeScenario.phases]
+  );
   const ballFrames = useMemo(
     () =>
       activeScenario.ballFrames && activeScenario.ballFrames.length >= 2
-        ? activeScenario.ballFrames
-        : deriveBallFrames(activeScenario.phases),
-    [activeScenario]
+        ? activeScenario.ballFrames.map((bf) => ({
+            ...bf,
+            pos: toFullCourtSvgPoint(bf.pos, isLegacy),
+          }))
+        : deriveBallFrames(mappedPhases),
+    [activeScenario.ballFrames, mappedPhases, isLegacy]
   );
 
   const ballState = sampleBallState(ballFrames, progress);
-  const currentPhaseInfo = activeScenario.phases[activeStageIdx] || activeScenario.phases[0];
+  const currentPhaseInfo = mappedPhases[activeStageIdx] || mappedPhases[0];
 
   const isHomeOffense = activeScenario.offenseTeam === 'home';
-  const offenseRoster = isHomeOffense ? resolvedHomeRoster : resolvedAwayRoster;
-  const defenseRoster = isHomeOffense ? resolvedAwayRoster : resolvedHomeRoster;
+  const offenseRoster =
+    activeScenario.offenseRoster && activeScenario.offenseRoster.length === 5
+      ? activeScenario.offenseRoster
+      : isHomeOffense
+      ? resolvedHomeRoster
+      : resolvedAwayRoster;
+  const defenseRoster =
+    activeScenario.defenseRoster && activeScenario.defenseRoster.length === 5
+      ? activeScenario.defenseRoster
+      : isHomeOffense
+      ? resolvedAwayRoster
+      : resolvedHomeRoster;
   const offenseTeamName = isHomeOffense ? homeTeam : awayTeam;
   const defenseTeamName = isHomeOffense ? awayTeam : homeTeam;
 
   const offenseColor = isHomeOffense ? '#FF9100' : '#38BDF8';
   const defenseColor = isHomeOffense ? '#38BDF8' : '#FF9100';
+
+  const activeTimeLabel =
+    activeScenario.sourceQuarter && activeScenario.sourceClock
+      ? `${activeScenario.sourceQuarter} ${activeScenario.sourceClock}`
+      : null;
+
+  const effectiveYoutubeUrl = activeScenario.youtubeUrl || youtubeUrl;
+  const activeRelatedPlays =
+    (activeScenario.relatedPlays && activeScenario.relatedPlays.length > 0
+      ? activeScenario.relatedPlays
+      : activeScenario.related_plays) || [];
+
+  const activeYoutubeLink =
+    effectiveYoutubeUrl &&
+    activeScenario.youtubeSeconds !== null &&
+    activeScenario.youtubeSeconds !== undefined
+      ? buildYoutubeTimestampUrl(effectiveYoutubeUrl, activeScenario.youtubeSeconds)
+      : null;
 
   return (
     <section className="bg-[#161B22] border border-[#30363D] rounded-2xl p-5 sm:p-6 shadow-2xl">
@@ -1054,35 +1179,79 @@ export default function TacticalPlaybookBoard({
           <p className="text-xs sm:text-sm text-gray-400 mt-1">{subtitle}</p>
         </div>
 
-        {/* 4-Scenario Switcher */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-          {resolvedScenarios.map((sc) => {
-            const active = sc.key === activeScenario.key;
-            const isCounter = sc.key.includes('counter');
-            return (
-              <button
-                key={sc.key}
-                type="button"
-                onClick={() => handleSelectScenario(sc.key)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
-                  active
-                    ? isCounter
-                      ? 'bg-[#F43F5E]/15 text-[#FB7185] border-[#F43F5E]/60 shadow-lg shadow-[#F43F5E]/10'
-                      : 'bg-[#FF9100]/15 text-[#FF9100] border-[#FF9100]/60 shadow-lg shadow-[#FF9100]/10'
-                    : 'bg-[#0E1117] text-gray-400 border-[#21262D] hover:text-white hover:border-[#30363D]'
-                }`}
-              >
-                {isCounter ? <Shield className="w-3.5 h-3.5" /> : <Swords className="w-3.5 h-3.5" />}
-                <span>{sc.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Switcher: 8-Play PBP Mode or 4-Scenario Mode */}
+        {isMultiPbpMode ? (
+          <div className="flex flex-col gap-2">
+            {[
+              { teamLabel: `主隊 ${homeTeam}`, items: resolvedScenarios.filter((s) => (s.teamName ? s.teamName === homeTeam : s.key.startsWith('home_'))) },
+              { teamLabel: `客隊 ${awayTeam}`, items: resolvedScenarios.filter((s) => (s.teamName ? s.teamName === awayTeam : s.key.startsWith('away_'))) },
+            ].map((group) => (
+              <div key={group.teamLabel} className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-gray-400 mr-1 min-w-[96px]">
+                  {group.teamLabel}：
+                </span>
+                {group.items.map((sc, idx) => {
+                  const active = sc.key === activeScenario.key;
+                  const isDefense = sc.side === 'defense' || sc.key.includes('defense') || sc.key.includes('counter');
+                  const timeTag = sc.sourceQuarter && sc.sourceClock ? `${sc.sourceQuarter} ${sc.sourceClock}` : '';
+                  const shortBtnLabel = `${isDefense ? '守' : '攻'}${(idx % 2) + 1}`;
+                  return (
+                    <button
+                      key={sc.key}
+                      type="button"
+                      onClick={() => handleSelectScenario(sc.key)}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                        active
+                          ? isDefense
+                            ? 'bg-[#F43F5E]/15 text-[#FB7185] border-[#F43F5E]/60 shadow-lg shadow-[#F43F5E]/10'
+                            : 'bg-[#FF9100]/15 text-[#FF9100] border-[#FF9100]/60 shadow-lg shadow-[#FF9100]/10'
+                          : 'bg-[#0E1117] text-gray-400 border-[#21262D] hover:text-white hover:border-[#30363D]'
+                      }`}
+                    >
+                      {isDefense ? <Shield className="w-3.5 h-3.5" /> : <Swords className="w-3.5 h-3.5" />}
+                      <span>{shortBtnLabel}</span>
+                      {timeTag && (
+                        <span className="text-[10px] font-mono opacity-80 px-1 py-0.5 rounded bg-black/30">
+                          {timeTag}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5 shrink-0">
+            {resolvedScenarios.map((sc) => {
+              const active = sc.key === activeScenario.key;
+              const isCounter = sc.side === 'defense' || sc.key.includes('defense') || sc.key.includes('counter');
+              return (
+                <button
+                  key={sc.key}
+                  type="button"
+                  onClick={() => handleSelectScenario(sc.key)}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
+                    active
+                      ? isCounter
+                        ? 'bg-[#F43F5E]/15 text-[#FB7185] border-[#F43F5E]/60 shadow-lg shadow-[#F43F5E]/10'
+                        : 'bg-[#FF9100]/15 text-[#FF9100] border-[#FF9100]/60 shadow-lg shadow-[#FF9100]/10'
+                      : 'bg-[#0E1117] text-gray-400 border-[#21262D] hover:text-white hover:border-[#30363D]'
+                  }`}
+                >
+                  {isCounter ? <Shield className="w-3.5 h-3.5" /> : <Swords className="w-3.5 h-3.5" />}
+                  <span>{sc.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Active Play Banner */}
-      <div className="mt-4 mb-5 bg-[#0E1117] border border-[#21262D] rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div>
+      <div className="mt-4 mb-5 bg-[#0E1117] border border-[#21262D] rounded-xl p-4 flex flex-col gap-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span
               className="text-[11px] font-black px-2 py-0.5 rounded-md border"
@@ -1104,7 +1273,48 @@ export default function TacticalPlaybookBoard({
             >
               防守方：{defenseTeamName}
             </span>
-            {activeVariants.length > 1 && (
+            {activeScenario.source_type === 'vault' && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/40">
+                <span>📚 實戰戰術庫調用</span>
+              </span>
+            )}
+            {activeScenario.source_type === 'ai' && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/40">
+                <span>🧠 AI 數據臨場推演</span>
+              </span>
+            )}
+            {activeRelatedPlays.length === 0 && activeTimeLabel && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/40">
+                <Clock className="w-3 h-3" />
+                <span>實戰回合：{activeTimeLabel}</span>
+              </span>
+            )}
+            {activeRelatedPlays.length === 0 && activeYoutubeLink && activeTimeLabel && (
+              <a
+                href={activeYoutubeLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-0.5 rounded-md bg-red-600 hover:bg-red-500 text-white shadow-md shadow-red-600/20 transition-colors"
+              >
+                <Youtube className="w-3.5 h-3.5" />
+                <span>▶ 觀看實戰片段（{activeTimeLabel}）</span>
+              </a>
+            )}
+            {activeScenario.tacticalPattern && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-md bg-[#00E676]/15 text-[#00E676] border border-[#00E676]/50">
+                <span>🎯 戰術識別：{activeScenario.tacticalPattern}</span>
+              </span>
+            )}
+            {activeScenario.tacticalTags &&
+              activeScenario.tacticalTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#161B22] text-gray-300 border border-[#30363D]"
+                >
+                  #{tag}
+                </span>
+              ))}
+            {!isMultiPbpMode && activeVariants.length > 1 && (
               <div className="flex items-center gap-1.5 ml-1 flex-wrap">
                 <span className="text-[10px] text-gray-500 font-bold">累積戰術庫：</span>
                 {activeVariants.map((v, idx) => (
@@ -1130,6 +1340,11 @@ export default function TacticalPlaybookBoard({
           <p className="text-xs text-gray-300 mt-1">
             {bindRosterPlaceholders(activeScenario.tacticalGoal, offenseRoster, defenseRoster)}
           </p>
+          {activeScenario.eventSummary && (
+            <p className="text-[11px] text-amber-300/90 mt-1.5 font-medium">
+              PBP 實戰紀錄：{activeScenario.eventSummary}
+            </p>
+          )}
         </div>
 
         {/* Playback Controls */}
@@ -1174,18 +1389,57 @@ export default function TacticalPlaybookBoard({
             ))}
           </div>
         </div>
+        </div>
+
+        {/* Full-Width Related Plays Row */}
+        {activeRelatedPlays.length > 0 && (
+          <div className="w-full pt-3 border-t border-[#21262D] flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-gray-400 shrink-0">
+              {activeScenario.source_type === 'vault' ? '歷史實戰案例片段：' : '本場實戰案例片段：'}
+            </span>
+            {activeRelatedPlays.map((rp, idx) => {
+              const timeBadge = `${rp.quarter} ${rp.game_clock}`;
+              const ytHref =
+                effectiveYoutubeUrl && rp.youtube_seconds !== null && rp.youtube_seconds !== undefined
+                  ? buildYoutubeTimestampUrl(effectiveYoutubeUrl, rp.youtube_seconds)
+                  : null;
+              return ytHref ? (
+                <a
+                  key={`${timeBadge}-${idx}`}
+                  href={ytHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-[#161B22] hover:bg-red-600/20 text-gray-200 hover:text-white border border-[#30363D] hover:border-red-500/60 transition-colors"
+                  title="點擊跳轉 YouTube 觀看該實戰片段"
+                >
+                  <Youtube className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                  <span className="font-mono text-amber-300">{timeBadge}</span>
+                  <span>{rp.description}</span>
+                </a>
+              ) : (
+                <span
+                  key={`${timeBadge}-${idx}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-[#161B22] text-gray-300 border border-[#30363D]"
+                >
+                  <span className="font-mono text-amber-300">{timeBadge}</span>
+                  <span>{rp.description}</span>
+                </span>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left: SVG Half-Court */}
-        <div className="lg:col-span-7 flex flex-col gap-3">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* Left: Full-Court Horizontal SVG */}
+        <div className="xl:col-span-8 flex flex-col gap-3">
           <div className="relative bg-[#0B0F17] border border-[#30363D] rounded-2xl p-2 sm:p-4 overflow-hidden shadow-inner">
             <svg
-              viewBox="0 0 500 470"
-              className="w-full h-auto max-h-[500px] select-none"
+              viewBox="0 0 840 450"
+              className="w-full h-auto select-none"
               role="img"
-              aria-label="TPBL Half-Court Tactical Board"
+              aria-label="TPBL Full-Court Tactical Board"
             >
               <defs>
                 <marker id="arrow-dribble" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
@@ -1204,22 +1458,39 @@ export default function TacticalPlaybookBoard({
                   <stop offset="0%" stopColor="#FB923C" stopOpacity="0.85" />
                   <stop offset="100%" stopColor="#FB923C" stopOpacity="0" />
                 </radialGradient>
+                <radialGradient id="target-rim-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#FF9100" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#FF9100" stopOpacity="0" />
+                </radialGradient>
               </defs>
 
-              {/* Court Surface */}
-              <rect x="25" y="25" width="450" height="420" rx="6" fill="#111827" stroke="#334155" strokeWidth="2.5" />
-              <path d="M 195 25 A 55 55 0 0 0 305 25" fill="none" stroke="#334155" strokeWidth="2" />
-              <rect x="176" y="270" width="148" height="175" fill="#1E293B" fillOpacity="0.65" stroke="#475569" strokeWidth="2" />
-              <circle cx="250" cy="270" r="54" fill="none" stroke="#475569" strokeWidth="2" />
+              {/* Full-Court Surface */}
+              <rect x="30" y="25" width="780" height="400" rx="6" fill="#111827" stroke="#334155" strokeWidth="2.5" />
 
-              {/* Three-Point Line */}
-              <line x1="48" y1="445" x2="48" y2="395" stroke="#475569" strokeWidth="2.2" />
-              <line x1="452" y1="445" x2="452" y2="395" stroke="#475569" strokeWidth="2.2" />
-              <path d="M 48 395 A 202 202 0 0 1 452 395" fill="none" stroke="#475569" strokeWidth="2.2" />
+              {/* Center Line & Center Circle */}
+              <line x1="420" y1="25" x2="420" y2="425" stroke="#334155" strokeWidth="2" />
+              <circle cx="420" cy="225" r="52" fill="none" stroke="#334155" strokeWidth="2" />
+              <circle cx="420" cy="225" r="4" fill="#475569" />
 
-              {/* Restricted Area & Hoop */}
-              <path d="M 212 405 A 38 38 0 0 1 288 405" fill="none" stroke="#64748B" strokeWidth="1.8" />
-              <line x1="223" y1="422" x2="277" y2="422" stroke="#CBD5E1" strokeWidth="3.5" strokeLinecap="round" />
+              {/* Left Backcourt (Defense Hoop) */}
+              <rect x="30" y="151" width="148" height="148" fill="#1E293B" fillOpacity="0.55" stroke="#475569" strokeWidth="2" />
+              <circle cx="178" cy="225" r="52" fill="none" stroke="#475569" strokeWidth="2" />
+              <line x1="30" y1="55" x2="92" y2="55" stroke="#475569" strokeWidth="2" />
+              <line x1="30" y1="395" x2="92" y2="395" stroke="#475569" strokeWidth="2" />
+              <path d="M 92 55 A 178 178 0 0 1 92 395" fill="none" stroke="#475569" strokeWidth="2" />
+              <path d="M 67 190 A 35 35 0 0 1 67 260" fill="none" stroke="#64748B" strokeWidth="1.6" />
+              <line x1="52" y1="198" x2="52" y2="252" stroke="#94A3B8" strokeWidth="3" strokeLinecap="round" />
+              <circle cx="67" cy="225" r="8.5" fill="none" stroke="#64748B" strokeWidth="2.2" />
+
+              {/* Right Frontcourt (Offense Target Hoop) */}
+              <rect x="662" y="151" width="148" height="148" fill="#1E293B" fillOpacity="0.7" stroke="#475569" strokeWidth="2" />
+              <circle cx="662" cy="225" r="52" fill="none" stroke="#475569" strokeWidth="2" />
+              <line x1="748" y1="55" x2="810" y2="55" stroke="#475569" strokeWidth="2.2" />
+              <line x1="748" y1="395" x2="810" y2="395" stroke="#475569" strokeWidth="2.2" />
+              <path d="M 748 55 A 178 178 0 0 0 748 395" fill="none" stroke="#475569" strokeWidth="2.2" />
+              <path d="M 773 190 A 35 35 0 0 0 773 260" fill="none" stroke="#64748B" strokeWidth="1.8" />
+              <circle cx="773" cy="225" r="32" fill="url(#target-rim-glow)" />
+              <line x1="788" y1="198" x2="788" y2="252" stroke="#CBD5E1" strokeWidth="3.5" strokeLinecap="round" />
               <circle
                 cx={RIM_POS[0]}
                 cy={RIM_POS[1]}
@@ -1228,6 +1499,24 @@ export default function TacticalPlaybookBoard({
                 stroke={ballState.isShot && progress > 1.88 ? '#00E676' : '#FF9100'}
                 strokeWidth="2.8"
               />
+
+              {/* Court Quarter & Attack Direction Labels */}
+              {activeScenario.sourceQuarter && (
+                <g transform="translate(42, 42)">
+                  <rect x="0" y="-12" width="146" height="20" rx="5" fill="#0E1117" fillOpacity="0.85" stroke="#334155" strokeWidth="1" />
+                  <text x="73" y="2" textAnchor="middle" fill="#94A3B8" fontSize="10" fontWeight="700">
+                    {activeScenario.sourceQuarter === 'Q1' || activeScenario.sourceQuarter === 'Q2'
+                      ? `上半場 ${activeScenario.sourceQuarter}`
+                      : `下半場 ${activeScenario.sourceQuarter}（換邊後）`}
+                  </text>
+                </g>
+              )}
+              <g transform="translate(650, 42)">
+                <rect x="0" y="-12" width="146" height="20" rx="5" fill="#FF9100" fillOpacity="0.12" stroke="#FF9100" strokeOpacity="0.4" strokeWidth="1" />
+                <text x="73" y="2" textAnchor="middle" fill="#FDBA74" fontSize="10" fontWeight="800">
+                  進攻方向 ➔ 目標籃框
+                </text>
+              </g>
 
               {/* Tactical Paths for Active Stage */}
               {currentPhaseInfo.paths.map((p, i) => {
@@ -1350,7 +1639,7 @@ export default function TacticalPlaybookBoard({
               {/* Topmost Layer: All Player Name Labels (with horizontal edge clamping) */}
               <g className="player-labels">
                 {interpDefense.map(([x, y], idx) => {
-                  const labelX = Math.max(38, Math.min(462, x));
+                  const labelX = Math.max(46, Math.min(794, x));
                   return (
                     <g key={`def-label-${idx}`} transform={`translate(${labelX}, ${y})`}>
                       <rect
@@ -1371,7 +1660,7 @@ export default function TacticalPlaybookBoard({
                   );
                 })}
                 {interpOffense.map(([x, y], idx) => {
-                  const labelX = Math.max(38, Math.min(462, x));
+                  const labelX = Math.max(46, Math.min(794, x));
                   return (
                     <g key={`off-label-${idx}`} transform={`translate(${labelX}, ${y})`}>
                       <rect
@@ -1417,7 +1706,7 @@ export default function TacticalPlaybookBoard({
         </div>
 
         {/* Right: 3-Phase Storyboard + 1-5 Position Matchup Table */}
-        <div className="lg:col-span-5 flex flex-col gap-4">
+        <div className="xl:col-span-4 flex flex-col gap-4">
           <div className="bg-[#0E1117] border border-[#21262D] rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
@@ -1478,7 +1767,7 @@ export default function TacticalPlaybookBoard({
               <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                 1～5 號位攻防對照表
               </span>
-              <span className="text-[11px] text-gray-500">即時連動先發名單</span>
+              <span className="text-[11px] text-gray-500">實戰在場 5v5 對位</span>
             </div>
             <div className="space-y-2">
               {POS_LABELS.map((posLabel, idx) => {

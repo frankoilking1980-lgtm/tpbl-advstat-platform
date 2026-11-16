@@ -14,6 +14,9 @@ import {
   Target,
   Calendar,
   Trophy,
+  Archive,
+  History,
+  Info,
 } from 'lucide-react';
 import TacticalPlaybookBoard, { TacticalScenario } from '@/components/TacticalPlaybookBoard';
 
@@ -90,6 +93,24 @@ interface PreviewIndexItem {
   away_win_prob: number;
   generated_at: string;
   model_used: string;
+}
+
+interface WeeklyArchiveMeta {
+  id: number;
+  week_label: string;
+  stage: string;
+  title: string;
+  status: 'active' | 'archived';
+  created_at: string;
+  archived_at: string | null;
+  game_count: number;
+}
+
+interface WeeklyPreviewBundle extends WeeklyArchiveMeta {
+  content: {
+    items: PreviewIndexItem[];
+    reports: Record<string, WeeklyPreviewReport>;
+  };
 }
 
 interface TeamMetricsSummary {
@@ -204,16 +225,47 @@ export default function WeeklyPreviewPage() {
   const [loadingList, setLoadingList] = useState<boolean>(true);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
 
-  const loadIndex = async () => {
+  const [activeMeta, setActiveMeta] = useState<WeeklyArchiveMeta | null>(null);
+  const [archivedList, setArchivedList] = useState<WeeklyArchiveMeta[]>([]);
+  const [currentBundle, setCurrentBundle] = useState<WeeklyPreviewBundle | null>(null);
+  const [selectedArchiveId, setSelectedArchiveId] = useState<number | null>(null);
+  const [isFallbackToArchived, setIsFallbackToArchived] = useState<boolean>(false);
+
+  const loadIndex = async (targetArchiveId?: number | null) => {
     setLoadingList(true);
     try {
-      const res = await fetch(`${API_BASE}/api/weekly-previews`);
+      const qs = targetArchiveId ? `?id=${targetArchiveId}` : '';
+      const res = await fetch(`${API_BASE}/api/weekly-previews${qs}`);
       if (res.ok) {
         const data = await res.json();
-        const list: PreviewIndexItem[] = data.items || [];
+        setActiveMeta(data.active || null);
+        setArchivedList(data.archived || []);
+
+        let bundle: WeeklyPreviewBundle | null = data.selected_preview || null;
+        let fallbackFlag = false;
+
+        if (!bundle && !targetArchiveId && data.latest_archived) {
+          bundle = data.latest_archived;
+          fallbackFlag = true;
+        }
+
+        setCurrentBundle(bundle);
+        setIsFallbackToArchived(fallbackFlag);
+        if (bundle) {
+          setSelectedArchiveId(bundle.status === 'archived' ? bundle.id : null);
+        } else {
+          setSelectedArchiveId(null);
+        }
+
+        const list: PreviewIndexItem[] = bundle?.content?.items || data.items || [];
         setItems(list);
-        if (list.length > 0 && !selectedSlug) {
+        if (list.length > 0) {
           setSelectedSlug(list[0].slug);
+          const firstReport = bundle?.content?.reports?.[list[0].slug] || null;
+          if (firstReport) setReport(firstReport);
+        } else {
+          setSelectedSlug('');
+          setReport(null);
         }
         setLoadingList(false);
         return;
@@ -227,7 +279,7 @@ export default function WeeklyPreviewPage() {
       if (staticRes.ok) {
         const list: PreviewIndexItem[] = await staticRes.json();
         setItems(list);
-        if (list.length > 0 && !selectedSlug) {
+        if (list.length > 0) {
           setSelectedSlug(list[0].slug);
         }
       }
@@ -239,18 +291,39 @@ export default function WeeklyPreviewPage() {
   };
 
   useEffect(() => {
-    loadIndex();
+    let initialArchiveId: number | null = null;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('archive');
+      if (raw && /^\d+$/.test(raw)) {
+        initialArchiveId = parseInt(raw, 10);
+      }
+    }
+    loadIndex(initialArchiveId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!selectedSlug) return;
+    if (!selectedSlug) {
+      setReport(null);
+      return;
+    }
+
+    // 優先從已載入的週報快照直接讀取，零額外延遲
+    const cachedReport = currentBundle?.content?.reports?.[selectedSlug];
+    if (cachedReport) {
+      setReport(cachedReport);
+      setLoadingDetail(false);
+      return;
+    }
+
     let cancelled = false;
     setLoadingDetail(true);
 
     const fetchDetail = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/weekly-previews/${selectedSlug}`);
+        const qs = currentBundle ? `?archive_id=${currentBundle.id}` : '';
+        const res = await fetch(`${API_BASE}/api/weekly-previews/${selectedSlug}${qs}`);
         if (res.ok) {
           const data: WeeklyPreviewReport = await res.json();
           if (!cancelled) {
@@ -278,7 +351,7 @@ export default function WeeklyPreviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedSlug]);
+  }, [selectedSlug, currentBundle]);
 
   return (
     <div className="min-h-screen bg-[#0E1117] text-gray-100 pb-16">
@@ -287,15 +360,98 @@ export default function WeeklyPreviewPage() {
         <section className="bg-[#161B22] border border-[#30363D] rounded-2xl p-4 sm:p-5 shadow-xl">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#FF9100]">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#FF9100]">
                 <Sparkles className="w-4 h-4" />
                 <span>TPBL Weekly AI Scouting & Fun Predictions</span>
+                {currentBundle?.status === 'archived' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[11px] font-bold normal-case">
+                    <Archive className="w-3 h-3" />
+                    <span>已封存歷史存檔 (Archived)</span>
+                  </span>
+                )}
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-white mt-1">
                 本週比賽有趣預測｜進階數據深度球探報告
               </h1>
+              {currentBundle && (
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-400 font-mono">
+                  <span className="text-gray-200 font-bold">{currentBundle.week_label}</span>
+                  <span>·</span>
+                  <span>發布日期：{currentBundle.created_at.slice(0, 10)}</span>
+                  {currentBundle.archived_at && (
+                    <>
+                      <span>·</span>
+                      <span className="text-amber-300/90">
+                        封存日期：{currentBundle.archived_at.slice(0, 10)}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* 歷史週報回顧下拉選單 */}
+            {(activeMeta || archivedList.length > 0) && (
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 bg-[#0E1117] border border-[#30363D] rounded-xl px-3 py-2">
+                  <History className="w-4 h-4 text-[#FF9100] shrink-0" />
+                  <label htmlFor="weekly-archive-select" className="text-xs font-bold text-gray-300 whitespace-nowrap">
+                    歷史週報回顧
+                  </label>
+                  <select
+                    id="weekly-archive-select"
+                    value={selectedArchiveId !== null ? String(selectedArchiveId) : 'active'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === 'active') {
+                        loadIndex(null);
+                      } else {
+                        loadIndex(parseInt(val, 10));
+                      }
+                    }}
+                    className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer pr-1"
+                  >
+                    {activeMeta && (
+                      <option value="active" className="bg-[#0E1117] text-white">
+                        當前線上：{activeMeta.week_label}（{activeMeta.game_count} 場）
+                      </option>
+                    )}
+                    {archivedList.length > 0 && (
+                      <optgroup label="已封存歷史存檔" className="bg-[#0E1117] text-gray-300">
+                        {archivedList.map((arch) => (
+                          <option key={arch.id} value={String(arch.id)} className="bg-[#0E1117] text-white">
+                            [存檔] {arch.week_label}（{arch.game_count} 場）· {(arch.archived_at || arch.created_at).slice(0, 10)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+
+                {activeMeta && currentBundle?.status === 'archived' && (
+                  <button
+                    type="button"
+                    onClick={() => loadIndex(null)}
+                    className="px-3 py-2 rounded-xl bg-[#FF9100]/15 hover:bg-[#FF9100]/25 border border-[#FF9100]/40 text-[#FF9100] text-xs font-bold transition-colors"
+                  >
+                    回到本週最新
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+
+          {isFallbackToArchived && currentBundle && (
+            <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3 flex items-start gap-2.5 text-xs text-amber-200">
+              <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">本週尚未發布最新賽前前瞻</span>
+                <span className="text-amber-200/80">
+                  （目前線上前瞻已全數封存），已為您自動帶出最近一期歷史存檔「{currentBundle.week_label}」，您也可以從上方「歷史週報回顧」切換瀏覽其他週次。
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Matchup Tabs */}
           <div className="mt-4 flex flex-wrap gap-2">
@@ -428,7 +584,13 @@ export default function WeeklyPreviewPage() {
             {/* HERO: 雙隊戰力與模型勝率看板 */}
             <section className="relative overflow-hidden bg-gradient-to-br from-[#161B22] via-[#121720] to-[#0E1117] border border-[#30363D] rounded-2xl p-6 sm:p-8 shadow-2xl">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400 mb-4">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {currentBundle?.status === 'archived' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/40 font-bold">
+                      <Archive className="w-3 h-3" />
+                      <span>已封存歷史存檔</span>
+                    </span>
+                  )}
                   <span className="px-2.5 py-0.5 rounded-full bg-[#FF9100]/15 text-[#FF9100] border border-[#FF9100]/40 font-bold">
                     {report.game_label}
                   </span>

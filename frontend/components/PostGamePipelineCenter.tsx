@@ -25,6 +25,9 @@ interface RecentGameItem {
   away_team: string;
   home_score: number;
   away_score: number;
+  youtube_url?: string | null;
+  q1_tipoff_seconds?: number | null;
+  q3_tipoff_seconds?: number | null;
 }
 
 interface WowyItem {
@@ -53,6 +56,7 @@ interface PreviewPayload {
   team_summaries: Record<string, TeamSummaryReview>;
   player_reviews: Record<string, PlayerReviewItem[]>;
   excel_tsv?: Record<string, string>;
+  pbp_playbooks_saved?: number;
 }
 
 interface Props {
@@ -85,6 +89,11 @@ export default function PostGamePipelineCenter({
   const [recentGames, setRecentGames] = useState<RecentGameItem[]>([]);
   const [loadingGames, setLoadingGames] = useState<boolean>(false);
   const [selectedGameId, setSelectedGameId] = useState<string>('');
+  const [youtubeUrlInput, setYoutubeUrlInput] = useState<string>('');
+  const [tipoffSecondsInput, setTipoffSecondsInput] = useState<string>('');
+  const [q3TipoffSecondsInput, setQ3TipoffSecondsInput] = useState<string>('');
+  const [ytSyncLoading, setYtSyncLoading] = useState<boolean>(false);
+  const [ytSyncMsg, setYtSyncMsg] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
   const [commitLoading, setCommitLoading] = useState<boolean>(false);
   const [reviewError, setReviewError] = useState<string>('');
@@ -119,6 +128,24 @@ export default function PostGamePipelineCenter({
     loadRecentGames();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminSecret]);
+
+  useEffect(() => {
+    const found = recentGames.find((g) => g.id === selectedGameId);
+    if (found) {
+      setYoutubeUrlInput(found.youtube_url || '');
+      setTipoffSecondsInput(
+        found.q1_tipoff_seconds !== null && found.q1_tipoff_seconds !== undefined
+          ? String(found.q1_tipoff_seconds)
+          : ''
+      );
+      setQ3TipoffSecondsInput(
+        found.q3_tipoff_seconds !== null && found.q3_tipoff_seconds !== undefined
+          ? String(found.q3_tipoff_seconds)
+          : ''
+      );
+      setYtSyncMsg('');
+    }
+  }, [selectedGameId, recentGames]);
 
   const readApiResponse = async (res: Response): Promise<{ ok: boolean; status: number; data: any; rawText: string }> => {
     const rawText = await res.text();
@@ -215,6 +242,62 @@ export default function PostGamePipelineCenter({
     }
   };
 
+  const parseOptionalSeconds = (val: string): number | null => {
+    const trimmed = val.trim();
+    if (!trimmed) return null;
+    const n = Number(trimmed);
+    return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+  };
+
+  const handleYoutubeSync = async () => {
+    if (!selectedGameId) return;
+    setYtSyncLoading(true);
+    setYtSyncMsg('');
+    setReviewError('');
+    try {
+      const res = await fetch(
+        `${apiBase}/api/admin/games/${encodeURIComponent(selectedGameId)}/youtube-sync`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Secret': adminSecret,
+          },
+          body: JSON.stringify({
+            youtube_url: youtubeUrlInput.trim() || null,
+            q1_tipoff_seconds: parseOptionalSeconds(tipoffSecondsInput),
+            q3_tipoff_seconds: parseOptionalSeconds(q3TipoffSecondsInput),
+          }),
+        }
+      );
+      const { ok, status, data, rawText } = await readApiResponse(res);
+      if (!ok || !data) {
+        const parsed = parseErrorDetail(data, status, rawText);
+        setReviewError(parsed.msg);
+        return;
+      }
+      setYtSyncMsg(
+        `✅ 已更新 YouTube 時間軸設定，並重算 ${data.updated_playbooks ?? 0} 組戰術板跳轉秒數！`
+      );
+      setRecentGames((prev) =>
+        prev.map((g) =>
+          g.id === selectedGameId
+            ? {
+                ...g,
+                youtube_url: data.youtube_url,
+                q1_tipoff_seconds: data.q1_tipoff_seconds,
+                q3_tipoff_seconds: data.q3_tipoff_seconds,
+              }
+            : g
+        )
+      );
+    } catch (err: any) {
+      setReviewError(err?.message || '更新 YouTube 時間軸失敗');
+    } finally {
+      setYtSyncLoading(false);
+    }
+  };
+
   const handleGeneratePreview = async () => {
     if (!selectedGameId) {
       setReviewError('請先選擇一場已完賽賽事。');
@@ -224,6 +307,7 @@ export default function PostGamePipelineCenter({
     setReviewError('');
     setMissingItems([]);
     setCommitSuccessMsg('');
+    setYtSyncMsg('');
 
     try {
       const res = await fetch(`${apiBase}/api/admin/pipeline/generate-reviews`, {
@@ -236,6 +320,9 @@ export default function PostGamePipelineCenter({
           game_id: selectedGameId,
           model_name: effectiveModelName,
           action: 'preview',
+          youtube_url: youtubeUrlInput.trim() || null,
+          q1_tipoff_seconds: parseOptionalSeconds(tipoffSecondsInput),
+          q3_tipoff_seconds: parseOptionalSeconds(q3TipoffSecondsInput),
         }),
       });
       const { ok, status, data, rawText } = await readApiResponse(res);
@@ -571,6 +658,74 @@ export default function PostGamePipelineCenter({
           </div>
         </div>
 
+        {/* YouTube 影片時間軸雙錨點對齊欄位（選填，支援單獨補填更新） */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end pt-2 border-t border-[#21262D]">
+          <div className="md:col-span-5">
+            <label className="block text-xs font-bold text-gray-400 mb-1">
+              YouTube 完整重播網址（youtube_url，選填）
+            </label>
+            <input
+              type="url"
+              value={youtubeUrlInput}
+              onChange={(e) => setYoutubeUrlInput(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className="w-full bg-[#161B22] border border-[#30363D] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF9100]"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-gray-400 mb-1">
+              Q1 開球秒數（選填）
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={tipoffSecondsInput}
+              onChange={(e) => setTipoffSecondsInput(e.target.value)}
+              placeholder="如 2337"
+              className="w-full bg-[#161B22] border border-[#30363D] rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#FF9100]"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-gray-400 mb-1">
+              Q3 開球秒數（選填）
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={q3TipoffSecondsInput}
+              onChange={(e) => setQ3TipoffSecondsInput(e.target.value)}
+              placeholder="消除中場誤差"
+              className="w-full bg-[#161B22] border border-[#30363D] rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#FF9100]"
+            />
+          </div>
+          <div className="md:col-span-3">
+            <button
+              type="button"
+              onClick={handleYoutubeSync}
+              disabled={ytSyncLoading || !selectedGameId}
+              className="w-full py-2 px-3 rounded-xl bg-[#161B22] hover:bg-[#21262D] border border-[#30363D] text-xs font-bold text-sky-300 flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+            >
+              {ytSyncLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>同步時間軸中...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>補填／重算 YouTube 秒數</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {ytSyncMsg && (
+          <div className="rounded-xl border border-sky-500/40 bg-sky-500/10 p-3 text-xs font-bold text-sky-300">
+            {ytSyncMsg}
+          </div>
+        )}
+
         {reviewError && (
           <div className="rounded-xl border border-rose-500/50 bg-rose-950/40 p-4 space-y-1.5">
             <div className="text-xs font-bold text-rose-300 whitespace-pre-wrap">{reviewError}</div>
@@ -587,6 +742,12 @@ export default function PostGamePipelineCenter({
         {commitSuccessMsg && (
           <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-300">
             {commitSuccessMsg}
+          </div>
+        )}
+
+        {previewData && typeof previewData.pbp_playbooks_saved === 'number' && previewData.pbp_playbooks_saved > 0 && (
+          <div className="rounded-xl border border-[#00E676]/40 bg-[#00E676]/10 p-3 text-xs font-bold text-[#00E676]">
+            ✅ 已自動從 PBP 實戰萃取並寫入 {previewData.pbp_playbooks_saved} 組（每隊 2 攻 2 守）SVG 戰術板至資料庫 team_playbooks（無需手動保存）！
           </div>
         )}
 

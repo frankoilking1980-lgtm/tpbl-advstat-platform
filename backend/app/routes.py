@@ -4,12 +4,14 @@ import json
 import math
 import subprocess
 import sys
+import threading
 import time as _time
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, time
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Literal, Union
-from fastapi import APIRouter, File, Header, HTTPException, Query, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Header, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel
 import openpyxl
 
@@ -1726,6 +1728,9 @@ def get_game_detail(game_id: str):
         "home_score": h_score,
         "away_score": a_score,
         "status": g["status"] or "FINAL",
+        "youtube_url": g["youtube_url"] if "youtube_url" in g.keys() else None,
+        "q1_tipoff_seconds": g["q1_tipoff_seconds"] if "q1_tipoff_seconds" in g.keys() else None,
+        "q3_tipoff_seconds": g["q3_tipoff_seconds"] if "q3_tipoff_seconds" in g.keys() else None,
         "venue": "TPBL 聯盟官方球場",
         "quarter_scores": {
             "away": [int(a_score * 0.26), int(a_score * 0.24), int(a_score * 0.27), a_score - int(a_score * 0.77)],
@@ -1764,9 +1769,17 @@ def get_game_detail(game_id: str):
 
 @router.get("/games/{game_id}/tactics", summary="取得單場焦點對位與戰術交鋒 (TacticsDetail)")
 def get_game_tactics(game_id: str):
+    from app.services.playbook_generator import ensure_playbook_schema, fetch_game_playbooks
+
     with db_session() as conn:
+        ensure_playbook_schema(conn)
         cur = conn.cursor()
         g = _find_db_game(cur, game_id)
+        pbp_playbooks = (
+            fetch_game_playbooks(conn, g["id"], normalize_team_name(g["home_team"]))
+            if g
+            else []
+        )
 
     if not g:
         raise HTTPException(status_code=404, detail="找不到該場賽事")
@@ -1783,10 +1796,14 @@ def get_game_tactics(game_id: str):
         "game_id": g["id"],
         "home_team": home_team,
         "away_team": away_team,
+        "youtube_url": g["youtube_url"] if "youtube_url" in g.keys() else None,
+        "q1_tipoff_seconds": g["q1_tipoff_seconds"] if "q1_tipoff_seconds" in g.keys() else None,
+        "q3_tipoff_seconds": g["q3_tipoff_seconds"] if "q3_tipoff_seconds" in g.keys() else None,
         "total_tactics": len(all_tactics),
         "home_tactics": home_tactics,
         "away_tactics": away_tactics,
         "all_tactics": all_tactics,
+        "pbp_playbooks": pbp_playbooks,
     }
 
 
@@ -2168,85 +2185,6 @@ def _build_team_pbp(team_name: str, stage: str, exclude_garbage_time: bool = Fal
     }
 
 
-class SyncGameRequest(BaseModel):
-    stage: str
-    schedule_id: str
-    game_id: str
-    date: Optional[str] = None
-    auto_gemini: bool = False
-
-
-class UpdateQualitativeRequest(BaseModel):
-    game_id: str
-    model_config = {"extra": "allow"}
-
-
-class DeleteGameRequest(BaseModel):
-    game_id: str
-
-
-class ResetStageRequest(BaseModel):
-    stage: str
-    clear_games: bool = True
-
-
-@router.post("/admin/sync-game", summary="後台單場賽事同步")
-def admin_sync_game(req: SyncGameRequest):
-    clear_pbp_cache()
-    return {
-        "status": "success",
-        "message": f"成功同步場次 {req.game_id} 至 {req.stage}",
-        "game_id": req.game_id,
-        "stage": req.stage,
-    }
-
-
-@router.post("/admin/update-game-qualitative", summary="後台質化分析寫入更新")
-def admin_update_qualitative(req: UpdateQualitativeRequest):
-    clear_pbp_cache()
-    return {
-        "status": "success",
-        "message": f"場次 {req.game_id} 質化分析數據已成功更新！",
-        "game_id": req.game_id,
-    }
-
-
-@router.post("/admin/delete-game", summary="後台刪除單場賽事")
-def admin_delete_game(req: DeleteGameRequest):
-    clear_pbp_cache()
-    with db_session() as conn:
-        cur = conn.cursor()
-        cur.execute("DELETE FROM games WHERE id = ?", (req.game_id,))
-        deleted = cur.rowcount
-        conn.commit()
-    return {
-        "status": "success",
-        "message": f"場次 {req.game_id} 已成功刪除 (刪除 {deleted} 筆)",
-        "game_id": req.game_id,
-    }
-
-
-@router.post("/admin/reset-stage", summary="後台重置指定賽季資料")
-def admin_reset_stage(req: ResetStageRequest):
-    clear_pbp_cache()
-    with db_session() as conn:
-        cur = conn.cursor()
-        if req.clear_games:
-            cur.execute("DELETE FROM games WHERE stage = ?", (req.stage,))
-        cur.execute("""
-            UPDATE team_summary
-            SET record = '0勝-0敗', games_played = 0, pace = 0, ortg = 0, drtg = 0, net_rtg = 0
-            WHERE season_stage = ?
-        """, (req.stage,))
-        conn.commit()
-    return {
-        "status": "success",
-        "message": f"賽季【{req.stage}】數據已成功重置！",
-        "stage": req.stage,
-        "clear_games": req.clear_games,
-    }
-
-
 @router.get("/teams/last-lineup", summary="取得球隊上一場真實出賽先發與登錄名單")
 def get_team_last_lineup(
     team: str = Query(..., description="球隊名稱，例如：新北國王"),
@@ -2326,10 +2264,14 @@ class GenerateWeeklyPreviewRequest(BaseModel):
     model_name: Optional[str] = None
 
 
-@router.get("/weekly-previews", summary="取得已存檔的本週比賽深度球探報告清單 (零 API 消耗)")
-def get_weekly_previews_list():
-    from app.services.scouting_generator import list_saved_previews
-    return {"items": list_saved_previews()}
+@router.get("/weekly-previews", summary="取得當前與已封存週報清單及指定歷史內容 (零 API 消耗)")
+def get_weekly_previews_list(
+    id: Optional[int] = Query(default=None, description="指定欲查詢的週報存檔 ID"),
+    archive_id: Optional[int] = Query(default=None, description="指定欲查詢的歷史週報存檔 ID (別名)"),
+):
+    from app.services.weekly_preview_archive import get_weekly_previews_overview
+    target_id = id if id is not None else archive_id
+    return get_weekly_previews_overview(preview_id=target_id)
 
 
 @router.get("/weekly-previews/injuries", summary="掃描 Excel 傷兵名單工作表並回傳兩隊賽前傷兵狀態")
@@ -2344,17 +2286,87 @@ def get_weekly_preview_injuries(
 
 
 @router.get("/weekly-previews/{slug}", summary="取得單場本週比賽深度球探報告完整 JSON (零 API 消耗)")
-def get_weekly_preview_detail(slug: str):
+def get_weekly_preview_detail(
+    slug: str,
+    archive_id: Optional[int] = Query(default=None, description="指定歷史週報存檔 ID"),
+):
     from app.services.scouting_generator import get_saved_preview
-    report = get_saved_preview(slug)
+    report = get_saved_preview(slug, preview_id=archive_id)
     if not report:
         raise HTTPException(status_code=404, detail=f"找不到週報：{slug}")
     return report
 
 
-@router.post("/weekly-previews/generate", summary="管理員觸發 Gemini 生成本週深度球探報告並落盤快取")
+_PREVIEW_GENERATION_JOBS: Dict[str, Dict[str, Any]] = {}
+_PREVIEW_GENERATION_JOBS_LOCK = threading.Lock()
+_MAX_PREVIEW_JOBS = 50
+
+
+def _prune_old_preview_jobs_locked() -> None:
+    """清理過多或過期的已完成任務，避免記憶體無限累積（需在鎖內呼叫）"""
+    if len(_PREVIEW_GENERATION_JOBS) <= _MAX_PREVIEW_JOBS:
+        return
+    finished = [
+        (jid, job.get("finished_at") or job.get("started_at") or 0.0)
+        for jid, job in _PREVIEW_GENERATION_JOBS.items()
+        if job.get("status") in ("completed", "failed")
+    ]
+    finished.sort(key=lambda x: x[1])
+    to_remove = len(_PREVIEW_GENERATION_JOBS) - _MAX_PREVIEW_JOBS
+    for jid, _ in finished[:to_remove]:
+        _PREVIEW_GENERATION_JOBS.pop(jid, None)
+
+
+def _run_weekly_preview_job(
+    job_id: str,
+    home_team: str,
+    away_team: str,
+    game_date: str,
+    game_label: str,
+    extra_notes: Optional[str],
+    model_name: Optional[str],
+) -> None:
+    from app.services.scouting_generator import generate_weekly_preview
+
+    try:
+        report = generate_weekly_preview(
+            home_team=home_team,
+            away_team=away_team,
+            game_date=game_date,
+            game_label=game_label,
+            extra_notes=extra_notes,
+            model_name=model_name,
+        )
+        with _PREVIEW_GENERATION_JOBS_LOCK:
+            if job_id in _PREVIEW_GENERATION_JOBS:
+                _PREVIEW_GENERATION_JOBS[job_id].update(
+                    {
+                        "status": "completed",
+                        "result": report.model_dump(by_alias=True),
+                        "error": None,
+                        "finished_at": _time.time(),
+                    }
+                )
+            _prune_old_preview_jobs_locked()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        with _PREVIEW_GENERATION_JOBS_LOCK:
+            if job_id in _PREVIEW_GENERATION_JOBS:
+                _PREVIEW_GENERATION_JOBS[job_id].update(
+                    {
+                        "status": "failed",
+                        "error": f"Gemini 生成球探報告失敗：{e}",
+                        "finished_at": _time.time(),
+                    }
+                )
+            _prune_old_preview_jobs_locked()
+
+
+@router.post("/weekly-previews/generate", status_code=202, summary="管理員觸發 Gemini 非同步生成本週深度球探報告")
 def create_weekly_preview(
     req: GenerateWeeklyPreviewRequest,
+    background_tasks: BackgroundTasks,
     x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
 ):
     expected_secret = os.getenv("ADMIN_SECRET", "").strip()
@@ -2373,22 +2385,46 @@ def create_weekly_preview(
     if home_std == away_std:
         raise HTTPException(status_code=400, detail="主隊與客隊不可為同一支球隊。")
 
-    from app.services.scouting_generator import generate_weekly_preview
+    job_id = uuid.uuid4().hex[:12]
+    with _PREVIEW_GENERATION_JOBS_LOCK:
+        _PREVIEW_GENERATION_JOBS[job_id] = {
+            "job_id": job_id,
+            "status": "running",
+            "error": None,
+            "result": None,
+            "started_at": _time.time(),
+            "finished_at": None,
+        }
+        _prune_old_preview_jobs_locked()
+    background_tasks.add_task(
+        _run_weekly_preview_job,
+        job_id,
+        home_std,
+        away_std,
+        req.game_date,
+        req.game_label,
+        req.extra_notes,
+        req.model_name,
+    )
+    return {"job_id": job_id, "status": "running"}
 
-    try:
-        report = generate_weekly_preview(
-            home_team=home_std,
-            away_team=away_std,
-            game_date=req.game_date,
-            game_label=req.game_label,
-            extra_notes=req.extra_notes,
-            model_name=req.model_name,
-        )
-        return report.model_dump(by_alias=True)
-    except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gemini 生成球探報告失敗：{e}")
+
+@router.get("/weekly-previews/jobs/{job_id}", summary="查詢賽前報告非同步生成任務狀態")
+def get_weekly_preview_job_status(job_id: str):
+    with _PREVIEW_GENERATION_JOBS_LOCK:
+        job = _PREVIEW_GENERATION_JOBS.get(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="找不到該生成任務（job_id 不存在或後端已重啟）。")
+        job_copy = dict(job)
+    end_ts = job_copy["finished_at"] if job_copy["finished_at"] is not None else _time.time()
+    elapsed_seconds = max(0, int(round(end_ts - job_copy["started_at"])))
+    return {
+        "job_id": job_copy["job_id"],
+        "status": job_copy["status"],
+        "elapsed_seconds": elapsed_seconds,
+        "error": job_copy["error"],
+        "result": job_copy["result"],
+    }
 
 
 class ImportWeeklyPreviewJsonRequest(BaseModel):
@@ -2514,6 +2550,51 @@ def list_admin_injuries(
     return {"items": get_all_injuries()}
 
 
+class ArchiveWeeklyPreviewRequest(BaseModel):
+    action: Literal["archive", "unarchive"] = "archive"
+    week_label: Optional[str] = None
+    title: Optional[str] = None
+
+
+@router.post("/admin/weekly-previews/{preview_id}/archive", summary="管理員一鍵封存或取消封存指定週報")
+def archive_weekly_preview_endpoint(
+    preview_id: int,
+    req: Optional[ArchiveWeeklyPreviewRequest] = None,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    from app.services.weekly_preview_archive import set_weekly_preview_archive_status
+    action = req.action if req else "archive"
+    week_label = req.week_label if req else None
+    title = req.title if req else None
+    try:
+        updated = set_weekly_preview_archive_status(
+            preview_id=preview_id,
+            action=action,
+            week_label=week_label,
+            title=title,
+        )
+        return {"status": "ok", "preview": updated}
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/admin/weekly-previews/{preview_id}/unarchive", summary="管理員取消封存並設為當前顯示週報")
+def unarchive_weekly_preview_endpoint(
+    preview_id: int,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    from app.services.weekly_preview_archive import set_weekly_preview_archive_status
+    try:
+        updated = set_weekly_preview_archive_status(preview_id=preview_id, action="unarchive")
+        return {"status": "ok", "preview": updated}
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @router.delete("/weekly-previews/{slug}", summary="管理員刪除指定週預測報告")
 def delete_weekly_preview_endpoint(
     slug: str,
@@ -2559,17 +2640,29 @@ class PipelineGenerateReviewsRequest(BaseModel):
     model_name: str = ""
     action: Literal["preview", "commit"] = "preview"
     edited_payload: Optional[Dict[str, Any]] = None
+    youtube_url: Optional[str] = None
+    q1_tipoff_seconds: Optional[int] = None
+    q3_tipoff_seconds: Optional[int] = None
+
+
+class GameYoutubeSyncRequest(BaseModel):
+    youtube_url: Optional[str] = None
+    q1_tipoff_seconds: Optional[int] = None
+    q3_tipoff_seconds: Optional[int] = None
 
 
 def _get_recent_finished_games(limit: int = 10) -> List[Dict[str, Any]]:
+    from app.services.playbook_generator import ensure_playbook_schema
     from app.services.scouting_generator import resolve_schedule_id_for_game
 
     pbp_data = _load_pbp_lineup_json()
     with db_session() as conn:
+        ensure_playbook_schema(conn)
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status
+            SELECT id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status,
+                   youtube_url, q1_tipoff_seconds, q3_tipoff_seconds
             FROM games
             WHERE COALESCE(status, 'FINAL') LIKE 'FINAL%'
             ORDER BY date DESC, id DESC
@@ -2594,6 +2687,9 @@ def _get_recent_finished_games(limit: int = 10) -> List[Dict[str, Any]]:
             "away_team": r["away_team"],
             "home_score": r["home_score"],
             "away_score": r["away_score"],
+            "youtube_url": r.get("youtube_url"),
+            "q1_tipoff_seconds": r.get("q1_tipoff_seconds"),
+            "q3_tipoff_seconds": r.get("q3_tipoff_seconds"),
         })
     return out
 
@@ -2812,12 +2908,24 @@ def admin_pipeline_generate_reviews(
 
     try:
         if req.action == "preview":
-            return generate_post_game_reviews(req.game_id, model_name=req.model_name)
+            return generate_post_game_reviews(
+                req.game_id,
+                model_name=req.model_name,
+                youtube_url=req.youtube_url,
+                q1_tipoff_seconds=req.q1_tipoff_seconds,
+                q3_tipoff_seconds=req.q3_tipoff_seconds,
+            )
 
         # action == "commit"
         payload = req.edited_payload
         if payload is None:
-            payload = generate_post_game_reviews(req.game_id, model_name=req.model_name)
+            payload = generate_post_game_reviews(
+                req.game_id,
+                model_name=req.model_name,
+                youtube_url=req.youtube_url,
+                q1_tipoff_seconds=req.q1_tipoff_seconds,
+                q3_tipoff_seconds=req.q3_tipoff_seconds,
+            )
         result = commit_post_game_reviews(req.game_id, payload)
         clear_pbp_cache()
         return result
@@ -2837,3 +2945,106 @@ def admin_pipeline_generate_reviews(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {str(e)}")
+
+
+@router.post("/admin/games/{game_id}/youtube-sync", summary="更新單場 YouTube 影片網址與 Q1 開球秒數，並重算該場戰術板跳轉秒數")
+def admin_sync_game_youtube(
+    game_id: str,
+    req: GameYoutubeSyncRequest,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    from app.services.playbook_generator import (
+        RAW_GAME_STATS_DIR,
+        ensure_playbook_schema,
+        fetch_game_playbooks,
+        lookup_event_youtube_seconds,
+    )
+    from app.services.scouting_generator import resolve_game_record, resolve_schedule_id_for_game
+
+    pbp_data = _load_pbp_lineup_json()
+    with db_session() as conn:
+        ensure_playbook_schema(conn)
+        game_row = resolve_game_record(conn, game_id)
+        if not game_row:
+            raise HTTPException(status_code=404, detail=f"找不到場次 {game_id}")
+
+        real_id = game_row["id"]
+        clean_url = req.youtube_url.strip() if isinstance(req.youtube_url, str) and req.youtube_url.strip() else None
+        tipoff_sec = req.q1_tipoff_seconds
+        q3_tipoff_sec = req.q3_tipoff_seconds
+
+        conn.execute(
+            "UPDATE games SET youtube_url = ?, q1_tipoff_seconds = ?, q3_tipoff_seconds = ? WHERE id = ?",
+            (clean_url, tipoff_sec, q3_tipoff_sec, real_id),
+        )
+
+        schedule_id = resolve_schedule_id_for_game(game_row, pbp_data)
+        bcast_data: Dict[str, Any] = {}
+        if schedule_id:
+            bcast_path = RAW_GAME_STATS_DIR / f"game_{schedule_id}_broadcasts.json"
+            if bcast_path.exists():
+                try:
+                    bcast_data = json.loads(bcast_path.read_text(encoding="utf-8"))
+                except Exception:
+                    bcast_data = {}
+
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, source_quarter, source_clock, svg_playbook_json FROM team_playbooks WHERE source_game_id = ?",
+            (real_id,),
+        )
+        pb_rows = cur.fetchall()
+        updated_count = 0
+        for row in pb_rows:
+            pb_id, q_str, clk_str, svg_raw = row["id"], row["source_quarter"], row["source_clock"], row["svg_playbook_json"]
+            new_yt_sec = (
+                lookup_event_youtube_seconds(
+                    bcast_data,
+                    tipoff_sec,
+                    q_str,
+                    clk_str,
+                    q3_tipoff_seconds=q3_tipoff_sec,
+                )
+                if bcast_data and (tipoff_sec is not None or q3_tipoff_sec is not None)
+                else None
+            )
+            try:
+                svg_obj = json.loads(svg_raw)
+                if isinstance(svg_obj, dict):
+                    svg_obj["youtubeSeconds"] = new_yt_sec
+                    if isinstance(svg_obj.get("relatedPlays"), list):
+                        for rp in svg_obj["relatedPlays"]:
+                            if isinstance(rp, dict) and rp.get("quarter") and rp.get("game_clock"):
+                                rp["youtube_seconds"] = (
+                                    lookup_event_youtube_seconds(
+                                        bcast_data,
+                                        tipoff_sec,
+                                        str(rp["quarter"]),
+                                        str(rp["game_clock"]),
+                                        q3_tipoff_seconds=q3_tipoff_sec,
+                                    )
+                                    if bcast_data and (tipoff_sec is not None or q3_tipoff_sec is not None)
+                                    else None
+                                )
+                    svg_raw = json.dumps(svg_obj, ensure_ascii=False)
+            except Exception:
+                pass
+            cur.execute(
+                "UPDATE team_playbooks SET youtube_seconds = ?, svg_playbook_json = ? WHERE id = ?",
+                (new_yt_sec, svg_raw, pb_id),
+            )
+            updated_count += 1
+
+        conn.commit()
+        playbooks = fetch_game_playbooks(conn, real_id, normalize_team_name(game_row["home_team"]))
+
+    return {
+        "status": "ok",
+        "game_id": real_id,
+        "youtube_url": clean_url,
+        "q1_tipoff_seconds": tipoff_sec,
+        "q3_tipoff_seconds": q3_tipoff_sec,
+        "updated_playbooks": updated_count,
+        "pbp_playbooks": playbooks,
+    }
