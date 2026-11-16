@@ -17,12 +17,12 @@
         "share_pct": 32.0
       },
       "local": {
-        "ppg": 54.0,
-        "share_pct": 46.2
+        "ppg": 51.0,
+        "share_pct": 43.7
       },
       "import": {
-        "ppg": 62.8,
-        "share_pct": 53.8
+        "ppg": 65.8,
+        "share_pct": 56.3
       },
       "shot_distribution": {
         "two_pt_fga_pg": 47.4,
@@ -116,12 +116,12 @@
         "share_pct": 32.0
       },
       "local": {
-        "ppg": 58.8,
-        "share_pct": 56.9
+        "ppg": 53.0,
+        "share_pct": 51.3
       },
       "import": {
-        "ppg": 44.5,
-        "share_pct": 43.1
+        "ppg": 50.2,
+        "share_pct": 48.7
       },
       "shot_distribution": {
         "two_pt_fga_pg": 39.0,

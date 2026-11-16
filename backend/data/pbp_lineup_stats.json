@@ -83174,6 +83174,21 @@
             "lineup_netrtg": 21.2
           },
           {
+            "duo_name": "葛瑞菲 - 麥基",
+            "name": "葛瑞菲 - 麥基",
+            "total_time": "30:33",
+            "minutes": "30:33",
+            "total_seconds": 1833,
+            "plus_minus": -6,
+            "pm": -6,
+            "ortg": 111.2,
+            "drtg": 108.8,
+            "netrtg": 2.4,
+            "lineup_ortg": 111.2,
+            "lineup_drtg": 108.8,
+            "lineup_netrtg": 2.4
+          },
+          {
             "duo_name": "馬利 - 馬雷利亞",
             "name": "馬利 - 馬雷利亞",
             "total_time": "21:06",
@@ -83187,6 +83202,21 @@
             "lineup_ortg": 93.3,
             "lineup_drtg": 142.7,
             "lineup_netrtg": -49.4
+          },
+          {
+            "duo_name": "葛瑞菲 - 馬利",
+            "name": "葛瑞菲 - 馬利",
+            "total_time": "15:22",
+            "minutes": "15:22",
+            "total_seconds": 922,
+            "plus_minus": 8,
+            "pm": 8,
+            "ortg": 128.7,
+            "drtg": 96.3,
+            "netrtg": 32.4,
+            "lineup_ortg": 128.7,
+            "lineup_drtg": 96.3,
+            "lineup_netrtg": 32.4
           }
         ]
       },
@@ -83463,6 +83493,21 @@
             "lineup_netrtg": 21.2
           },
           {
+            "duo_name": "葛瑞菲 - 麥基",
+            "name": "葛瑞菲 - 麥基",
+            "total_time": "30:33",
+            "minutes": "30:33",
+            "total_seconds": 1833,
+            "plus_minus": -6,
+            "pm": -6,
+            "ortg": 111.2,
+            "drtg": 108.8,
+            "netrtg": 2.4,
+            "lineup_ortg": 111.2,
+            "lineup_drtg": 108.8,
+            "lineup_netrtg": 2.4
+          },
+          {
             "duo_name": "馬利 - 馬雷利亞",
             "name": "馬利 - 馬雷利亞",
             "total_time": "21:06",
@@ -83476,6 +83521,21 @@
             "lineup_ortg": 93.3,
             "lineup_drtg": 142.7,
             "lineup_netrtg": -49.4
+          },
+          {
+            "duo_name": "葛瑞菲 - 馬利",
+            "name": "葛瑞菲 - 馬利",
+            "total_time": "15:22",
+            "minutes": "15:22",
+            "total_seconds": 922,
+            "plus_minus": 8,
+            "pm": 8,
+            "ortg": 128.7,
+            "drtg": 96.3,
+            "netrtg": 32.4,
+            "lineup_ortg": 128.7,
+            "lineup_drtg": 96.3,
+            "lineup_netrtg": 32.4
           }
         ]
       }
@@ -83797,6 +83857,36 @@
             "lineup_ortg": 85.5,
             "lineup_drtg": 108.1,
             "lineup_netrtg": -22.6
+          },
+          {
+            "duo_name": "杭特 - 洛斯柯",
+            "name": "杭特 - 洛斯柯",
+            "total_time": "25:15",
+            "minutes": "25:15",
+            "total_seconds": 1515,
+            "plus_minus": -9,
+            "pm": -9,
+            "ortg": 92.7,
+            "drtg": 105.7,
+            "netrtg": -13.0,
+            "lineup_ortg": 92.7,
+            "lineup_drtg": 105.7,
+            "lineup_netrtg": -13.0
+          },
+          {
+            "duo_name": "加爾文 - 杭特",
+            "name": "加爾文 - 杭特",
+            "total_time": "10:39",
+            "minutes": "10:39",
+            "total_seconds": 639,
+            "plus_minus": 5,
+            "pm": 5,
+            "ortg": 102.8,
+            "drtg": 93.5,
+            "netrtg": 9.3,
+            "lineup_ortg": 102.8,
+            "lineup_drtg": 93.5,
+            "lineup_netrtg": 9.3
           }
         ]
       },
@@ -84101,6 +84191,36 @@
             "lineup_ortg": 85.5,
             "lineup_drtg": 108.1,
             "lineup_netrtg": -22.6
+          },
+          {
+            "duo_name": "杭特 - 洛斯柯",
+            "name": "杭特 - 洛斯柯",
+            "total_time": "25:15",
+            "minutes": "25:15",
+            "total_seconds": 1515,
+            "plus_minus": -9,
+            "pm": -9,
+            "ortg": 92.7,
+            "drtg": 105.7,
+            "netrtg": -13.0,
+            "lineup_ortg": 92.7,
+            "lineup_drtg": 105.7,
+            "lineup_netrtg": -13.0
+          },
+          {
+            "duo_name": "加爾文 - 杭特",
+            "name": "加爾文 - 杭特",
+            "total_time": "10:39",
+            "minutes": "10:39",
+            "total_seconds": 639,
+            "plus_minus": 5,
+            "pm": 5,
+            "ortg": 102.8,
+            "drtg": 93.5,
+            "netrtg": 9.3,
+            "lineup_ortg": 102.8,
+            "lineup_drtg": 93.5,
+            "lineup_netrtg": 9.3
           }
         ]
       }
