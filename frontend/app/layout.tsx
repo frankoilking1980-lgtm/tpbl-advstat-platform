@@ -6,8 +6,13 @@ import { StageProvider } from '@/context/StageContext';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
+const SITE_URL = 'https://www.tpbl-advstats.com';
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://tpbl-advstat-platform.vercel.app'),
+  metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: './',
+  },
   title: {
     default: 'TPBL 進階數據平台・AdvStats Pro',
     template: '%s｜AdvStats Pro',
@@ -23,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'TPBL 進階數據平台・AdvStats Pro',
     description: '提供 TPBL 即時進階攻守數據、PBP 陣容 On/Off 淨勝分、Dean Oliver 四要素、球員 PR 排名與 Q4 末節抗壓分析。',
-    url: 'https://tpbl-advstat-platform.vercel.app',
+    url: SITE_URL,
     siteName: 'TPBL AdvStats Pro',
     locale: 'zh_TW',
     type: 'website',
@@ -59,7 +64,7 @@ export default function RootLayout({
     '@type': 'WebApplication',
     name: 'TPBL AdvStats Pro',
     alternateName: 'TPBL 進階數據平台',
-    url: 'https://tpbl-advstat-platform.vercel.app',
+    url: SITE_URL,
     applicationCategory: 'SportsApplication',
     operatingSystem: 'All',
     description: '提供 TPBL 台灣職業籃球大聯盟即時進階攻守數據、陣容 Net Rating、球員 PR 排名與情境抗壓分析。',
