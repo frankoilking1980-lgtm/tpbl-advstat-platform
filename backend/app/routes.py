@@ -1614,15 +1614,36 @@ def get_game_detail(game_id: str):
     h_starters = official_starters["home_starters"]
     a_starters = official_starters["away_starters"]
 
+    # 以 tpbl_stats.db player_stats 的官方身份作為單一真相來源，避免單場 Excel 分頁殘留舊身份
+    db_identity_map: Dict[tuple, str] = {}
+    try:
+        with db_session() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT team_name, player_name, identity FROM player_stats WHERE season_stage = ? AND team_name IN (?, ?)",
+                (stage, home_team, away_team),
+            )
+            for row in cur.fetchall():
+                t_key = normalize_team_name(row["team_name"])
+                p_key = str(row["player_name"] or "").split(" ")[0].split("(")[0].strip()
+                if p_key and row["identity"]:
+                    db_identity_map[(t_key, p_key)] = str(row["identity"]).strip()
+    except Exception:
+        pass
+
     for idx, p in enumerate(home_box):
         clean_pname = p["player_name"].split(" ")[0].split("(")[0].strip()
         p["is_starter"] = (clean_pname in h_starters) if h_starters else (idx < 5)
+        if (home_team, clean_pname) in db_identity_map:
+            p["identity"] = db_identity_map[(home_team, clean_pname)]
         p["id"] = idx + 1
         p["team_name"] = home_team
 
     for idx, p in enumerate(away_box):
         clean_pname = p["player_name"].split(" ")[0].split("(")[0].strip()
         p["is_starter"] = (clean_pname in a_starters) if a_starters else (idx < 5)
+        if (away_team, clean_pname) in db_identity_map:
+            p["identity"] = db_identity_map[(away_team, clean_pname)]
         p["id"] = idx + 101
         p["team_name"] = away_team
 

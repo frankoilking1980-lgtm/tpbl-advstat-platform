@@ -13,12 +13,14 @@ TPBL 賽後全自動數據精算一鍵入口腳本
 """
 
 import argparse
+import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BACKEND_DIR.parent
 
 CALC_STEPS = [
     ("calculate_pbp_lineups.py", "真實 PBP On/Off 與五人陣容"),
@@ -26,6 +28,21 @@ CALC_STEPS = [
     ("calculate_team_situations.py", "團隊先發/替補與本土/洋將結構"),
     ("calculate_player_pr.py", "全聯盟 PR 百分位"),
 ]
+
+
+def sync_season_data_to_backend():
+    """確保 data/season2026 的最新 Excel/JSON 同步至 backend/data/season2026，讓 Docker / Cloud Run 打包一致"""
+    src_dir = PROJECT_ROOT / "data" / "season2026"
+    dst_dir = BACKEND_DIR / "data" / "season2026"
+    if not src_dir.exists():
+        return
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for f in src_dir.iterdir():
+        if f.is_file() and not f.name.startswith("~$"):
+            shutil.copy2(f, dst_dir / f.name)
+            copied += 1
+    print(f"📦 已同步 {copied} 個 season2026 檔案至 {dst_dir}")
 
 
 def run_step(label: str, cmd: list[str]):
@@ -48,6 +65,8 @@ def main():
     print("=" * 64)
     print("🏀 TPBL 賽後全自動數據精算一鍵流程啟動")
     print("=" * 64)
+
+    sync_season_data_to_backend()
 
     if args.fetch is not None:
         fetch_cmd = [
