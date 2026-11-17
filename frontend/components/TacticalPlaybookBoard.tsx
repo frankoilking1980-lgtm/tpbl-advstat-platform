@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Play, Pause, RotateCcw, Shield, Swords, Sparkles, Youtube, Clock } from 'lucide-react';
+import { API_BASE } from '@/lib/api';
 
 export type TacticalPathType = 'dribble' | 'screen' | 'pass' | 'defense';
 
@@ -68,6 +69,8 @@ export interface TacticalPlaybookBoardProps {
   youtubeUrl?: string | null;
   title?: string;
   subtitle?: string;
+  mode?: 'matchup' | 'postgame';
+  hideCaseClips?: boolean;
 }
 
 function buildYoutubeTimestampUrl(baseUrl: string, seconds: number): string {
@@ -156,10 +159,61 @@ function shortName(fullName: string): string {
   return fullName.length > 4 ? fullName.slice(0, 4) : fullName;
 }
 
+const TEAM_PREFIX_RE =
+  /^(?:新北中信特攻|新北國王|福爾摩沙夢想家|高雄全家海神|桃園台啤永豐雲豹|臺北台新戰神|台北台新戰神|新竹御嵿攻城獅|新竹御頂攻城獅|中信特攻|新北特攻|台新戰神|台北戰神|臺北戰神|桃園雲豹|台啤雲豹|高雄海神|新竹攻城獅|特攻|國王|夢想家|海神|雲豹|戰神|攻城獅)\s*[｜|]\s*/;
+
+function stripTeamPrefix(name: string | undefined): string {
+  return String(name || '').trim().replace(TEAM_PREFIX_RE, '').trim();
+}
+
+function sanitizeScenarioClient(
+  raw: TacticalScenario | undefined | null,
+  sideHint: 'offense' | 'defense' = 'offense'
+): TacticalScenario | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const playName = stripTeamPrefix(raw.playName);
+  const tacticalGoal = String(raw.tacticalGoal || '').trim();
+  if (playName.length < 4 || tacticalGoal.length < 4) return null;
+  if (!Array.isArray(raw.phases) || raw.phases.length < 3) return null;
+
+  const pattern = String(raw.tacticalPattern || '').trim() || playName;
+  const rawTags = Array.isArray(raw.tacticalTags) ? raw.tacticalTags : [];
+  const tags: string[] = [];
+  for (const t of rawTags) {
+    const ts = String(t || '').trim();
+    if (ts.length >= 2 && !tags.includes(ts)) {
+      tags.push(ts);
+    }
+  }
+  if (!tags.includes(pattern)) {
+    tags.unshift(pattern);
+  }
+  const fallbackPool =
+    sideHint === 'defense'
+      ? ['防守反制', '輪轉協防', '壓迫防守']
+      : ['進攻戰術', '團隊配合', '半場陣地戰'];
+  for (const fb of fallbackPool) {
+    if (tags.length >= 3) break;
+    if (!tags.includes(fb)) tags.push(fb);
+  }
+
+  return {
+    ...raw,
+    playName,
+    tacticalGoal,
+    tacticalPattern: pattern,
+    tacticalTags: tags.slice(0, 6),
+    phases: raw.phases.slice(0, 3) as [TacticalPhase, TacticalPhase, TacticalPhase],
+  };
+}
+
 function bindRosterPlaceholders(
   text: string | undefined,
   offenseRoster: string[],
-  defenseRoster: string[]
+  defenseRoster: string[],
+  historicalOffenseRoster?: string[],
+  historicalDefenseRoster?: string[],
+  isMatchupMode?: boolean
 ): string {
   if (!text) return '';
   let out = text;
@@ -167,6 +221,26 @@ function bindRosterPlaceholders(
     const oName = offenseRoster[i] || `${i + 1}號位`;
     const dName = defenseRoster[i] || `防守${i + 1}號位`;
     out = out.replaceAll(`{O${i + 1}}`, oName).replaceAll(`{D${i + 1}}`, dName);
+  }
+  if (isMatchupMode) {
+    if (historicalDefenseRoster && historicalDefenseRoster.length > 0) {
+      for (let i = 0; i < 5; i++) {
+        const histD = historicalDefenseRoster[i]?.trim();
+        const currD = defenseRoster[i]?.trim() || '防守方協防者';
+        if (histD && histD !== currD && !offenseRoster.includes(histD) && !defenseRoster.includes(histD)) {
+          out = out.replaceAll(histD, currD);
+        }
+      }
+    }
+    if (historicalOffenseRoster && historicalOffenseRoster.length > 0) {
+      for (let i = 0; i < 5; i++) {
+        const histO = historicalOffenseRoster[i]?.trim();
+        const currO = offenseRoster[i]?.trim() || `${i + 1}號位`;
+        if (histO && histO !== currO && !offenseRoster.includes(histO) && !defenseRoster.includes(histO)) {
+          out = out.replaceAll(histO, currO);
+        }
+      }
+    }
   }
   return out;
 }
@@ -875,9 +949,16 @@ export default function TacticalPlaybookBoard({
   youtubeUrl,
   title = '互動式 SVG 半場戰術板｜雙隊互有攻守推演',
   subtitle = '連續流暢補間動畫、獨立傳球飛行軌跡與真實先發 1～5 號位名單連動',
+  mode = 'postgame',
+  hideCaseClips = false,
 }: TacticalPlaybookBoardProps) {
+  const isMatchupMode = mode === 'matchup' || Boolean(hideCaseClips);
   const isMultiPbpMode = Boolean(scenarios && scenarios.length > 4);
   const [library, setLibrary] = useState<TeamPlaybookLibrary | null>(null);
+  const [matchupVariants, setMatchupVariants] = useState<Record<
+    'home_offense' | 'away_counter' | 'away_offense' | 'home_counter',
+    TacticalScenario[]
+  > | null>(null);
   const [variantIdxMap, setVariantIdxMap] = useState<Record<string, number>>({
     home_offense: 0,
     away_counter: 0,
@@ -885,24 +966,46 @@ export default function TacticalPlaybookBoard({
     home_counter: 0,
   });
 
-  // 在 /matchup 自由模擬模式下，自動讀取累積的 7 隊戰術庫
+  // 在 /matchup 自由模擬模式下，優先向後端 /api/matchup/playbooks 取得嚴格「2 攻 2 守」正規戰術庫，若離線則降級讀取靜態 JSON
   useEffect(() => {
     if (scenarios && scenarios.length >= 4) return;
     let cancelled = false;
-    fetch('/weekly_previews/team_playbook_library.json')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: TeamPlaybookLibrary | null) => {
-        if (!cancelled && data) {
-          setLibrary(data);
-        }
-      })
-      .catch(() => {
-        // Silent fallback to built-in templates
-      });
+
+    const loadStaticFallback = () =>
+      fetch('/weekly_previews/team_playbook_library.json')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: TeamPlaybookLibrary | null) => {
+          if (!cancelled && data) {
+            setLibrary(data);
+          }
+        })
+        .catch(() => {
+          // Silent fallback to built-in templates
+        });
+
+    if (isMatchupMode && homeTeam && awayTeam) {
+      fetch(
+        `${API_BASE}/api/matchup/playbooks?home_team=${encodeURIComponent(homeTeam)}&away_team=${encodeURIComponent(awayTeam)}`
+      )
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!cancelled && data?.variants) {
+            setMatchupVariants(data.variants);
+          } else if (!cancelled) {
+            loadStaticFallback();
+          }
+        })
+        .catch(() => {
+          if (!cancelled) loadStaticFallback();
+        });
+    } else {
+      loadStaticFallback();
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [scenarios]);
+  }, [scenarios, isMatchupMode, homeTeam, awayTeam]);
 
   // 切換主客隊時重置套路索引
   useEffect(() => {
@@ -917,10 +1020,10 @@ export default function TacticalPlaybookBoard({
   const scenarioVariantsMap = useMemo(() => {
     if (scenarios && scenarios.length === 4) {
       return {
-        home_offense: [scenarios.find((s) => s.key === 'home_offense') || scenarios[0]],
-        away_counter: [scenarios.find((s) => s.key === 'away_counter') || scenarios[1]],
-        away_offense: [scenarios.find((s) => s.key === 'away_offense') || scenarios[2]],
-        home_counter: [scenarios.find((s) => s.key === 'home_counter') || scenarios[3]],
+        home_offense: [sanitizeScenarioClient(scenarios.find((s) => s.key === 'home_offense') || scenarios[0], 'offense') || scenarios[0]],
+        away_counter: [sanitizeScenarioClient(scenarios.find((s) => s.key === 'away_counter') || scenarios[1], 'defense') || scenarios[1]],
+        away_offense: [sanitizeScenarioClient(scenarios.find((s) => s.key === 'away_offense') || scenarios[2], 'offense') || scenarios[2]],
+        home_counter: [sanitizeScenarioClient(scenarios.find((s) => s.key === 'home_counter') || scenarios[3], 'defense') || scenarios[3]],
       };
     }
 
@@ -928,36 +1031,52 @@ export default function TacticalPlaybookBoard({
     const homeLib = library?.[normalizeTeamKey(homeTeam)] || library?.[homeTeam];
     const awayLib = library?.[normalizeTeamKey(awayTeam)] || library?.[awayTeam];
 
-    const mergePlays = (
-      basePlay: TacticalScenario,
-      extraPlays: TacticalScenario[] | undefined,
+    const pickStrictTwo = (
+      apiPlays: TacticalScenario[] | undefined,
+      libPlays: TacticalScenario[] | undefined,
+      fallbackPlay: TacticalScenario,
       key: TacticalScenario['key'],
       label: string,
-      offenseTeam: 'home' | 'away'
+      offenseTeam: 'home' | 'away',
+      sideHint: 'offense' | 'defense'
     ): TacticalScenario[] => {
-      const list: TacticalScenario[] = [basePlay];
-      const seen = new Set<string>([basePlay.playName]);
-      for (const ep of extraPlays || []) {
-        if (ep && ep.playName && !seen.has(ep.playName)) {
-          seen.add(ep.playName);
+      const source = apiPlays && apiPlays.length > 0 ? apiPlays : libPlays || [];
+      const list: TacticalScenario[] = [];
+      const seen = new Set<string>();
+      for (const ep of source) {
+        const cleaned = sanitizeScenarioClient(ep, sideHint);
+        if (cleaned && !seen.has(cleaned.playName)) {
+          seen.add(cleaned.playName);
           list.push({
-            ...ep,
+            ...cleaned,
+            key,
+            label,
+            offenseTeam,
+          });
+        }
+        if (list.length >= 2) break;
+      }
+      if (list.length < 2) {
+        const cleanedFallback = sanitizeScenarioClient(fallbackPlay, sideHint);
+        if (cleanedFallback && !seen.has(cleanedFallback.playName)) {
+          list.push({
+            ...cleanedFallback,
             key,
             label,
             offenseTeam,
           });
         }
       }
-      return list;
+      return list.slice(0, 2);
     };
 
     return {
-      home_offense: mergePlays(defaults[0], homeLib?.offense, 'home_offense', '主隊進攻破解', 'home'),
-      away_counter: mergePlays(defaults[1], awayLib?.defense, 'away_counter', '客隊防守反制', 'home'),
-      away_offense: mergePlays(defaults[2], awayLib?.offense, 'away_offense', '客隊進攻破解', 'away'),
-      home_counter: mergePlays(defaults[3], homeLib?.defense, 'home_counter', '主隊防守反制', 'away'),
+      home_offense: pickStrictTwo(matchupVariants?.home_offense, homeLib?.offense, defaults[0], 'home_offense', '主隊進攻破解', 'home', 'offense'),
+      away_counter: pickStrictTwo(matchupVariants?.away_counter, awayLib?.defense, defaults[1], 'away_counter', '客隊防守反制', 'home', 'defense'),
+      away_offense: pickStrictTwo(matchupVariants?.away_offense, awayLib?.offense, defaults[2], 'away_offense', '客隊進攻破解', 'away', 'offense'),
+      home_counter: pickStrictTwo(matchupVariants?.home_counter, homeLib?.defense, defaults[3], 'home_counter', '主隊防守反制', 'away', 'defense'),
     };
-  }, [scenarios, homeTeam, awayTeam, library]);
+  }, [scenarios, homeTeam, awayTeam, library, matchupVariants]);
 
   const resolvedScenarios = useMemo(() => {
     if (isMultiPbpMode && scenarios && scenarios.length > 0) {
@@ -1131,17 +1250,26 @@ export default function TacticalPlaybookBoard({
 
   const isHomeOffense = activeScenario.offenseTeam === 'home';
   const offenseRoster =
-    activeScenario.offenseRoster && activeScenario.offenseRoster.length === 5
+    !isMatchupMode && activeScenario.offenseRoster && activeScenario.offenseRoster.length === 5
       ? activeScenario.offenseRoster
       : isHomeOffense
       ? resolvedHomeRoster
       : resolvedAwayRoster;
   const defenseRoster =
-    activeScenario.defenseRoster && activeScenario.defenseRoster.length === 5
+    !isMatchupMode && activeScenario.defenseRoster && activeScenario.defenseRoster.length === 5
       ? activeScenario.defenseRoster
       : isHomeOffense
       ? resolvedAwayRoster
       : resolvedHomeRoster;
+  const bindText = (t: string | undefined) =>
+    bindRosterPlaceholders(
+      t,
+      offenseRoster,
+      defenseRoster,
+      activeScenario.offenseRoster,
+      activeScenario.defenseRoster,
+      isMatchupMode
+    );
   const offenseTeamName = isHomeOffense ? homeTeam : awayTeam;
   const defenseTeamName = isHomeOffense ? awayTeam : homeTeam;
 
@@ -1252,6 +1380,7 @@ export default function TacticalPlaybookBoard({
       <div className="mt-4 mb-5 bg-[#0E1117] border border-[#21262D] rounded-xl p-4 flex flex-col gap-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
+          {/* 第一列：進攻方 / 防守方 / 🎯 戰術識別 */}
           <div className="flex items-center gap-2 flex-wrap">
             <span
               className="text-[11px] font-black px-2 py-0.5 rounded-md border"
@@ -1273,23 +1402,26 @@ export default function TacticalPlaybookBoard({
             >
               防守方：{defenseTeamName}
             </span>
-            {activeScenario.source_type === 'vault' && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-md bg-[#00E676]/15 text-[#00E676] border border-[#00E676]/50">
+              <span>🎯 戰術識別：{activeScenario.tacticalPattern || stripTeamPrefix(activeScenario.playName)}</span>
+            </span>
+            {!isMatchupMode && activeScenario.source_type === 'vault' && (
               <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/40">
                 <span>📚 實戰戰術庫調用</span>
               </span>
             )}
-            {activeScenario.source_type === 'ai' && (
+            {!isMatchupMode && activeScenario.source_type === 'ai' && (
               <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/40">
                 <span>🧠 AI 數據臨場推演</span>
               </span>
             )}
-            {activeRelatedPlays.length === 0 && activeTimeLabel && (
+            {!isMatchupMode && activeRelatedPlays.length === 0 && activeTimeLabel && (
               <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/40">
                 <Clock className="w-3 h-3" />
                 <span>實戰回合：{activeTimeLabel}</span>
               </span>
             )}
-            {activeRelatedPlays.length === 0 && activeYoutubeLink && activeTimeLabel && (
+            {!isMatchupMode && activeRelatedPlays.length === 0 && activeYoutubeLink && activeTimeLabel && (
               <a
                 href={activeYoutubeLink}
                 target="_blank"
@@ -1300,13 +1432,20 @@ export default function TacticalPlaybookBoard({
                 <span>▶ 觀看實戰片段（{activeTimeLabel}）</span>
               </a>
             )}
-            {activeScenario.tacticalPattern && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-md bg-[#00E676]/15 text-[#00E676] border border-[#00E676]/50">
-                <span>🎯 戰術識別：{activeScenario.tacticalPattern}</span>
-              </span>
-            )}
-            {activeScenario.tacticalTags &&
-              activeScenario.tacticalTags.map((tag) => (
+          </div>
+
+          {/* 第二列：#Tag 膠囊列表（統一顯示 3~6 個戰術標籤） */}
+          <div className="flex items-center gap-1.5 flex-wrap mt-2">
+            {(activeScenario.tacticalTags && activeScenario.tacticalTags.length > 0
+              ? activeScenario.tacticalTags
+              : [
+                  activeScenario.tacticalPattern || stripTeamPrefix(activeScenario.playName),
+                  activeScenario.side === 'defense' ? '防守反制' : '進攻戰術',
+                  '半場陣地戰',
+                ]
+            )
+              .slice(0, 6)
+              .map((tag) => (
                 <span
                   key={tag}
                   className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#161B22] text-gray-300 border border-[#30363D]"
@@ -1314,33 +1453,37 @@ export default function TacticalPlaybookBoard({
                   #{tag}
                 </span>
               ))}
-            {!isMultiPbpMode && activeVariants.length > 1 && (
-              <div className="flex items-center gap-1.5 ml-1 flex-wrap">
-                <span className="text-[10px] text-gray-500 font-bold">累積戰術庫：</span>
-                {activeVariants.map((v, idx) => (
-                  <button
-                    key={v.playName}
-                    type="button"
-                    onClick={() => handleSelectVariant(idx)}
-                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border transition-all ${
-                      activeVariantIdx === idx
-                        ? 'bg-[#00E676]/15 text-[#00E676] border-[#00E676]/60'
-                        : 'bg-[#161B22] text-gray-400 border-[#30363D] hover:text-white'
-                    }`}
-                  >
-                    套路 {idx + 1}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
-          <h4 className="text-base font-extrabold text-white mt-2">
-            {bindRosterPlaceholders(activeScenario.playName, offenseRoster, defenseRoster)}
+
+          {/* 第三列：累積戰術庫切換鈕（嚴格上限 2 套：套路 1 / 套路 2） */}
+          {!isMultiPbpMode && activeVariants.length > 1 && (
+            <div className="flex items-center gap-1.5 flex-wrap mt-2">
+              <span className="text-[10px] text-gray-500 font-bold">累積戰術庫：</span>
+              {activeVariants.slice(0, 2).map((v, idx) => (
+                <button
+                  key={v.playName}
+                  type="button"
+                  onClick={() => handleSelectVariant(idx)}
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border transition-all ${
+                    activeVariantIdx === idx
+                      ? 'bg-[#00E676]/15 text-[#00E676] border-[#00E676]/60'
+                      : 'bg-[#161B22] text-gray-400 border-[#30363D] hover:text-white'
+                  }`}
+                >
+                  套路 {idx + 1}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 第四列：純戰術標題（已剔除隊名前綴）與戰術總結說明 */}
+          <h4 className="text-base font-extrabold text-white mt-2.5">
+            {stripTeamPrefix(bindText(activeScenario.playName))}
           </h4>
           <p className="text-xs text-gray-300 mt-1">
-            {bindRosterPlaceholders(activeScenario.tacticalGoal, offenseRoster, defenseRoster)}
+            {bindText(activeScenario.tacticalGoal)}
           </p>
-          {activeScenario.eventSummary && (
+          {!isMatchupMode && activeScenario.eventSummary && (
             <p className="text-[11px] text-amber-300/90 mt-1.5 font-medium">
               PBP 實戰紀錄：{activeScenario.eventSummary}
             </p>
@@ -1391,8 +1534,8 @@ export default function TacticalPlaybookBoard({
         </div>
         </div>
 
-        {/* Full-Width Related Plays Row */}
-        {activeRelatedPlays.length > 0 && (
+        {/* Full-Width Related Plays Row (Hidden in Matchup Simulator Mode) */}
+        {!isMatchupMode && activeRelatedPlays.length > 0 && (
           <div className="w-full pt-3 border-t border-[#21262D] flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-gray-400 shrink-0">
               {activeScenario.source_type === 'vault' ? '歷史實戰案例片段：' : '本場實戰案例片段：'}
@@ -1747,15 +1890,15 @@ export default function TacticalPlaybookBoard({
 
             <div className="space-y-1.5">
               <div className="text-sm font-extrabold text-white">
-                {bindRosterPlaceholders(currentPhaseInfo.title, offenseRoster, defenseRoster)}
+                {bindText(currentPhaseInfo.title)}
               </div>
               <p className="text-xs text-gray-300 leading-relaxed">
-                {bindRosterPlaceholders(currentPhaseInfo.description, offenseRoster, defenseRoster)}
+                {bindText(currentPhaseInfo.description)}
               </p>
               {currentPhaseInfo.keyRead && (
                 <div className="mt-2 text-[11px] bg-[#161B22] border border-[#30363D] rounded-lg px-3 py-2 text-[#00E676]">
                   <span className="font-bold">關鍵判讀：</span>
-                  {bindRosterPlaceholders(currentPhaseInfo.keyRead, offenseRoster, defenseRoster)}
+                  {bindText(currentPhaseInfo.keyRead)}
                 </div>
               )}
             </div>

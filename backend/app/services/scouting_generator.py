@@ -149,6 +149,8 @@ class TacticalScenarioModel(BaseModel):
     label: str
     playName: str
     tacticalGoal: str
+    tacticalPattern: Optional[str] = Field(default=None, description="戰術識別名稱 (tactic_name)")
+    tacticalTags: List[str] = Field(default_factory=list, description="3~6 個戰術標籤")
     offenseTeam: Literal["home", "away"]
     phases: List[TacticalPhaseModel] = Field(min_length=3, max_length=3)
     ballFrames: Optional[List[BallFrameModel]] = Field(
@@ -298,7 +300,9 @@ def _templatize_scenario_for_library(
 
 
 def update_team_playbook_library(report: WeeklyPreviewReport) -> Path:
-    """從週報萃取 4 套戰術並按球隊與攻/守分類去重累積（每隊各分類最多保留最新 6 套）"""
+    """從週報萃取 4 套戰術並按球隊與攻/守分類去重累積（每隊各分類最多保留最新 6 套，過濾殘缺髒資料）"""
+    from app.services.playbook_sanitizer import sanitize_playbook_item
+
     _ensure_preview_dirs()
     lib_backend = BACKEND_PREVIEWS_DIR / "team_playbook_library.json"
     lib_frontend = FRONTEND_PREVIEWS_DIR / "team_playbook_library.json"
@@ -330,12 +334,15 @@ def update_team_playbook_library(report: WeeklyPreviewReport) -> Path:
             continue
 
         templated = _templatize_scenario_for_library(sc_dict, off_r, def_r)
+        cleaned = sanitize_playbook_item(templated, default_side=side)
+        if not cleaned:
+            continue
         team_bucket = library.setdefault(team_key, {"offense": [], "defense": []})
         existing = team_bucket.setdefault(side, [])
 
         # 依 playName 去重，最新累積放最前面，最多保留 6 套
-        filtered = [item for item in existing if item.get("playName") != templated.get("playName")]
-        team_bucket[side] = [templated, *filtered][:6]
+        filtered = [item for item in existing if item.get("playName") != cleaned.get("playName")]
+        team_bucket[side] = [cleaned, *filtered][:6]
 
     from app.services.weekly_preview_archive import PREVIEW_FILE_LOCK, atomic_write_text
 
@@ -348,7 +355,8 @@ def update_team_playbook_library(report: WeeklyPreviewReport) -> Path:
 
 
 def update_team_playbook_library_from_playbooks(playbooks: List[Dict[str, Any]]) -> Path:
-    """從賽後 PBP 戰術板萃取戰術並按球隊與攻/守分類去重累積至 team_playbook_library.json（每隊各分類最多保留最新 6 套）"""
+    """從賽後 PBP 戰術板萃取戰術並按球隊與攻/守分類去重累積至 team_playbook_library.json（每隊各分類最多保留最新 6 套，過濾殘缺髒資料）"""
+    from app.services.playbook_sanitizer import sanitize_playbook_item
     from app.services.weekly_preview_archive import PREVIEW_FILE_LOCK, atomic_write_text
 
     lib_backend = BACKEND_PREVIEWS_DIR / "team_playbook_library.json"
@@ -375,12 +383,15 @@ def update_team_playbook_library_from_playbooks(playbooks: List[Dict[str, Any]])
             off_r = pb.get("offenseRoster") or []
             def_r = pb.get("defenseRoster") or []
             templated = _templatize_scenario_for_library(pb, off_r, def_r)
+            cleaned = sanitize_playbook_item(templated, default_side=side)
+            if not cleaned:
+                continue
             team_bucket = library.setdefault(team_key, {"offense": [], "defense": []})
             existing = team_bucket.setdefault(side, [])
 
             # 依 playName 去重，最新累積放最前面，最多保留 6 套
-            filtered = [item for item in existing if item.get("playName") != templated.get("playName")]
-            team_bucket[side] = [templated, *filtered][:6]
+            filtered = [item for item in existing if item.get("playName") != cleaned.get("playName")]
+            team_bucket[side] = [cleaned, *filtered][:6]
 
         lib_json = json.dumps(library, ensure_ascii=False, indent=2)
         atomic_write_text(lib_backend, lib_json)

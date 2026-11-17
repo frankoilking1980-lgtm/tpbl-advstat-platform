@@ -2181,6 +2181,89 @@ def _fetch_team_players(team_name: str, stage: str):
     return players
 
 
+@router.get("/matchup/playbooks", summary="取得對賽模擬器 2 攻 2 守正規戰術庫 (嚴格過濾髒資料)")
+def get_matchup_playbooks(
+    response: Response,
+    home_team: str = Query(..., description="主隊名稱"),
+    away_team: str = Query(..., description="客隊名稱"),
+    if_none_match: Optional[str] = Header(default=None, alias="If-None-Match"),
+):
+    from app.services.playbook_sanitizer import filter_clean_playbook_list
+
+    version_hash = get_data_version_hash()
+    not_modified = apply_versioned_etag(response, version_hash, if_none_match)
+    if not_modified is not None:
+        return not_modified
+
+    home_std = normalize_team_name(home_team)
+    away_std = normalize_team_name(away_team)
+
+    library: Dict[str, Any] = {}
+    for cand in (
+        BACKEND_DIR / "data" / "weekly_previews" / "team_playbook_library.json",
+        PROJECT_ROOT / "frontend" / "public" / "weekly_previews" / "team_playbook_library.json",
+    ):
+        if cand.exists():
+            try:
+                library = json.loads(cand.read_text(encoding="utf-8"))
+                break
+            except Exception:
+                continue
+
+    def _pick_two(team_name: str, side: str, slot_key: str, label: str, offense_team: str) -> List[Dict[str, Any]]:
+        bucket = library.get(team_name) or library.get(team_team_fallback(team_name, library), {})
+        raw_list = bucket.get(side, []) if isinstance(bucket, dict) else []
+        # 優先取具完整 tags 的正規戰術庫資料（嚴格上限 2 套）
+        picked = filter_clean_playbook_list(
+            raw_list,
+            limit=2,
+            require_tags=True,
+            strip_clip_info=True,
+            default_side=side,
+        )
+        if len(picked) < 2:
+            # 僅當不足 2 套時，才以無 tags 限制但仍通過 Schema 驗證的正規模板補齊至 2 套
+            extra = filter_clean_playbook_list(
+                raw_list,
+                limit=2,
+                require_tags=False,
+                strip_clip_info=True,
+                default_side=side,
+            )
+            seen = {x["playName"] for x in picked}
+            for item in extra:
+                if item["playName"] not in seen:
+                    picked.append(item)
+                    seen.add(item["playName"])
+                if len(picked) >= 2:
+                    break
+
+        out: List[Dict[str, Any]] = []
+        for item in picked[:2]:
+            item["key"] = slot_key
+            item["label"] = label
+            item["offenseTeam"] = offense_team
+            out.append(item)
+        return out
+
+    def team_team_fallback(target: str, lib: Dict[str, Any]) -> str:
+        for k in lib.keys():
+            if normalize_team_name(k) == target:
+                return k
+        return target
+
+    return {
+        "home_team": home_std,
+        "away_team": away_std,
+        "variants": {
+            "home_offense": _pick_two(home_std, "offense", "home_offense", "主隊進攻破解", "home"),
+            "away_counter": _pick_two(away_std, "defense", "away_counter", "客隊防守反制", "home"),
+            "away_offense": _pick_two(away_std, "offense", "away_offense", "客隊進攻破解", "away"),
+            "home_counter": _pick_two(home_std, "defense", "home_counter", "主隊防守反制", "away"),
+        },
+    }
+
+
 @router.get("/teams/{team_name}/players", summary="取得指定球隊之完整進階球員 Box Score")
 def get_team_players(team_name: str, stage: str = Query("2026-2027 例行賽")):
     return _fetch_team_players(team_name, stage)

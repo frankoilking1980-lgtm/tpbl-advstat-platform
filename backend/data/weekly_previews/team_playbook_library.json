@@ -994,6 +994,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "電梯掩護擺脫突刺空切",
+        "tacticalTags": [
+          "電梯掩護擺脫突刺空切",
+          "進攻戰術",
+          "團隊配合"
         ]
       },
       {
@@ -1281,6 +1287,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "雙高弧頂掩護與強側突分空切",
+        "tacticalTags": [
+          "雙高弧頂掩護與強側突分空切",
+          "進攻戰術",
+          "團隊配合"
         ]
       },
       {
@@ -1577,12 +1589,18 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "雙高位西班牙擋拆清空弱側",
+        "tacticalTags": [
+          "雙高位西班牙擋拆清空弱側",
+          "進攻戰術",
+          "團隊配合"
         ]
       },
       {
         "key": "home_offense",
         "label": "主隊進攻破解",
-        "playName": "特攻｜5-Out Backdoor Cut (五外流動與閃電開後門)",
+        "playName": "5-Out Backdoor Cut (五外流動與閃電開後門)",
         "tacticalGoal": "五人站位三分線外拉空油漆區，透過強側{O3}牽制與弱側{O2}開後門空切製造籃下輕鬆終結。",
         "offenseTeam": "home",
         "phases": [
@@ -1871,6 +1889,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "5-Out Backdoor Cut (五外流動與閃電開後門)",
+        "tacticalTags": [
+          "5-Out Backdoor Cut (五外流動與閃電開後門)",
+          "進攻戰術",
+          "團隊配合"
         ]
       }
     ],
@@ -2892,6 +2916,12 @@
             "inAir": false,
             "isShot": false
           }
+        ],
+        "tacticalPattern": "雙人夾擊延誤與強側阻絕輪轉",
+        "tacticalTags": [
+          "雙人夾擊延誤與強側阻絕輪轉",
+          "防守反制",
+          "輪轉協防"
         ]
       },
       {
@@ -3157,6 +3187,12 @@
             "inAir": false,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "特攻高壓換防陷阱與橫向抄截",
+        "tacticalTags": [
+          "特攻高壓換防陷阱與橫向抄截",
+          "防守反制",
+          "輪轉協防"
         ]
       },
       {
@@ -3433,12 +3469,18 @@
             "inAir": false,
             "isShot": false
           }
+        ],
+        "tacticalPattern": "全場緊逼結合沉退護框陷阱",
+        "tacticalTags": [
+          "全場緊逼結合沉退護框陷阱",
+          "防守反制",
+          "輪轉協防"
         ]
       },
       {
         "key": "home_counter",
         "label": "主隊防守反制",
-        "playName": "特攻｜Aggressive Trap & Hawk Steal (高位合圍{O2}與鷹眼抄截)",
+        "playName": "Aggressive Trap & Hawk Steal (高位合圍{O2}與鷹眼抄截)",
         "tacticalGoal": "由{D1}與{D4}呈左右 45 度角合圍夾擊 2 號位{O2}，{D2}與{D3}封鎖傳球路線。",
         "offenseTeam": "away",
         "phases": [
@@ -3674,7 +3716,13 @@
             ]
           }
         ],
-        "ballFrames": null
+        "ballFrames": null,
+        "tacticalPattern": "Aggressive Trap & Hawk Steal (高位合圍{O2}與鷹眼抄截)",
+        "tacticalTags": [
+          "Aggressive Trap & Hawk Steal (高位合圍{O2}與鷹眼抄截)",
+          "防守反制",
+          "輪轉協防"
+        ]
       }
     ]
   },
@@ -5120,12 +5168,18 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "牛角戰術外拆手遞手與底角掩護空檔",
+        "tacticalTags": [
+          "牛角戰術外拆手遞手與底角掩護空檔",
+          "進攻戰術",
+          "團隊配合"
         ]
       },
       {
         "key": "away_offense",
         "label": "客隊進攻破解",
-        "playName": "戰神｜Spread PnR & Corner Drift ({O2}擋拆與{O3}弧頂三分)",
+        "playName": "Spread PnR & Corner Drift ({O2}擋拆與{O3}弧頂三分)",
         "tacticalGoal": "由 2 號位{O2}與{O5}發動高位擋拆，利用 3 號位{O3}外圍移動與{O1}接應懲罰特攻協防。",
         "offenseTeam": "away",
         "phases": [
@@ -5361,7 +5415,13 @@
             ]
           }
         ],
-        "ballFrames": null
+        "ballFrames": null,
+        "tacticalPattern": "Spread PnR & Corner Drift ({O2}擋拆與{O3}弧頂三分)",
+        "tacticalTags": [
+          "Spread PnR & Corner Drift ({O2}擋拆與{O3}弧頂三分)",
+          "進攻戰術",
+          "團隊配合"
+        ]
       }
     ],
     "defense": [
@@ -6793,12 +6853,18 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "戰神邊線沉退與弱側輪轉修補",
+        "tacticalTags": [
+          "戰神邊線沉退與弱側輪轉修補",
+          "防守反制",
+          "輪轉協防"
         ]
       },
       {
         "key": "away_counter",
         "label": "客隊防守反制",
-        "playName": "戰神｜Drop & Passing Lane Tag (沉退護框與強側協防)",
+        "playName": "Drop & Passing Lane Tag (沉退護框與強側協防)",
         "tacticalGoal": "放投特攻外圍非射手點，由{D5}坐鎮禁區並以{D3}、{D2}切斷{O3}切入路徑。",
         "offenseTeam": "home",
         "phases": [
@@ -7034,7 +7100,13 @@
             ]
           }
         ],
-        "ballFrames": null
+        "ballFrames": null,
+        "tacticalPattern": "Drop & Passing Lane Tag (沉退護框與強側協防)",
+        "tacticalTags": [
+          "Drop & Passing Lane Tag (沉退護框與強側協防)",
+          "防守反制",
+          "輪轉協防"
+        ]
       }
     ]
   },
@@ -8746,215 +8818,13 @@
             "inAir": true,
             "isShot": true
           }
-        ]
-      },
-      {
-        "key": "home_offense",
-        "label": "主隊進攻",
-        "playName": "P",
-        "tacticalGoal": "G",
-        "offenseTeam": "home",
-        "phases": [
-          {
-            "title": "T",
-            "description": "D",
-            "keyRead": "K",
-            "ballPos": [
-              250.0,
-              140.0
-            ],
-            "offense": [
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ]
-            ],
-            "defense": [
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ]
-            ],
-            "paths": [
-              {
-                "from": [
-                  250.0,
-                  140.0
-                ],
-                "to": [
-                  260.0,
-                  200.0
-                ],
-                "type": "screen"
-              }
-            ]
-          },
-          {
-            "title": "T",
-            "description": "D",
-            "keyRead": "K",
-            "ballPos": [
-              250.0,
-              140.0
-            ],
-            "offense": [
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ]
-            ],
-            "defense": [
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ]
-            ],
-            "paths": [
-              {
-                "from": [
-                  250.0,
-                  140.0
-                ],
-                "to": [
-                  260.0,
-                  200.0
-                ],
-                "type": "screen"
-              }
-            ]
-          },
-          {
-            "title": "T",
-            "description": "D",
-            "keyRead": "K",
-            "ballPos": [
-              250.0,
-              140.0
-            ],
-            "offense": [
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ]
-            ],
-            "defense": [
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ]
-            ],
-            "paths": [
-              {
-                "from": [
-                  250.0,
-                  140.0
-                ],
-                "to": [
-                  260.0,
-                  200.0
-                ],
-                "type": "screen"
-              }
-            ]
-          }
         ],
-        "ballFrames": null
+        "tacticalPattern": "肘區 Horns 延展手遞手掩護",
+        "tacticalTags": [
+          "肘區 Horns 延展手遞手掩護",
+          "進攻戰術",
+          "團隊配合"
+        ]
       }
     ],
     "defense": [
@@ -10701,215 +10571,13 @@
             "inAir": true,
             "isShot": true
           }
-        ]
-      },
-      {
-        "key": "home_counter",
-        "label": "主隊防守",
-        "playName": "P",
-        "tacticalGoal": "G",
-        "offenseTeam": "away",
-        "phases": [
-          {
-            "title": "T",
-            "description": "D",
-            "keyRead": "K",
-            "ballPos": [
-              250.0,
-              140.0
-            ],
-            "offense": [
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ]
-            ],
-            "defense": [
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ]
-            ],
-            "paths": [
-              {
-                "from": [
-                  250.0,
-                  140.0
-                ],
-                "to": [
-                  260.0,
-                  200.0
-                ],
-                "type": "screen"
-              }
-            ]
-          },
-          {
-            "title": "T",
-            "description": "D",
-            "keyRead": "K",
-            "ballPos": [
-              250.0,
-              140.0
-            ],
-            "offense": [
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ]
-            ],
-            "defense": [
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ]
-            ],
-            "paths": [
-              {
-                "from": [
-                  250.0,
-                  140.0
-                ],
-                "to": [
-                  260.0,
-                  200.0
-                ],
-                "type": "screen"
-              }
-            ]
-          },
-          {
-            "title": "T",
-            "description": "D",
-            "keyRead": "K",
-            "ballPos": [
-              250.0,
-              140.0
-            ],
-            "offense": [
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ],
-              [
-                250.0,
-                140.0
-              ]
-            ],
-            "defense": [
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ],
-              [
-                250.0,
-                180.0
-              ]
-            ],
-            "paths": [
-              {
-                "from": [
-                  250.0,
-                  140.0
-                ],
-                "to": [
-                  260.0,
-                  200.0
-                ],
-                "type": "screen"
-              }
-            ]
-          }
         ],
-        "ballFrames": null
+        "tacticalPattern": "側翼收縮與強邊 ICE 封鎖",
+        "tacticalTags": [
+          "側翼收縮與強邊 ICE 封鎖",
+          "防守反制",
+          "輪轉協防"
+        ]
       }
     ]
   },
@@ -12319,6 +11987,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "雙重階梯掩護啟動高位手遞手",
+        "tacticalTags": [
+          "雙重階梯掩護啟動高位手遞手",
+          "進攻戰術",
+          "團隊配合"
         ]
       },
       {
@@ -12597,8 +12271,12 @@
           }
         ],
         "source_type": "ai",
-        "tacticalPattern": null,
-        "tacticalTags": null,
+        "tacticalPattern": "雙高位西班牙擋拆（Spanish PnR）刺穿弱側",
+        "tacticalTags": [
+          "雙高位西班牙擋拆（Spanish PnR）刺穿弱側",
+          "進攻戰術",
+          "團隊配合"
+        ],
         "relatedPlays": null,
         "youtubeUrl": null,
         "youtubeSeconds": null,
@@ -12623,7 +12301,7 @@
       {
         "key": "away_offense",
         "label": "客隊進攻破解",
-        "playName": "夢想家｜Horns Stagger & 阿吉肘區突破分球",
+        "playName": "Horns Stagger & 阿吉肘區突破分球",
         "tacticalGoal": "以雙牛角站位讓{O1}執行連續掩護突破肘區，創造底角{O3}三分或{O5}空接機會。",
         "offenseTeam": "away",
         "phases": [
@@ -12859,7 +12537,13 @@
             ]
           }
         ],
-        "ballFrames": null
+        "ballFrames": null,
+        "tacticalPattern": "Horns Stagger & 阿吉肘區突破分球",
+        "tacticalTags": [
+          "Horns Stagger & 阿吉肘區突破分球",
+          "進攻戰術",
+          "團隊配合"
+        ]
       }
     ],
     "defense": [
@@ -14254,6 +13938,12 @@
             "inAir": true,
             "isShot": false
           }
+        ],
+        "tacticalPattern": "油漆區深層護框與外線沉退輪轉",
+        "tacticalTags": [
+          "油漆區深層護框與外線沉退輪轉",
+          "防守反制",
+          "輪轉協防"
         ]
       },
       {
@@ -14512,8 +14202,12 @@
           }
         ],
         "source_type": "ai",
-        "tacticalPattern": null,
-        "tacticalTags": null,
+        "tacticalPattern": "強側上搶夾擊與沉退護框（Blitz & Drop Balance）",
+        "tacticalTags": [
+          "強側上搶夾擊與沉退護框（Blitz & Drop Balance）",
+          "防守反制",
+          "輪轉協防"
+        ],
         "relatedPlays": null,
         "youtubeUrl": null,
         "youtubeSeconds": null,
@@ -14538,7 +14232,7 @@
       {
         "key": "away_counter",
         "label": "客隊防守反制",
-        "playName": "夢想家｜ICE & Weakside Rim Protect (邊線阻絕與護框)",
+        "playName": "ICE & Weakside Rim Protect (邊線阻絕與護框)",
         "tacticalGoal": "將國王擋拆逼向邊線，讓{D5}鎮守禁區築起禁飛區。",
         "offenseTeam": "home",
         "phases": [
@@ -14774,7 +14468,13 @@
             ]
           }
         ],
-        "ballFrames": null
+        "ballFrames": null,
+        "tacticalPattern": "ICE & Weakside Rim Protect (邊線阻絕與護框)",
+        "tacticalTags": [
+          "ICE & Weakside Rim Protect (邊線阻絕與護框)",
+          "防守反制",
+          "輪轉協防"
+        ]
       }
     ]
   },
@@ -16943,6 +16643,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "{O4}低位發牌與外圍電梯掩護",
+        "tacticalTags": [
+          "{O4}低位發牌與外圍電梯掩護",
+          "進攻戰術",
+          "團隊配合"
         ]
       }
     ],
@@ -18635,8 +18341,12 @@
           }
         ],
         "source_type": "ai",
-        "tacticalPattern": null,
-        "tacticalTags": null,
+        "tacticalPattern": "罰球線阻截與弱側快速輪轉（Drop & Peel Switch）",
+        "tacticalTags": [
+          "罰球線阻截與弱側快速輪轉（Drop & Peel Switch）",
+          "防守反制",
+          "輪轉協防"
+        ],
         "relatedPlays": null,
         "youtubeUrl": null,
         "youtubeSeconds": null,
@@ -18932,6 +18642,12 @@
             "inAir": true,
             "isShot": false
           }
+        ],
+        "tacticalPattern": "海神 1-2-2 區域轉邊線包夾",
+        "tacticalTags": [
+          "海神 1-2-2 區域轉邊線包夾",
+          "防守反制",
+          "輪轉協防"
         ]
       }
     ]
@@ -19928,6 +19644,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "雙高位 Spanish 擋拆誘陷",
+        "tacticalTags": [
+          "雙高位 Spanish 擋拆誘陷",
+          "進攻戰術",
+          "團隊配合"
         ]
       },
       {
@@ -20215,6 +19937,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "雙掩護電梯門拉空底角射手戰術",
+        "tacticalTags": [
+          "雙掩護電梯門拉空底角射手戰術",
+          "進攻戰術",
+          "團隊配合"
         ]
       },
       {
@@ -20480,6 +20208,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "高位雙掩護西班牙擋拆（Spain PnR Split）",
+        "tacticalTags": [
+          "高位雙掩護西班牙擋拆（Spain PnR Split）",
+          "進攻戰術",
+          "團隊配合"
         ]
       }
     ],
@@ -21460,6 +21194,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "沉退護框與弱側 X-Out 撲防",
+        "tacticalTags": [
+          "沉退護框與弱側 X-Out 撲防",
+          "防守反制",
+          "輪轉協防"
         ]
       },
       {
@@ -21725,6 +21465,12 @@
             "inAir": false,
             "isShot": false
           }
+        ],
+        "tacticalPattern": "側翼底角收縮內線夾擊與高位斷線",
+        "tacticalTags": [
+          "側翼底角收縮內線夾擊與高位斷線",
+          "防守反制",
+          "輪轉協防"
         ]
       },
       {
@@ -22001,6 +21747,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "側翼弱側協防阻斷與內縮搶籃板（Sink & Dig Trap）",
+        "tacticalTags": [
+          "側翼弱側協防阻斷與內縮搶籃板（Sink & Dig Trap）",
+          "防守反制",
+          "輪轉協防"
         ]
       }
     ]
@@ -23036,6 +22788,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "雙長人高低位背身強攻與空切灌籃",
+        "tacticalTags": [
+          "雙長人高低位背身強攻與空切灌籃",
+          "進攻戰術",
+          "團隊配合"
         ]
       },
       {
@@ -23290,6 +23048,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "雙塔高低位策應轟炸（Hi-Lo Seal Action）",
+        "tacticalTags": [
+          "雙塔高低位策應轟炸（Hi-Lo Seal Action）",
+          "進攻戰術",
+          "團隊配合"
         ]
       }
     ],
@@ -24236,6 +24000,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "雙洋將禁區沉退聯防與底角飛撲干擾",
+        "tacticalTags": [
+          "雙洋將禁區沉退聯防與底角飛撲干擾",
+          "防守反制",
+          "輪轉協防"
         ]
       },
       {
@@ -24512,6 +24282,12 @@
             "inAir": true,
             "isShot": true
           }
+        ],
+        "tacticalPattern": "大洋將高位換防延阻與強側包夾截球（Blitz & Shrink）",
+        "tacticalTags": [
+          "大洋將高位換防延阻與強側包夾截球（Blitz & Shrink）",
+          "防守反制",
+          "輪轉協防"
         ]
       }
     ]

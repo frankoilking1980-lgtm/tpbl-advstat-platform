@@ -1250,6 +1250,8 @@ export default function MatchupPage() {
         {/* ============================================================== */}
         <div className="mb-8">
           <TacticalPlaybookBoard
+            mode="matchup"
+            hideCaseClips={true}
             homeTeam={teamA}
             awayTeam={teamB}
             homeRoster={startersA.map((p, idx) => p?.player_name || `${teamA.slice(-2)}${idx + 1}號位`)}
