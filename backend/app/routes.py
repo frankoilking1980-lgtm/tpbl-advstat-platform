@@ -16,6 +16,19 @@ from pydantic import BaseModel
 import openpyxl
 
 from app.database import get_db_connection, db_session
+from app.cache import (
+    apply_versioned_etag,
+    clear_all_data_caches,
+    get_cached_advanced_players,
+    get_cached_clutch_leaderboard,
+    get_cached_player_card,
+    get_data_version_hash,
+    register_clear_callback,
+    register_warmup_callback,
+    set_cached_advanced_players,
+    set_cached_clutch_leaderboard,
+    set_cached_player_card,
+)
 
 router = APIRouter(prefix="/api", tags=["TPBL Analytics API"])
 
@@ -993,7 +1006,37 @@ def classify_identity_group(identity: str) -> str:
     return "local"
 
 
+def _filter_advanced_players(
+    all_players: List[Dict[str, Any]],
+    min_ppg: float = 0.0,
+    identity: str = "全部",
+) -> List[Dict[str, Any]]:
+    result = all_players
+    if min_ppg and min_ppg > 0:
+        result = [p for p in result if float(p.get("ppg", 0.0)) >= min_ppg]
+    if identity in ["本土", "僅本土", "local"]:
+        result = [
+            p for p in result
+            if "洋將" not in str(p.get("identity", ""))
+            and "外籍生" not in str(p.get("identity", ""))
+            and "歸化" not in str(p.get("identity", ""))
+        ]
+    elif identity in ["洋將", "僅洋將", "import"]:
+        result = [
+            p for p in result
+            if "洋將" in str(p.get("identity", ""))
+            or "外籍生" in str(p.get("identity", ""))
+            or "歸化" in str(p.get("identity", ""))
+        ]
+    return result
+
+
 def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "全部"):
+    version_hash = get_data_version_hash()
+    cached = get_cached_advanced_players(stage, version_hash)
+    if cached is not None:
+        return _filter_advanced_players(cached, min_ppg, identity)
+
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
     excel_player_map = {}
 
@@ -1053,17 +1096,10 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
                    games_played, mpg, ppg, rpg, apg, spg, bpg, efg_pct, ts_pct, usg_pct, gmsc,
                    shot_chart_review, performance_review
             FROM player_stats
-            WHERE season_stage = ? AND ppg >= ?
+            WHERE season_stage = ?
+            ORDER BY gmsc DESC, ppg DESC
         """
-        params = [stage, min_ppg]
-
-        if identity in ["本土", "僅本土", "local"]:
-            query += " AND identity NOT LIKE '%洋將%' AND identity NOT LIKE '%外籍生%' AND identity NOT LIKE '%歸化%'"
-        elif identity in ["洋將", "僅洋將", "import"]:
-            query += " AND (identity LIKE '%洋將%' OR identity LIKE '%外籍生%' OR identity LIKE '%歸化%')"
-
-        query += " ORDER BY gmsc DESC, ppg DESC"
-        cur.execute(query, tuple(params))
+        cur.execute(query, (stage,))
         rows = cur.fetchall()
 
     players = []
@@ -1141,16 +1177,37 @@ def _fetch_advanced_players(stage: str, min_ppg: float = 0.0, identity: str = "�
             "shot_chart_desc": r["shot_chart_review"] or "",
             "season_notes": r["performance_review"] or "",
         })
-    return players
+    set_cached_advanced_players(stage, version_hash, players)
+    return _filter_advanced_players(players, min_ppg, identity)
 
 
 @router.get("/players/advanced", summary="取得球員進階數據清單")
-def get_players_advanced(stage: str = Query("2026-2027 例行賽"), min_ppg: float = Query(0.0), identity: str = Query("全部")):
+def get_players_advanced(
+    response: Response,
+    stage: str = Query("2026-2027 例行賽"),
+    min_ppg: float = Query(0.0),
+    identity: str = Query("全部"),
+    if_none_match: Optional[str] = Header(default=None, alias="If-None-Match"),
+):
+    version_hash = get_data_version_hash()
+    not_modified = apply_versioned_etag(response, version_hash, if_none_match)
+    if not_modified is not None:
+        return not_modified
     return _fetch_advanced_players(stage, min_ppg, identity)
 
 
 @router.get("/players/scatter", summary="取得主力效率象限圖資料")
-def get_players_scatter(stage: str = Query("2026-2027 例行賽"), min_ppg: float = Query(0.0), identity: str = Query("全部")):
+def get_players_scatter(
+    response: Response,
+    stage: str = Query("2026-2027 例行賽"),
+    min_ppg: float = Query(0.0),
+    identity: str = Query("全部"),
+    if_none_match: Optional[str] = Header(default=None, alias="If-None-Match"),
+):
+    version_hash = get_data_version_hash()
+    not_modified = apply_versioned_etag(response, version_hash, if_none_match)
+    if not_modified is not None:
+        return not_modified
     return _fetch_advanced_players(stage, min_ppg, identity)
 
 
@@ -1206,13 +1263,25 @@ def _compute_clutch_row(r: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/players/clutch-leaderboard", summary="全聯盟關鍵時刻 (最後 5 分鐘) 抗壓排行榜")
 def get_clutch_leaderboard(
+    response: Response,
     stage: str = Query("2026-2027 例行賽"),
     identity: str = Query("全部"),
     sort: str = Query("score", description="score | ts"),
     min_gp: int = Query(CLUTCH_MIN_GP, ge=0),
     min_mpg: float = Query(CLUTCH_MIN_MPG, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    if_none_match: Optional[str] = Header(default=None, alias="If-None-Match"),
 ):
+    version_hash = get_data_version_hash()
+    not_modified = apply_versioned_etag(response, version_hash, if_none_match)
+    if not_modified is not None:
+        return not_modified
+
+    cache_key = (stage, identity, sort, min_gp, min_mpg, limit, version_hash)
+    cached = get_cached_clutch_leaderboard(cache_key)
+    if cached is not None:
+        return cached
+
     players = _fetch_advanced_players(stage, 0.0, identity)
     rows = [
         _compute_clutch_row(p) for p in players
@@ -1224,7 +1293,7 @@ def get_clutch_leaderboard(
         rows.sort(key=lambda x: (-x["clutch_score"], -x["ppg_5min"], x["player_name"]))
     for i, row in enumerate(rows[:limit], 1):
         row["rank"] = i
-    return {
+    result = {
         "stage": stage,
         "identity": identity,
         "sort": sort,
@@ -1233,13 +1302,30 @@ def get_clutch_leaderboard(
         "total": len(rows),
         "players": rows[:limit],
     }
+    set_cached_clutch_leaderboard(cache_key, result)
+    return result
 
 
 @router.get("/players/{player_name}/card", summary="取得球員戰力卡六維雷達與深度評語")
-def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽")):
+def get_player_card(
+    player_name: str,
+    response: Response,
+    stage: str = Query("2026-2027 例行賽"),
+    if_none_match: Optional[str] = Header(default=None, alias="If-None-Match"),
+):
+    version_hash = get_data_version_hash()
+    not_modified = apply_versioned_etag(response, version_hash, if_none_match)
+    if not_modified is not None:
+        return not_modified
+
+    player_key = player_name.strip()
+    cached = get_cached_player_card(stage, player_key, version_hash)
+    if cached is not None:
+        return cached
+
     with db_session() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM player_stats WHERE player_name LIKE ? AND season_stage = ? LIMIT 1", (f"%{player_name.strip()}%", stage))
+        cur.execute("SELECT * FROM player_stats WHERE player_name LIKE ? AND season_stage = ? LIMIT 1", (f"%{player_key}%", stage))
         r = cur.fetchone()
 
     if not r:
@@ -1350,7 +1436,7 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
         }
     }
 
-    return {
+    card_payload = {
         "player_info": {
             "player_name": r["player_name"],
             "team_name": r["team_name"],
@@ -1399,6 +1485,8 @@ def get_player_card(player_name: str, stage: str = Query("2026-2027 例行賽"))
         "shot_chart_review": r["shot_chart_review"],
         "performance_review": r["performance_review"],
     }
+    set_cached_player_card(stage, player_key, version_hash, card_payload)
+    return card_payload
 
 
 def _find_db_game(cur, game_id: str):
@@ -2105,6 +2193,21 @@ def clear_pbp_cache() -> None:
     _PBP_CACHE.clear()
 
 
+register_clear_callback(clear_pbp_cache)
+
+
+def warmup_player_caches() -> None:
+    """背景預熱各賽季階段的球員進階數據與關鍵時刻快取，確保 Cloud Run 啟動後即秒回。"""
+    for stage_name in STAGE_FOLDER_MAP.keys():
+        try:
+            _fetch_advanced_players(stage_name)
+        except Exception:
+            continue
+
+
+register_warmup_callback(warmup_player_caches)
+
+
 @router.get("/teams/{team_name}/pbp", summary="取得球隊 PBP 陣容與 On/Off 數據")
 def get_team_pbp(
     response: Response,
@@ -2337,6 +2440,7 @@ def _run_weekly_preview_job(
             extra_notes=extra_notes,
             model_name=model_name,
         )
+        clear_all_data_caches(re_warmup=True)
         with _PREVIEW_GENERATION_JOBS_LOCK:
             if job_id in _PREVIEW_GENERATION_JOBS:
                 _PREVIEW_GENERATION_JOBS[job_id].update(
@@ -2483,6 +2587,7 @@ def import_weekly_preview_json_endpoint(
             raw_json_text=req.raw_json,
             model_used=req.model_used,
         )
+        clear_all_data_caches(re_warmup=True)
         return report.model_dump(by_alias=True)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"JSON 解析或結構驗證失敗：{e}")
@@ -2536,6 +2641,7 @@ async def upload_injuries_excel(
     raw_bytes = await file.read()
     try:
         items = parse_and_save_injuries_excel(raw_bytes)
+        clear_all_data_caches(re_warmup=True)
         return {"status": "ok", "count": len(items), "items": items}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"解析傷兵 Excel 失敗：{e}")
@@ -2900,8 +3006,8 @@ def admin_pipeline_update_stats(
             "recent_games": recent_games,
         }
 
-    clear_pbp_cache()
-    log_chunks.append("✅ 步驟 4：已清除後端記憶體 PBP 快取 (clear_pbp_cache)")
+    clear_all_data_caches(re_warmup=True)
+    log_chunks.append("✅ 步驟 4：已清除並背景預熱後端記憶體快取 (clear_all_data_caches)")
 
     recent_games = _get_recent_finished_games(10)
     missing_files = _collect_missing_raw_files(recent_games, req.game_ids)
@@ -2948,7 +3054,7 @@ def admin_pipeline_generate_reviews(
                 q3_tipoff_seconds=req.q3_tipoff_seconds,
             )
         result = commit_post_game_reviews(req.game_id, payload)
-        clear_pbp_cache()
+        clear_all_data_caches(re_warmup=True)
         return result
     except PostGameDataMissingError as e:
         raise HTTPException(
@@ -3058,6 +3164,7 @@ def admin_sync_game_youtube(
             updated_count += 1
 
         conn.commit()
+        clear_all_data_caches(re_warmup=True)
         playbooks = fetch_game_playbooks(conn, real_id, normalize_team_name(game_row["home_team"]))
 
     return {

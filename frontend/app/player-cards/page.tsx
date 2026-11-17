@@ -480,8 +480,15 @@ function PlayerCardsContent() {
   const [situationsMetric, setSituationsMetric] = useState<LeaderboardMetric>('q4');
   const [focusedSituationPlayer, setFocusedSituationPlayer] = useState<string | null>(null);
 
-  const { data: prData } = useSWR<PRStatsResponse>('/player_pr_stats.json', staticJsonFetcher);
-  const { data: situationsRaw } = useSWR<SituationsResponse>('/player_situations_stats.json', staticJsonFetcher);
+  const swrStaticOptions = { revalidateOnFocus: false, dedupingInterval: 60000 };
+  const swrApiOptions = { revalidateOnFocus: false, dedupingInterval: 30000 };
+
+  const { data: prData } = useSWR<PRStatsResponse>('/player_pr_stats.json', staticJsonFetcher, swrStaticOptions);
+  const { data: situationsRaw, isLoading: situationsLoading } = useSWR<SituationsResponse>(
+    '/player_situations_stats.json',
+    staticJsonFetcher,
+    swrStaticOptions
+  );
 
   const situationsData = useMemo(() => {
     return situationsRaw?.players || {};
@@ -489,12 +496,14 @@ function PlayerCardsContent() {
 
   const { data: listA } = useSWR<PlayerInfo[]>(
     `/api/players/advanced?stage=${encodeURIComponent(stageA)}`,
-    fetcher
+    fetcher,
+    swrApiOptions
   );
 
   const { data: listB } = useSWR<PlayerInfo[]>(
     `/api/players/advanced?stage=${encodeURIComponent(stageB)}`,
-    fetcher
+    fetcher,
+    swrApiOptions
   );
 
   const matchesPoolMode = (p: PlayerInfo, mode: PRPoolMode): boolean => {
@@ -602,16 +611,31 @@ function PlayerCardsContent() {
 
   const { data: cardA } = useSWR<PlayerCardResponse>(
     playerA ? `/api/players/${encodeURIComponent(playerA)}/card?stage=${encodeURIComponent(stageA)}` : null,
-    fetcher
+    fetcher,
+    swrApiOptions
   );
 
   const { data: cardB } = useSWR<PlayerCardResponse>(
     playerB ? `/api/players/${encodeURIComponent(playerB)}/card?stage=${encodeURIComponent(stageB)}` : null,
-    fetcher
+    fetcher,
+    swrApiOptions
   );
 
-  const playerAName = cardA?.player_info.player_name || playerA;
-  const playerBName = cardB?.player_info.player_name || playerB;
+  // 非同步解耦：優先以 listA/listB 立即渲染選手檔案基礎數據與傳統六維雷達，不等待重型情境請求
+  const infoA = useMemo(() => {
+    if (cardA?.player_info) return cardA.player_info;
+    if (!listA || !playerA) return undefined;
+    return listA.find((p) => p.player_name.trim() === playerA.trim());
+  }, [cardA, listA, playerA]);
+
+  const infoB = useMemo(() => {
+    if (cardB?.player_info) return cardB.player_info;
+    if (!listB || !playerB) return undefined;
+    return listB.find((p) => p.player_name.trim() === playerB.trim());
+  }, [cardB, listB, playerB]);
+
+  const playerAName = infoA?.player_name || playerA;
+  const playerBName = infoB?.player_name || playerB;
 
   const currentPRStage = prData?.meta?.stage || '2026-2027 例行賽';
 
@@ -640,12 +664,12 @@ function PlayerCardsContent() {
   }, [situationsData, playerBName, stageB]);
 
   const archetypesA = useMemo(() => {
-    return determinePlayerArchetypes(cardA?.player_info, sitPlayerA);
-  }, [cardA, sitPlayerA]);
+    return determinePlayerArchetypes(infoA, sitPlayerA);
+  }, [infoA, sitPlayerA]);
 
   const archetypesB = useMemo(() => {
-    return determinePlayerArchetypes(cardB?.player_info, sitPlayerB);
-  }, [cardB, sitPlayerB]);
+    return determinePlayerArchetypes(infoB, sitPlayerB);
+  }, [infoB, sitPlayerB]);
 
   const getRealTpg = (info?: PlayerInfo, fallbackList?: PlayerInfo[]): number | undefined => {
     if (!info) return undefined;
@@ -669,8 +693,8 @@ function PlayerCardsContent() {
     return safeNum(info.tpg ?? info.tov, 1.5);
   };
 
-  const realTpgA = useMemo(() => getRealTpg(cardA?.player_info, listA), [cardA, listA]);
-  const realTpgB = useMemo(() => getRealTpg(cardB?.player_info, listB), [cardB, listB]);
+  const realTpgA = useMemo(() => getRealTpg(infoA, listA), [infoA, listA]);
+  const realTpgB = useMemo(() => getRealTpg(infoB, listB), [infoB, listB]);
 
   const calcReverseTpgPr = (targetTpg?: number, allList?: PlayerInfo[]): number | undefined => {
     if (targetTpg === undefined || !allList || allList.length === 0) return undefined;
@@ -735,14 +759,33 @@ function PlayerCardsContent() {
   };
 
   const cohortBadgesA = useMemo(
-    () => buildCohortPRMap(cardA?.player_info, realTpgA, prPoolA, prPlayerA, prTpgA),
-    [cardA, realTpgA, prPoolA, prPlayerA, prTpgA, prPoolMode]
+    () => buildCohortPRMap(infoA, realTpgA, prPoolA, prPlayerA, prTpgA),
+    [infoA, realTpgA, prPoolA, prPlayerA, prTpgA, prPoolMode]
   );
 
   const cohortBadgesB = useMemo(
-    () => buildCohortPRMap(cardB?.player_info, realTpgB, prPoolB, prPlayerB, prTpgB),
-    [cardB, realTpgB, prPoolB, prPlayerB, prTpgB, prPoolMode]
+    () => buildCohortPRMap(infoB, realTpgB, prPoolB, prPlayerB, prTpgB),
+    [infoB, realTpgB, prPoolB, prPlayerB, prTpgB, prPoolMode]
   );
+
+  const buildTraditionalRadarFromInfo = (info?: PlayerInfo): Record<string, number> | undefined => {
+    if (!info) return undefined;
+    const ppg = safeNum(info.ppg, 0);
+    const ts = normalizePctVal(info.ts_pct);
+    const apg = safeNum(info.apg, 0);
+    const rpg = safeNum(info.rpg, 0);
+    const spg = safeNum(info.spg, 0);
+    const bpg = safeNum(info.bpg, 0);
+    const gmsc = safeNum(info.gmsc, 0);
+    return {
+      scoring: clampRadarScore((ppg / 30) * 100),
+      shooting: clampRadarScore(ts),
+      playmaking: clampRadarScore((apg / 10) * 100),
+      rebounding: clampRadarScore((rpg / 15) * 100),
+      defense: clampRadarScore(((spg + bpg) / 4) * 100),
+      efficiency: clampRadarScore((gmsc / 25) * 100),
+    };
+  };
 
   const buildCohortTraditionalRadar = (
     info: PlayerInfo | undefined,
@@ -750,7 +793,7 @@ function PlayerCardsContent() {
     fallbackRadar: Record<string, number> | undefined
   ) => {
     if (prPoolMode === 'all' || !info || pool.length === 0) {
-      return fallbackRadar;
+      return fallbackRadar ?? buildTraditionalRadarFromInfo(info);
     }
     return {
       scoring: computeCohortPR(safeNum(info.ppg, 0), pool, (p) => safeNum(p.ppg, 0)) ?? 50,
@@ -767,13 +810,13 @@ function PlayerCardsContent() {
   };
 
   const tradRadarA = useMemo(
-    () => buildCohortTraditionalRadar(cardA?.player_info, prPoolA, cardA?.radar as Record<string, number> | undefined),
-    [cardA, prPoolA, prPoolMode]
+    () => buildCohortTraditionalRadar(infoA, prPoolA, cardA?.radar as Record<string, number> | undefined),
+    [infoA, cardA, prPoolA, prPoolMode]
   );
 
   const tradRadarB = useMemo(
-    () => buildCohortTraditionalRadar(cardB?.player_info, prPoolB, cardB?.radar as Record<string, number> | undefined),
-    [cardB, prPoolB, prPoolMode]
+    () => buildCohortTraditionalRadar(infoB, prPoolB, cardB?.radar as Record<string, number> | undefined),
+    [infoB, cardB, prPoolB, prPoolMode]
   );
 
   const buildCohortSituationalRadar = (
@@ -832,13 +875,13 @@ function PlayerCardsContent() {
   };
 
   const sitRadarA = useMemo(
-    () => buildCohortSituationalRadar(cardA?.player_info, sitPlayerA, realTpgA, prPoolA, stageA),
-    [cardA, sitPlayerA, realTpgA, prPoolA, stageA, prPoolMode, situationsData]
+    () => buildCohortSituationalRadar(infoA, sitPlayerA, realTpgA, prPoolA, stageA),
+    [infoA, sitPlayerA, realTpgA, prPoolA, stageA, prPoolMode, situationsData]
   );
 
   const sitRadarB = useMemo(
-    () => buildCohortSituationalRadar(cardB?.player_info, sitPlayerB, realTpgB, prPoolB, stageB),
-    [cardB, sitPlayerB, realTpgB, prPoolB, stageB, prPoolMode, situationsData]
+    () => buildCohortSituationalRadar(infoB, sitPlayerB, realTpgB, prPoolB, stageB),
+    [infoB, sitPlayerB, realTpgB, prPoolB, stageB, prPoolMode, situationsData]
   );
 
   const buildSituationalPRBadges = (
@@ -1040,16 +1083,16 @@ function PlayerCardsContent() {
   }, [tradRadarB, playerB, radarMode, sitRadarB]);
 
   const compareList = [
-    { label: '場均得分', valA: cardA?.player_info.ppg, valB: cardB?.player_info.ppg, prA: cohortBadgesA.PTS, prB: cohortBadgesB.PTS, format: (v: number) => v.toFixed(1) },
-    { label: '真實命中率 (TS%)', valA: cardA?.player_info.ts_pct, valB: cardB?.player_info.ts_pct, prA: cohortBadgesA['TS%'], prB: cohortBadgesB['TS%'], format: (v: number) => `${v.toFixed(1)}%` },
-    { label: '有效命中率 (eFG%)', valA: cardA?.player_info.efg_pct, valB: cardB?.player_info.efg_pct, prA: cohortBadgesA['eFG%'], prB: cohortBadgesB['eFG%'], format: (v: number) => `${v.toFixed(1)}%` },
-    { label: '球權使用率 (USG%)', valA: cardA?.player_info.usg_pct, valB: cardB?.player_info.usg_pct, prA: cohortBadgesA['USG%'], prB: cohortBadgesB['USG%'], format: (v: number) => `${v.toFixed(1)}%` },
-    { label: '場均籃板 (RPG)', valA: cardA?.player_info.rpg, valB: cardB?.player_info.rpg, prA: cohortBadgesA.REB, prB: cohortBadgesB.REB, format: (v: number) => v.toFixed(1) },
-    { label: '場均助攻 (APG)', valA: cardA?.player_info.apg, valB: cardB?.player_info.apg, prA: cohortBadgesA.AST, prB: cohortBadgesB.AST, format: (v: number) => v.toFixed(1) },
-    { label: '場均抄截 (SPG)', valA: cardA?.player_info.spg, valB: cardB?.player_info.spg, prA: cohortBadgesA.STL, prB: cohortBadgesB.STL, format: (v: number) => v.toFixed(1) },
-    { label: '場均阻攻 (BPG)', valA: cardA?.player_info.bpg, valB: cardB?.player_info.bpg, prA: cohortBadgesA.BLK, prB: cohortBadgesB.BLK, format: (v: number) => v.toFixed(1) },
+    { label: '場均得分', valA: infoA?.ppg, valB: infoB?.ppg, prA: cohortBadgesA.PTS, prB: cohortBadgesB.PTS, format: (v: number) => v.toFixed(1) },
+    { label: '真實命中率 (TS%)', valA: infoA?.ts_pct, valB: infoB?.ts_pct, prA: cohortBadgesA['TS%'], prB: cohortBadgesB['TS%'], format: (v: number) => `${v.toFixed(1)}%` },
+    { label: '有效命中率 (eFG%)', valA: infoA?.efg_pct, valB: infoB?.efg_pct, prA: cohortBadgesA['eFG%'], prB: cohortBadgesB['eFG%'], format: (v: number) => `${v.toFixed(1)}%` },
+    { label: '球權使用率 (USG%)', valA: infoA?.usg_pct, valB: infoB?.usg_pct, prA: cohortBadgesA['USG%'], prB: cohortBadgesB['USG%'], format: (v: number) => `${v.toFixed(1)}%` },
+    { label: '場均籃板 (RPG)', valA: infoA?.rpg, valB: infoB?.rpg, prA: cohortBadgesA.REB, prB: cohortBadgesB.REB, format: (v: number) => v.toFixed(1) },
+    { label: '場均助攻 (APG)', valA: infoA?.apg, valB: infoB?.apg, prA: cohortBadgesA.AST, prB: cohortBadgesB.AST, format: (v: number) => v.toFixed(1) },
+    { label: '場均抄截 (SPG)', valA: infoA?.spg, valB: infoB?.spg, prA: cohortBadgesA.STL, prB: cohortBadgesB.STL, format: (v: number) => v.toFixed(1) },
+    { label: '場均阻攻 (BPG)', valA: infoA?.bpg, valB: infoB?.bpg, prA: cohortBadgesA.BLK, prB: cohortBadgesB.BLK, format: (v: number) => v.toFixed(1) },
     { label: '失誤次數 (TPG)', valA: realTpgA, valB: realTpgB, prA: cohortBadgesA.TOV, prB: cohortBadgesB.TOV, format: (v: number) => v.toFixed(1), lowerIsBetter: true },
-    { label: '單場表現 (GmSc)', valA: cardA?.player_info.gmsc, valB: cardB?.player_info.gmsc, prA: cohortBadgesA.GmSC, prB: cohortBadgesB.GmSC, format: (v: number) => v.toFixed(1) },
+    { label: '單場表現 (GmSc)', valA: infoA?.gmsc, valB: infoB?.gmsc, prA: cohortBadgesA.GmSC, prB: cohortBadgesB.GmSC, format: (v: number) => v.toFixed(1) },
   ];
 
   const identityMapForLeaderboard = useMemo(() => {
@@ -1313,7 +1356,7 @@ function PlayerCardsContent() {
                       球員 A
                     </span>
                     <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
-                      #{cardA?.player_info.jersey_number || '0'} • {cardA?.player_info.position}
+                      #{infoA?.jersey_number || '0'} • {infoA?.position || '-'}
                     </span>
                   </div>
 
@@ -1326,10 +1369,10 @@ function PlayerCardsContent() {
                       className="text-2xl font-black text-white tracking-tight cursor-pointer hover:text-[#FF9100] transition-colors"
                       title="點擊可展開下方總表查看即時排名"
                     >
-                      {playerAName}
+                      {playerAName || <span className="inline-block h-7 w-28 rounded-lg bg-[#21262D] animate-pulse align-middle" />}
                     </h3>
                     <p className="text-xs text-gray-400 font-medium pt-1">
-                      {cardA?.player_info.team_name} • {cardA?.player_info.identity}
+                      {infoA ? `${infoA.team_name} • ${infoA.identity}` : <span className="inline-block h-3.5 w-32 rounded bg-[#21262D] animate-pulse" />}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
@@ -1349,30 +1392,46 @@ function PlayerCardsContent() {
                 <div className="space-y-3 text-xs sm:text-sm font-mono pt-4">
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
                     <span className="text-gray-400 font-sans whitespace-nowrap">場均時間</span>
-                    <span className="text-white font-bold whitespace-nowrap">{cardA?.player_info.mpg ?? '-'} 分</span>
+                    {infoA ? (
+                      <span className="text-white font-bold whitespace-nowrap">{infoA.mpg} 分</span>
+                    ) : (
+                      <span className="h-4 w-16 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
                     <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
-                    <div className="flex items-center">
-                      <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{cardA?.player_info.ppg ?? '-'}</span>
-                      <PRTag pr={cohortBadgesA.PTS} prefix={prPrefix} />
-                    </div>
+                    {infoA ? (
+                      <div className="flex items-center">
+                        <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{infoA.ppg}</span>
+                        <PRTag pr={cohortBadgesA.PTS} prefix={prPrefix} />
+                      </div>
+                    ) : (
+                      <span className="h-5 w-20 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
                     <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
-                    <div className="flex items-center">
-                      <span className="text-amber-300 font-bold whitespace-nowrap">
-                        {formatPct100(cardA?.player_info.ts_pct)}
-                      </span>
-                      <PRTag pr={cohortBadgesA['TS%']} prefix={prPrefix} />
-                    </div>
+                    {infoA ? (
+                      <div className="flex items-center">
+                        <span className="text-amber-300 font-bold whitespace-nowrap">
+                          {formatPct100(infoA.ts_pct)}
+                        </span>
+                        <PRTag pr={cohortBadgesA['TS%']} prefix={prPrefix} />
+                      </div>
+                    ) : (
+                      <span className="h-4 w-20 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center py-1.5">
                     <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
-                    <div className="flex items-center">
-                      <span className="text-white font-bold text-base whitespace-nowrap">{cardA?.player_info.gmsc ?? '-'}</span>
-                      <PRTag pr={cohortBadgesA.GmSC} prefix={prPrefix} />
-                    </div>
+                    {infoA ? (
+                      <div className="flex items-center">
+                        <span className="text-white font-bold text-base whitespace-nowrap">{infoA.gmsc}</span>
+                        <PRTag pr={cohortBadgesA.GmSC} prefix={prPrefix} />
+                      </div>
+                    ) : (
+                      <span className="h-5 w-20 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                 </div>
               </div>
@@ -1422,8 +1481,20 @@ function PlayerCardsContent() {
                   </div>
                 </div>
 
-                <div className="w-full flex-1 flex items-center justify-center py-2">
-                  <svg viewBox="0 0 400 400" className="w-full max-w-[320px] sm:max-w-[350px] h-auto select-none">
+                <div className="w-full flex-1 flex items-center justify-center py-2 relative">
+                  {radarMode === 'traditional' && !tradRadarA ? (
+                    <div className="w-full max-w-[300px] aspect-square rounded-full border-2 border-dashed border-[#30363D] bg-[#0E1117]/60 animate-pulse flex flex-col items-center justify-center gap-2">
+                      <div className="w-20 h-20 rounded-full bg-[#21262D]" />
+                      <span className="text-xs text-gray-500 font-medium">載入雷達維度模型中...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {radarMode === 'situational' && situationsLoading && (
+                        <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-bold animate-pulse">
+                          同步情境進階數據中...
+                        </span>
+                      )}
+                      <svg viewBox="0 0 400 400" className="w-full max-w-[320px] sm:max-w-[350px] h-auto select-none">
                     {[0.25, 0.5, 0.75, 1.0].map((scale) => {
                       const points = currentDims
                         .map((_, i) => {
@@ -1500,6 +1571,8 @@ function PlayerCardsContent() {
                       );
                     })}
                   </svg>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -1510,7 +1583,7 @@ function PlayerCardsContent() {
                       球員 B
                     </span>
                     <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
-                      #{cardB?.player_info.jersey_number || '0'} • {cardB?.player_info.position}
+                      #{infoB?.jersey_number || '0'} • {infoB?.position || '-'}
                     </span>
                   </div>
 
@@ -1523,10 +1596,10 @@ function PlayerCardsContent() {
                       className="text-2xl font-black text-white tracking-tight cursor-pointer hover:text-[#00E676] transition-colors"
                       title="點擊可展開下方總表查看即時排名"
                     >
-                      {playerBName}
+                      {playerBName || <span className="inline-block h-7 w-28 rounded-lg bg-[#21262D] animate-pulse align-middle" />}
                     </h3>
                     <p className="text-xs text-gray-400 font-medium pt-1">
-                      {cardB?.player_info.team_name} • {cardB?.player_info.identity}
+                      {infoB ? `${infoB.team_name} • ${infoB.identity}` : <span className="inline-block h-3.5 w-32 rounded bg-[#21262D] animate-pulse" />}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-1.5 pt-2.5">
@@ -1546,30 +1619,46 @@ function PlayerCardsContent() {
                 <div className="space-y-3 text-xs sm:text-sm font-mono pt-4">
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
                     <span className="text-gray-400 font-sans whitespace-nowrap">場均時間</span>
-                    <span className="text-white font-bold whitespace-nowrap">{cardB?.player_info.mpg ?? '-'} 分</span>
+                    {infoB ? (
+                      <span className="text-white font-bold whitespace-nowrap">{infoB.mpg} 分</span>
+                    ) : (
+                      <span className="h-4 w-16 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
                     <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
-                    <div className="flex items-center">
-                      <span className="text-[#00E676] font-bold text-base whitespace-nowrap">{cardB?.player_info.ppg ?? '-'}</span>
-                      <PRTag pr={cohortBadgesB.PTS} prefix={prPrefix} />
-                    </div>
+                    {infoB ? (
+                      <div className="flex items-center">
+                        <span className="text-[#00E676] font-bold text-base whitespace-nowrap">{infoB.ppg}</span>
+                        <PRTag pr={cohortBadgesB.PTS} prefix={prPrefix} />
+                      </div>
+                    ) : (
+                      <span className="h-5 w-20 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
                     <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
-                    <div className="flex items-center">
-                      <span className="text-emerald-300 font-bold whitespace-nowrap">
-                        {formatPct100(cardB?.player_info.ts_pct)}
-                      </span>
-                      <PRTag pr={cohortBadgesB['TS%']} prefix={prPrefix} />
-                    </div>
+                    {infoB ? (
+                      <div className="flex items-center">
+                        <span className="text-emerald-300 font-bold whitespace-nowrap">
+                          {formatPct100(infoB.ts_pct)}
+                        </span>
+                        <PRTag pr={cohortBadgesB['TS%']} prefix={prPrefix} />
+                      </div>
+                    ) : (
+                      <span className="h-4 w-20 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center py-1.5">
                     <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
-                    <div className="flex items-center">
-                      <span className="text-white font-bold text-base whitespace-nowrap">{cardB?.player_info.gmsc ?? '-'}</span>
-                      <PRTag pr={cohortBadgesB.GmSC} prefix={prPrefix} />
-                    </div>
+                    {infoB ? (
+                      <div className="flex items-center">
+                        <span className="text-white font-bold text-base whitespace-nowrap">{infoB.gmsc}</span>
+                        <PRTag pr={cohortBadgesB.GmSC} prefix={prPrefix} />
+                      </div>
+                    ) : (
+                      <span className="h-5 w-20 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                 </div>
               </div>
@@ -1612,7 +1701,7 @@ function PlayerCardsContent() {
                       選手檔案
                     </span>
                     <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
-                      #{cardA?.player_info.jersey_number || '0'} • {cardA?.player_info.position}
+                      #{infoA?.jersey_number || '0'} • {infoA?.position || '-'}
                     </span>
                   </div>
 
@@ -1625,10 +1714,10 @@ function PlayerCardsContent() {
                       className="text-3xl font-black text-white tracking-tight cursor-pointer hover:text-[#FF9100] transition-colors"
                       title="點擊可展開下方總表查看即時排名"
                     >
-                      {playerAName}
+                      {playerAName || <span className="inline-block h-8 w-32 rounded-lg bg-[#21262D] animate-pulse align-middle" />}
                     </h3>
                     <p className="text-xs text-gray-400 font-medium pt-1">
-                      {cardA?.player_info.team_name} • {cardA?.player_info.identity}
+                      {infoA ? `${infoA.team_name} • ${infoA.identity}` : <span className="inline-block h-3.5 w-36 rounded bg-[#21262D] animate-pulse" />}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-1.5 pt-3">
@@ -1648,30 +1737,46 @@ function PlayerCardsContent() {
                 <div className="space-y-3 text-xs sm:text-sm font-mono pt-4">
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
                     <span className="text-gray-400 font-sans whitespace-nowrap">場均時間</span>
-                    <span className="text-white font-bold whitespace-nowrap">{cardA?.player_info.mpg ?? '-'} 分</span>
+                    {infoA ? (
+                      <span className="text-white font-bold whitespace-nowrap">{infoA.mpg} 分</span>
+                    ) : (
+                      <span className="h-4 w-16 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
                     <span className="text-gray-400 font-sans whitespace-nowrap">場均得分</span>
-                    <div className="flex items-center">
-                      <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{cardA?.player_info.ppg ?? '-'}</span>
-                      <PRTag pr={cohortBadgesA.PTS} prefix={prPrefix} />
-                    </div>
+                    {infoA ? (
+                      <div className="flex items-center">
+                        <span className="text-[#FF9100] font-bold text-base whitespace-nowrap">{infoA.ppg}</span>
+                        <PRTag pr={cohortBadgesA.PTS} prefix={prPrefix} />
+                      </div>
+                    ) : (
+                      <span className="h-5 w-20 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-[#21262D]">
                     <span className="text-gray-400 font-sans whitespace-nowrap">真實命中率 TS%</span>
-                    <div className="flex items-center">
-                      <span className="text-amber-300 font-bold whitespace-nowrap">
-                        {formatPct100(cardA?.player_info.ts_pct)}
-                      </span>
-                      <PRTag pr={cohortBadgesA['TS%']} prefix={prPrefix} />
-                    </div>
+                    {infoA ? (
+                      <div className="flex items-center">
+                        <span className="text-amber-300 font-bold whitespace-nowrap">
+                          {formatPct100(infoA.ts_pct)}
+                        </span>
+                        <PRTag pr={cohortBadgesA['TS%']} prefix={prPrefix} />
+                      </div>
+                    ) : (
+                      <span className="h-4 w-20 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center py-1.5">
                     <span className="text-gray-400 font-sans whitespace-nowrap">單場表現 GmSc</span>
-                    <div className="flex items-center">
-                      <span className="text-white font-bold text-base whitespace-nowrap">{cardA?.player_info.gmsc ?? '-'}</span>
-                      <PRTag pr={cohortBadgesA.GmSC} prefix={prPrefix} />
-                    </div>
+                    {infoA ? (
+                      <div className="flex items-center">
+                        <span className="text-white font-bold text-base whitespace-nowrap">{infoA.gmsc}</span>
+                        <PRTag pr={cohortBadgesA.GmSC} prefix={prPrefix} />
+                      </div>
+                    ) : (
+                      <span className="h-5 w-20 rounded bg-[#21262D] animate-pulse" />
+                    )}
                   </div>
                 </div>
               </div>
@@ -1711,8 +1816,20 @@ function PlayerCardsContent() {
                   <span className="text-[11px] opacity-75 font-mono">({stageA.slice(2, 9)})</span>
                 </div>
 
-                <div className="w-full flex-1 flex items-center justify-center py-2">
-                  <svg viewBox="0 0 400 400" className="w-full max-w-[380px] h-auto select-none">
+                <div className="w-full flex-1 flex items-center justify-center py-2 relative">
+                  {radarMode === 'traditional' && !tradRadarA ? (
+                    <div className="w-full max-w-[320px] aspect-square rounded-full border-2 border-dashed border-[#30363D] bg-[#0E1117]/60 animate-pulse flex flex-col items-center justify-center gap-2">
+                      <div className="w-24 h-24 rounded-full bg-[#21262D]" />
+                      <span className="text-xs text-gray-500 font-medium">載入雷達維度模型中...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {radarMode === 'situational' && situationsLoading && (
+                        <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-bold animate-pulse">
+                          同步情境進階數據中...
+                        </span>
+                      )}
+                      <svg viewBox="0 0 400 400" className="w-full max-w-[380px] h-auto select-none">
                     {[0.25, 0.5, 0.75, 1.0].map((scale) => {
                       const points = currentDims
                         .map((_, i) => {
@@ -1779,6 +1896,8 @@ function PlayerCardsContent() {
                       );
                     })}
                   </svg>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
