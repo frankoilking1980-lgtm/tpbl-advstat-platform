@@ -1434,10 +1434,10 @@ export default function TacticalPlaybookBoard({
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Left: Full-Court Horizontal SVG */}
         <div className="xl:col-span-8 flex flex-col gap-3">
-          <div className="relative bg-[#0B0F17] border border-[#30363D] rounded-2xl p-2 sm:p-4 overflow-hidden shadow-inner">
+          <div className="tpbl-tactical-svg-wrap relative bg-[#0B0F17] border border-[#30363D] rounded-2xl p-2 sm:p-4 overflow-hidden shadow-inner">
             <svg
               viewBox="0 0 840 450"
-              className="w-full h-auto select-none"
+              className="tpbl-tactical-svg w-full h-auto select-none"
               role="img"
               aria-label="TPBL Full-Court Tactical Board"
             >

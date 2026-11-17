@@ -1046,7 +1046,7 @@ export default function GamesReviewPage() {
   return (
     <div className="space-y-10">
       {/* 標題 */}
-      <div className="rounded-3xl border border-[#30363D] bg-[#161B22] p-6 sm:p-8 shadow-2xl space-y-2">
+      <div className="tpbl-hero-banner rounded-3xl border border-[#30363D] bg-[#161B22] p-6 sm:p-8 shadow-2xl space-y-2">
         <span className="px-3 py-1 rounded-full bg-[#FF9100]/15 text-[#FF9100] text-xs font-black tracking-wider border border-[#FF9100]/30">
           {selectedStage}
         </span>

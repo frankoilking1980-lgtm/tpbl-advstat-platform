@@ -1114,7 +1114,7 @@ function PlayerCardsContent() {
 
   return (
     <div className="space-y-10 pb-16">
-      <div className="relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#161B22] p-6 sm:p-8 shadow-2xl space-y-6">
+      <div className="tpbl-hero-banner relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#161B22] p-6 sm:p-8 shadow-2xl space-y-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
@@ -1126,7 +1126,7 @@ function PlayerCardsContent() {
             <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
               🃏 球員戰力卡與雙雄正面對決 (Head-to-Head)
             </h1>
-            <p className="text-gray-300 text-sm max-w-3xl leading-relaxed">
+            <p className="tpbl-hero-subtitle text-gray-300 text-sm max-w-3xl leading-relaxed">
               支援跨賽季、跨隊伍任意球員比對。點擊球員姓名可直接展開下方對應排行榜並自動定位。
             </p>
           </div>

@@ -35,3 +35,118 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #374151;
 }
+
+/* ==========================================================================
+   手機橫向小高度螢幕 (Landscape & max-height: 500px) 專屬空間優化
+   僅在橫向且可視高度 <= 500px 時生效，電腦桌機與手機直向 100% 維持原樣
+   ========================================================================== */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* 1. 取消頂部導航列 sticky 固定定位，避免橫向滑動時佔據可視高度，並將總高度壓縮在 48px 以內 */
+  .tpbl-navbar {
+    position: relative !important;
+    top: auto !important;
+  }
+
+  .tpbl-navbar-banner {
+    height: 24px !important;
+    min-height: 24px !important;
+  }
+
+  .tpbl-navbar-banner-inner {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .tpbl-navbar-logo-box {
+    width: 18px !important;
+    height: 18px !important;
+    padding: 1px !important;
+    border-radius: 4px !important;
+  }
+
+  .tpbl-navbar-title {
+    font-size: 13px !important;
+    line-height: 1 !important;
+  }
+
+  .tpbl-navbar-badge {
+    font-size: 9px !important;
+    padding: 1px 6px !important;
+    line-height: 1.1 !important;
+  }
+
+  .tpbl-navbar-subtitle {
+    display: none !important;
+  }
+
+  .tpbl-navbar-select {
+    padding: 1px 22px 1px 8px !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+    line-height: 1.2 !important;
+  }
+
+  .tpbl-navbar-nav {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .tpbl-navbar-link {
+    padding: 2px 8px !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+    line-height: 1.2 !important;
+  }
+
+  .tpbl-navbar-link svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  /* 2. 緊湊化主內容區與各頁 Hero Banner 垂直內距 (4px~8px) */
+  .tpbl-main-container {
+    padding-top: 6px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .tpbl-hero-wrapper {
+    padding-top: 0 !important;
+  }
+
+  .tpbl-hero-banner {
+    padding: 6px 12px !important;
+    border-radius: 12px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .tpbl-hero-banner h1 {
+    font-size: 1rem !important;
+    line-height: 1.25 !important;
+    margin-top: 2px !important;
+  }
+
+  .tpbl-hero-subtitle {
+    display: none !important;
+  }
+
+  .tpbl-hero-decor {
+    display: none !important;
+  }
+
+  /* 3. 橫向全場 SVG 戰術板容器貼合可視高度 (max-height: 82vh) */
+  .tpbl-tactical-svg-wrap {
+    padding: 4px !important;
+    max-height: 82vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .tpbl-tactical-svg {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 78vh !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}

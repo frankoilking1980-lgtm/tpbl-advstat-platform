@@ -79,12 +79,12 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#21262D] bg-[#0E1117] shadow-2xl">
+    <header className="tpbl-navbar sticky top-0 z-50 w-full border-b border-[#21262D] bg-[#0E1117] shadow-2xl">
       
       {/* ============================================================== */}
       {/* 1. 上層 Banner 專屬區塊 (專門容納吉祥物背景圖，不被任何按鈕遮擋) */}
       {/* ============================================================== */}
-      <div className="relative w-full h-16 sm:h-20 overflow-hidden border-b border-white/10 bg-black">
+      <div className="tpbl-navbar-banner relative w-full h-16 sm:h-20 overflow-hidden border-b border-white/10 bg-black">
         
         {/* 吉祥物滿版背景 */}
         <div className="absolute inset-0 pointer-events-none select-none z-0">
@@ -98,10 +98,10 @@ export default function Navbar() {
         </div>
 
         {/* 上層內容 (Logo 與 賽季選單) */}
-        <div className="relative z-10 max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+        <div className="tpbl-navbar-banner-inner relative z-10 max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
           {/* TPBL 官方 Logo */}
           <Link href="/" className="flex items-center space-x-3 group flex-shrink-0">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white p-1 flex items-center justify-center shadow-lg shadow-[#FF9100]/20 group-hover:scale-105 transition-transform duration-200 border border-[#30363D]">
+            <div className="tpbl-navbar-logo-box w-10 h-10 rounded-xl overflow-hidden bg-white p-1 flex items-center justify-center shadow-lg shadow-[#FF9100]/20 group-hover:scale-105 transition-transform duration-200 border border-[#30363D]">
               <img
                 src="/logos/tpbl.jpg"
                 alt="TPBL Logo"
@@ -110,12 +110,12 @@ export default function Navbar() {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-black text-xl tracking-tight text-white drop-shadow-md">TPBL</span>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#00E676]/20 text-[#00E676] border border-[#00E676]/40 backdrop-blur-sm">
+                <span className="tpbl-navbar-title font-black text-xl tracking-tight text-white drop-shadow-md">TPBL</span>
+                <span className="tpbl-navbar-badge text-xs font-bold px-2 py-0.5 rounded-full bg-[#00E676]/20 text-[#00E676] border border-[#00E676]/40 backdrop-blur-sm">
                   AdvStats Pro
                 </span>
               </div>
-              <p className="text-[11px] text-gray-300 font-medium hidden sm:block drop-shadow">
+              <p className="tpbl-navbar-subtitle text-[11px] text-gray-300 font-medium hidden sm:block drop-shadow">
                 臺灣職業籃球大聯盟・進階攻防數據平台
               </p>
             </div>
@@ -127,7 +127,7 @@ export default function Navbar() {
               <select
                 value={stage}
                 onChange={(e) => setStage(e.target.value)}
-                className="appearance-none bg-[#161B22]/90 backdrop-blur-md border border-[#30363D] hover:border-[#FF9100] text-gray-100 text-xs sm:text-sm font-bold py-2 pl-3.5 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF9100]/50 transition-all cursor-pointer shadow-xl"
+                className="tpbl-navbar-select appearance-none bg-[#161B22]/90 backdrop-blur-md border border-[#30363D] hover:border-[#FF9100] text-gray-100 text-xs sm:text-sm font-bold py-2 pl-3.5 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF9100]/50 transition-all cursor-pointer shadow-xl"
               >
                 {stagesList.map((s) => (
                   <option key={s.id} value={s.id} className="bg-[#161B22] text-white">
@@ -146,7 +146,7 @@ export default function Navbar() {
       {/* ============================================================== */}
       <div className="w-full bg-[#0E1117]/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto py-2.5 scrollbar-none">
+          <nav className="tpbl-navbar-nav flex items-center space-x-1 sm:space-x-2 overflow-x-auto py-2.5 scrollbar-none">
             {navItems.map((item) => {
               const active = isLinkActive(item);
               const IconComponent = item.icon;
@@ -154,7 +154,7 @@ export default function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${
+                  className={`tpbl-navbar-link flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 ${
                     active
                       ? 'bg-[#161B22] text-[#FF9100] border border-[#FF9100]/60 shadow-md shadow-[#FF9100]/10'
                       : 'text-gray-400 hover:text-white hover:bg-[#161B22]/60'

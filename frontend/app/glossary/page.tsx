@@ -173,7 +173,7 @@ export default function GlossaryPage() {
   return (
     <div className="space-y-10">
       {/* 標題與引言 */}
-      <div className="relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#161B22] p-6 sm:p-8 shadow-2xl">
+      <div className="tpbl-hero-banner relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#161B22] p-6 sm:p-8 shadow-2xl">
         <div className="max-w-3xl space-y-3">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#00E676]/15 border border-[#00E676]/30 text-[#00E676] text-xs font-black uppercase tracking-wider">
             <BookOpen className="w-4 h-4" />
@@ -182,7 +182,7 @@ export default function GlossaryPage() {
           <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
             📚 進階籃球數據辭典 (Analytics Glossary)
           </h1>
-          <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+          <p className="tpbl-hero-subtitle text-gray-300 text-sm sm:text-base leading-relaxed">
             現代籃球數據分析不再僅停留在傳統得分與命中率。本辭典詳解 Dean Oliver 四大要素、球隊對決模擬推演引擎、PBP With-Or-Without-You (WOWY) 淨影響力、球員卡三大進階分頁之運算邏輯與球探基準標準。
           </p>
         </div>

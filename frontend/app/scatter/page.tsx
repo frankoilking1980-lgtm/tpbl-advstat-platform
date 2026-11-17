@@ -388,7 +388,7 @@ export default function ScatterPage() {
   return (
     <div className="space-y-8">
       {/* 標題與說明 */}
-      <div className="relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#161B22] p-6 sm:p-8 shadow-2xl">
+      <div className="tpbl-hero-banner relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#161B22] p-6 sm:p-8 shadow-2xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
@@ -400,7 +400,7 @@ export default function ScatterPage() {
             <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
               🎯 主力球員效率象限圖 (USG% vs TS%)
             </h1>
-            <p className="text-gray-300 text-sm max-w-2xl leading-relaxed">
+            <p className="tpbl-hero-subtitle text-gray-300 text-sm max-w-2xl leading-relaxed">
               橫軸為球權使用率 (USG%)，縱軸為真實命中率 (TS%)，目前基準線採
               <span className="font-semibold text-[#00E676] mx-1">{baselineModeLabel}</span>
               (USG {baselineUsg.toFixed(1)}%, TS {baselineTs.toFixed(1)}%)。點擊圓圈可直接展開下方數據表並自動定位。

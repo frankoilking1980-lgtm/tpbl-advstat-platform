@@ -355,9 +355,9 @@ export default function WeeklyPreviewPage() {
 
   return (
     <div className="min-h-screen bg-[#0E1117] text-gray-100 pb-16">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
+      <main className="tpbl-main-container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
         {/* Top Bar: Featured Matchups Switcher */}
-        <section className="bg-[#161B22] border border-[#30363D] rounded-2xl p-4 sm:p-5 shadow-xl">
+        <section className="tpbl-hero-banner bg-[#161B22] border border-[#30363D] rounded-2xl p-4 sm:p-5 shadow-xl">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#FF9100]">

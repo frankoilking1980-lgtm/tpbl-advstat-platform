@@ -756,20 +756,20 @@ export default function MatchupPage() {
 
   return (
     <div className="min-h-screen bg-[#0E1117] text-gray-100 pb-16">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <main className="tpbl-main-container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* ============================================================== */}
         {/* 1. 頂部看板 (雙邊球隊 Logo + 四維對決數據與動態比分) */}
         {/* ============================================================== */}
-        <div className="bg-[#161B22] border border-[#30363D] rounded-2xl p-6 shadow-2xl mb-8">
+        <div className="tpbl-hero-banner bg-[#161B22] border border-[#30363D] rounded-2xl p-6 shadow-2xl mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#21262D]">
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#FF9100] animate-pulse"></span>
+                <span className="tpbl-hero-decor w-3 h-3 rounded-full bg-[#FF9100] animate-pulse"></span>
                 <h1 className="text-2xl font-black tracking-tight text-white">
                   球隊深度對決模擬器 (Head-to-Head Lineup Matchup)
                 </h1>
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="tpbl-hero-subtitle text-xs text-gray-400 mt-1">
                 自由調配 14 人名單，自動記憶各隊排陣，並引入立體防守壓制與四要素動態推演
               </p>
             </div>

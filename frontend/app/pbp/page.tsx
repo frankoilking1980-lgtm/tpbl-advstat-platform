@@ -587,9 +587,9 @@ function PBPContent() {
 
   return (
     <div className="space-y-10">
-      <div className="pt-10">
-        <div className="relative rounded-3xl border border-[#30363D] bg-gradient-to-r from-[#161B22] via-[#161B22] to-[#0E1117] p-6 sm:p-8 shadow-2xl">
-          <div className="absolute top-0 right-1/4 w-80 h-80 bg-[#FF9100]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="tpbl-hero-wrapper pt-10">
+        <div className="tpbl-hero-banner relative rounded-3xl border border-[#30363D] bg-gradient-to-r from-[#161B22] via-[#161B22] to-[#0E1117] p-6 sm:p-8 shadow-2xl">
+          <div className="tpbl-hero-decor absolute top-0 right-1/4 w-80 h-80 bg-[#FF9100]/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-20 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pr-0 lg:pr-72">
             <div className="space-y-2 max-w-xl">
@@ -602,7 +602,7 @@ function PBPContent() {
               <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight drop-shadow-md">
                 ⚡ 各隊 PBP 陣容與 On/Off 淨影響力
               </h1>
-              <p className="text-gray-300 text-sm leading-relaxed">
+              <p className="tpbl-hero-subtitle text-gray-300 text-sm leading-relaxed">
                 追蹤球員在場與下場的淨效率差距 (With-Or-Without-You, WOWY)、五人組合攻防淨評分、雙洋將搭檔化學效應矩陣與球隊完整進階攻守數據。
               </p>
             </div>
@@ -627,7 +627,7 @@ function PBPContent() {
           {currentMascot && (
             <div
               key={currentMascot.id}
-              className={`absolute pointer-events-none select-none z-30 flex items-end justify-center transition-all duration-300 ease-out animate-fadeIn ${currentMascot.containerClass}`}
+              className={`tpbl-hero-decor absolute pointer-events-none select-none z-30 flex items-end justify-center transition-all duration-300 ease-out animate-fadeIn ${currentMascot.containerClass}`}
             >
               <div
                 className="absolute inset-0 rounded-full blur-3xl opacity-75 -z-10"

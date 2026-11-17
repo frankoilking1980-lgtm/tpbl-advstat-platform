@@ -146,11 +146,11 @@ export default function TeamRatingsPage() {
   return (
     <div className="space-y-10">
       {/* 頂部賽季宣告橫幅 */}
-      <div className="relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#0E1117] p-6 sm:p-8 shadow-2xl">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#FF9100]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#00E676]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="tpbl-hero-banner relative overflow-hidden rounded-3xl border border-[#30363D] bg-[#0E1117] p-6 sm:p-8 shadow-2xl">
+        <div className="tpbl-hero-decor absolute top-0 right-0 w-80 h-80 bg-[#FF9100]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="tpbl-hero-decor absolute bottom-0 left-0 w-80 h-80 bg-[#00E676]/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="absolute right-0 top-0 bottom-0 w-full sm:w-4/5 lg:w-3/4 pointer-events-none select-none overflow-hidden z-0 flex justify-end">
+        <div className="tpbl-hero-decor absolute right-0 top-0 bottom-0 w-full sm:w-4/5 lg:w-3/4 pointer-events-none select-none overflow-hidden z-0 flex justify-end">
           <img
             src="/logos/logo_all.jpg"
             alt="TPBL Teams"
@@ -173,7 +173,7 @@ export default function TeamRatingsPage() {
             🏆 團隊四大要素與教練體系戰力評級
           </h1>
 
-          <p className="text-gray-200/65 text-sm sm:text-base leading-relaxed drop-shadow-sm font-medium">
+          <p className="tpbl-hero-subtitle text-gray-200/65 text-sm sm:text-base leading-relaxed drop-shadow-sm font-medium">
             整合 Dean Oliver 四大要素、百回合進攻效率 (ORtg)、防守效率 (DRtg) 與攻防淨評分 (Net Rating)，直觀透視球隊體系優劣勢。
           </p>
         </div>
