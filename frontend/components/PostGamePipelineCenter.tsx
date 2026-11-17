@@ -28,6 +28,9 @@ interface RecentGameItem {
   youtube_url?: string | null;
   q1_tipoff_seconds?: number | null;
   q3_tipoff_seconds?: number | null;
+  has_reviews?: boolean;
+  has_playbooks?: boolean;
+  playbook_count?: number;
 }
 
 interface WowyItem {
@@ -106,7 +109,7 @@ export default function PostGamePipelineCenter({
     if (!adminSecret) return;
     setLoadingGames(true);
     try {
-      const res = await fetch(`${apiBase}/api/admin/pipeline/recent-games?limit=10`, {
+      const res = await fetch(`${apiBase}/api/admin/pipeline/recent-games?limit=100`, {
         headers: { 'X-Admin-Secret': adminSecret },
       });
       if (res.ok) {
@@ -333,6 +336,19 @@ export default function PostGamePipelineCenter({
         return;
       }
       setPreviewData(data);
+      if (typeof data.pbp_playbooks_saved === 'number' && data.pbp_playbooks_saved > 0) {
+        setRecentGames((prev) =>
+          prev.map((g) =>
+            g.id === selectedGameId
+              ? {
+                  ...g,
+                  has_playbooks: true,
+                  playbook_count: data.pbp_playbooks_saved,
+                }
+              : g
+          )
+        );
+      }
     } catch (err: any) {
       setReviewError(err?.message || '生成短評預覽失敗');
     } finally {
@@ -374,6 +390,9 @@ export default function PostGamePipelineCenter({
       }
       setCommitSuccessMsg(
         `✅ 已原子性寫入資料庫 (${data.game_code})：更新 ${data.matchup_rows_written} 筆單場對位、${data.team_summary_updated} 隊全季總評、${data.players_updated} 位球員第 34/35 欄短評！`
+      );
+      setRecentGames((prev) =>
+        prev.map((g) => (g.id === previewData.game.id ? { ...g, has_reviews: true } : g))
       );
     } catch (err: any) {
       setReviewError(err?.message || '寫入資料庫失敗');
@@ -606,12 +625,18 @@ export default function PostGamePipelineCenter({
               className="w-full bg-[#161B22] border border-[#30363D] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF9100]"
             >
               {recentGames.length === 0 && <option value="">尚無已完賽場次</option>}
-              {recentGames.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.date} {g.game_code}｜{g.away_team} {g.away_score}:{g.home_score} {g.home_team}
-                  {g.schedule_id ? ` (ID:${g.schedule_id})` : ''}
-                </option>
-              ))}
+              {recentGames.map((g) => {
+                const statusTag = [
+                  g.has_reviews ? '已生成短評' : '未生成短評',
+                  g.has_playbooks ? `已入庫戰術(${g.playbook_count ?? 4})` : '未入庫戰術',
+                ].join('／');
+                return (
+                  <option key={g.id} value={g.id}>
+                    {g.date} {g.game_code}｜{g.away_team} {g.away_score}:{g.home_score} {g.home_team}
+                    {g.schedule_id ? ` (ID:${g.schedule_id})` : ''} [{statusTag}]
+                  </option>
+                );
+              })}
             </select>
           </div>
 

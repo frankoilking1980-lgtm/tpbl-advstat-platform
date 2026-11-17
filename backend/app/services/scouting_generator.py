@@ -347,6 +347,48 @@ def update_team_playbook_library(report: WeeklyPreviewReport) -> Path:
     return lib_backend
 
 
+def update_team_playbook_library_from_playbooks(playbooks: List[Dict[str, Any]]) -> Path:
+    """從賽後 PBP 戰術板萃取戰術並按球隊與攻/守分類去重累積至 team_playbook_library.json（每隊各分類最多保留最新 6 套）"""
+    from app.services.weekly_preview_archive import PREVIEW_FILE_LOCK, atomic_write_text
+
+    lib_backend = BACKEND_PREVIEWS_DIR / "team_playbook_library.json"
+    lib_frontend = FRONTEND_PREVIEWS_DIR / "team_playbook_library.json"
+
+    with PREVIEW_FILE_LOCK:
+        _ensure_preview_dirs()
+        if lib_backend.exists():
+            try:
+                library: Dict[str, Dict[str, List[Dict]]] = json.loads(lib_backend.read_text(encoding="utf-8"))
+            except Exception:
+                library = {}
+        else:
+            library = {}
+
+        for pb in playbooks:
+            if not isinstance(pb, dict):
+                continue
+            team_key = str(pb.get("teamName") or "").strip()
+            side = str(pb.get("side") or "").strip()
+            if not team_key or side not in {"offense", "defense"}:
+                continue
+
+            off_r = pb.get("offenseRoster") or []
+            def_r = pb.get("defenseRoster") or []
+            templated = _templatize_scenario_for_library(pb, off_r, def_r)
+            team_bucket = library.setdefault(team_key, {"offense": [], "defense": []})
+            existing = team_bucket.setdefault(side, [])
+
+            # 依 playName 去重，最新累積放最前面，最多保留 6 套
+            filtered = [item for item in existing if item.get("playName") != templated.get("playName")]
+            team_bucket[side] = [templated, *filtered][:6]
+
+        lib_json = json.dumps(library, ensure_ascii=False, indent=2)
+        atomic_write_text(lib_backend, lib_json)
+        if _has_frontend_dir():
+            atomic_write_text(lib_frontend, lib_json)
+    return lib_backend
+
+
 def save_weekly_preview(report: WeeklyPreviewReport) -> Path:
     """將週報同時落盤至 backend/data/weekly_previews 與 frontend/public/weekly_previews，並更新 7 隊戰術庫"""
     from app.services.weekly_preview_archive import (
@@ -1608,6 +1650,7 @@ def _load_and_validate_post_game_inputs(game_id: Union[int, str]) -> Dict[str, A
         "away_pre_filters": _compute_team_pre_filters(away_players),
         "home_pre_filters": _compute_team_pre_filters(home_players),
         "stats_data": stats_data,
+        "bcast_data": bcast_data,
         "pbp_game": pbp_game_entry,
         "pbp_teams": {
             away_team: (pbp_data.get("teams") or {}).get(away_team, {}),
@@ -1768,8 +1811,11 @@ def _normalize_player_reviews_order(
 def generate_post_game_reviews(
     game_id: Union[int, str],
     model_name: str = "gemini-2.5-flash",
+    youtube_url: Optional[str] = None,
+    q1_tipoff_seconds: Optional[int] = None,
+    q3_tipoff_seconds: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """檢查資料完整性 -> 呼叫 Gemini Structured Output -> 回傳標準化預覽結構與 Excel TSV"""
+    """檢查資料完整性 -> 呼叫 Gemini Structured Output -> 同步生成 PBP 戰術板與更新戰術庫 -> 回傳標準化預覽結構與 Excel TSV"""
     inputs = _load_and_validate_post_game_inputs(game_id)
 
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
@@ -1910,10 +1956,48 @@ def generate_post_game_reviews(
         home_team: parsed.home_team_summary.model_dump(),
     }
 
+    from app.services.playbook_generator import (
+        ensure_playbook_schema,
+        generate_and_save_pbp_playbooks,
+    )
+
+    clean_yt_url = youtube_url.strip() if isinstance(youtube_url, str) and youtube_url.strip() else None
+    effective_yt_url = clean_yt_url or (str(game.get("youtube_url") or "").strip() or None)
+    effective_q1_tipoff = q1_tipoff_seconds if q1_tipoff_seconds is not None else game.get("q1_tipoff_seconds")
+    effective_q3_tipoff = q3_tipoff_seconds if q3_tipoff_seconds is not None else game.get("q3_tipoff_seconds")
+
+    pbp_playbooks_saved = 0
+    with get_db_connection() as conn:
+        ensure_playbook_schema(conn)
+        if clean_yt_url is not None or q1_tipoff_seconds is not None or q3_tipoff_seconds is not None:
+            conn.execute(
+                "UPDATE games SET youtube_url = ?, q1_tipoff_seconds = ?, q3_tipoff_seconds = ? WHERE id = ?",
+                (effective_yt_url, effective_q1_tipoff, effective_q3_tipoff, game["id"]),
+            )
+            conn.commit()
+            game["youtube_url"] = effective_yt_url
+            game["q1_tipoff_seconds"] = effective_q1_tipoff
+            game["q3_tipoff_seconds"] = effective_q3_tipoff
+
+        saved_playbooks = generate_and_save_pbp_playbooks(
+            conn=conn,
+            game_row=game,
+            schedule_id=inputs["schedule_id"],
+            broadcasts_data=inputs["bcast_data"],
+            q1_tipoff_seconds=effective_q1_tipoff,
+            q3_tipoff_seconds=effective_q3_tipoff,
+            model_name=chosen_model,
+            youtube_url=effective_yt_url,
+        )
+        pbp_playbooks_saved = len(saved_playbooks)
+        if saved_playbooks:
+            update_team_playbook_library_from_playbooks(saved_playbooks)
+
     return {
         "status": "ok",
         "action": "preview",
         "model_used": chosen_model,
+        "pbp_playbooks_saved": pbp_playbooks_saved,
         "game": {
             "id": game["id"],
             "game_code": inputs["game_code"],
@@ -1924,6 +2008,9 @@ def generate_post_game_reviews(
             "home_team": home_team,
             "away_score": game["away_score"],
             "home_score": game["home_score"],
+            "youtube_url": effective_yt_url,
+            "q1_tipoff_seconds": effective_q1_tipoff,
+            "q3_tipoff_seconds": effective_q3_tipoff,
         },
         "away_wowy": [item.model_dump() for item in parsed.away_wowy],
         "home_wowy": [item.model_dump() for item in parsed.home_wowy],

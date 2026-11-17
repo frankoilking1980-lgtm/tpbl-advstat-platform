@@ -2651,7 +2651,7 @@ class GameYoutubeSyncRequest(BaseModel):
     q3_tipoff_seconds: Optional[int] = None
 
 
-def _get_recent_finished_games(limit: int = 10) -> List[Dict[str, Any]]:
+def _get_recent_finished_games(limit: Optional[int] = None) -> List[Dict[str, Any]]:
     from app.services.playbook_generator import ensure_playbook_schema
     from app.services.scouting_generator import resolve_schedule_id_for_game
 
@@ -2659,24 +2659,42 @@ def _get_recent_finished_games(limit: int = 10) -> List[Dict[str, Any]]:
     with db_session() as conn:
         ensure_playbook_schema(conn)
         cur = conn.cursor()
-        cur.execute(
-            """
+        sql = """
             SELECT id, schedule_id, stage, date, home_team, away_team, home_score, away_score, status,
                    youtube_url, q1_tipoff_seconds, q3_tipoff_seconds
             FROM games
             WHERE COALESCE(status, 'FINAL') LIKE 'FINAL%'
             ORDER BY date DESC, id DESC
-            LIMIT ?
-            """,
-            (limit,),
-        )
+        """
+        if limit is not None:
+            cur.execute(sql + " LIMIT ?", (limit,))
+        else:
+            cur.execute(sql)
         rows = [dict(r) for r in cur.fetchall()]
+
+        review_counts: Dict[tuple, int] = {}
+        try:
+            cur.execute("SELECT stage, game_code, COUNT(*) AS cnt FROM game_matchups GROUP BY stage, game_code")
+            for rr in cur.fetchall():
+                review_counts[(rr["stage"], str(rr["game_code"]).upper())] = int(rr["cnt"] or 0)
+        except Exception:
+            pass
+
+        playbook_counts: Dict[str, int] = {}
+        try:
+            cur.execute("SELECT source_game_id, COUNT(*) AS cnt FROM team_playbooks GROUP BY source_game_id")
+            for pr in cur.fetchall():
+                playbook_counts[str(pr["source_game_id"])] = int(pr["cnt"] or 0)
+        except Exception:
+            pass
 
     out: List[Dict[str, Any]] = []
     for r in rows:
         sid = resolve_schedule_id_for_game(r, pbp_data)
         gid_match = re.search(r"(G\d+)", str(r.get("id", "")), re.IGNORECASE)
         game_code = gid_match.group(1).upper() if gid_match else str(r.get("id", ""))
+        pb_cnt = playbook_counts.get(str(r["id"]), 0)
+        rev_cnt = review_counts.get((r["stage"], game_code), 0)
         out.append({
             "id": r["id"],
             "game_code": game_code,
@@ -2690,6 +2708,9 @@ def _get_recent_finished_games(limit: int = 10) -> List[Dict[str, Any]]:
             "youtube_url": r.get("youtube_url"),
             "q1_tipoff_seconds": r.get("q1_tipoff_seconds"),
             "q3_tipoff_seconds": r.get("q3_tipoff_seconds"),
+            "has_reviews": rev_cnt > 0,
+            "has_playbooks": pb_cnt > 0,
+            "playbook_count": pb_cnt,
         })
     return out
 
@@ -2795,7 +2816,7 @@ def _collect_missing_raw_files(recent_games: List[Dict[str, Any]], explicit_game
 
 @router.get("/admin/pipeline/recent-games", summary="取得資料庫最近已完賽賽事清單（供 AI 短評選單使用）")
 def admin_pipeline_recent_games(
-    limit: int = Query(10, ge=1, le=50),
+    limit: Optional[int] = Query(None, ge=1, le=1000),
     x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
 ):
     _require_admin_secret(x_admin_secret)
