@@ -60,8 +60,8 @@ body {
   .tpbl-navbar-logo-box {
     width: 18px !important;
     height: 18px !important;
-    padding: 1px !important;
-    border-radius: 4px !important;
+    padding: 0 !important;
+    border-radius: 9999px !important;
   }
 
   .tpbl-navbar-title {

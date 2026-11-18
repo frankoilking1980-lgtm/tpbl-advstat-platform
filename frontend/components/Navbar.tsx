@@ -101,11 +101,11 @@ export default function Navbar() {
         <div className="tpbl-navbar-banner-inner relative z-10 max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
           {/* TPBL 官方 Logo */}
           <Link href="/" className="flex items-center space-x-3 group flex-shrink-0">
-            <div className="tpbl-navbar-logo-box w-10 h-10 rounded-xl overflow-hidden bg-white p-1 flex items-center justify-center shadow-lg shadow-[#FF9100]/20 group-hover:scale-105 transition-transform duration-200 border border-[#30363D]">
+            <div className="tpbl-navbar-logo-box w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden flex items-center justify-center shadow-lg shadow-[#FF9100]/20 group-hover:scale-105 transition-transform duration-200 flex-shrink-0">
               <img
                 src="/logos/tpbl.jpg"
                 alt="TPBL Logo"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
             </div>
             <div>
