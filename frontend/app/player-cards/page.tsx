@@ -8,6 +8,8 @@ import { fetcher } from '@/lib/api';
 import { PlayerPortrait } from '@/components/PlayerPortrait';
 import PlayerSituationsTab, { PlayerSituationsData, SituationalPRBadges } from './PlayerSituationsTab';
 import PlayerSituationsLeaderboard, { LeaderboardMetric } from './PlayerSituationsLeaderboard';
+import PlayerCompareShareCardModal from '@/components/PlayerCompareShareCardModal';
+import PlayerSingleShareCardModal from '@/components/PlayerSingleShareCardModal';
 import {
   Users,
   Swords,
@@ -479,11 +481,14 @@ function PlayerCardsContent() {
   const [isSituationsOpen, setIsSituationsOpen] = useState(false);
   const [situationsMetric, setSituationsMetric] = useState<LeaderboardMetric>('q4');
   const [focusedSituationPlayer, setFocusedSituationPlayer] = useState<string | null>(null);
+  const [showCompareShareModal, setShowCompareShareModal] = useState(false);
+  const [showSingleShareModal, setShowSingleShareModal] = useState(false);
 
   const swrStaticOptions = { revalidateOnFocus: false, dedupingInterval: 60000 };
   const swrApiOptions = { revalidateOnFocus: false, dedupingInterval: 30000 };
 
   const { data: prData } = useSWR<PRStatsResponse>('/player_pr_stats.json', staticJsonFetcher, swrStaticOptions);
+  const { data: pbpLineupData } = useSWR<any>('/pbp_lineup_stats.json', staticJsonFetcher, swrStaticOptions);
   const { data: situationsRaw, isLoading: situationsLoading } = useSWR<SituationsResponse>(
     '/player_situations_stats.json',
     staticJsonFetcher,
@@ -1352,9 +1357,21 @@ function PlayerCardsContent() {
               <div className="w-full sm:w-72 p-6 2xl:p-7 rounded-3xl border border-[#FF9100]/40 bg-[#161B22] shadow-xl flex flex-col justify-between shrink-0">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
-                    <span className="px-3 py-1 rounded-xl bg-[#FF9100]/20 text-[#FF9100] font-black text-xs tracking-wider">
-                      球員 A
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-xl bg-[#FF9100]/20 text-[#FF9100] font-black text-xs tracking-wider">
+                        球員 A
+                      </span>
+                      {infoA && (
+                        <button
+                          type="button"
+                          onClick={() => setShowSingleShareModal(true)}
+                          className="px-2 py-1 rounded-lg bg-[#FF9100]/15 hover:bg-[#FF9100]/30 text-[#FF9100] border border-[#FF9100]/40 text-[10px] font-black transition-colors cursor-pointer"
+                          title="匯出球員 A 單人 4:5 圖卡"
+                        >
+                          📸 單人圖卡
+                        </button>
+                      )}
+                    </div>
                     <span className="text-sm font-mono text-gray-400 font-bold whitespace-nowrap">
                       #{infoA?.jersey_number || '0'} • {infoA?.position || '-'}
                     </span>
@@ -1437,11 +1454,21 @@ function PlayerCardsContent() {
               </div>
 
               <div className="w-full sm:w-[380px] 2xl:w-[420px] p-5 2xl:p-6 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center shrink-0 min-h-[460px]">
-                <div className="w-full flex items-center justify-between pb-2 border-b border-[#21262D]">
+                <div className="w-full flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#21262D]">
                   <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
                     <Target className="w-3.5 h-3.5 text-[#FF9100]" /> 雷達維度模型
                   </span>
-                  <div className="inline-flex p-0.5 rounded-lg bg-[#0E1117] border border-[#30363D]">
+                  <div className="flex items-center gap-2">
+                    {infoA && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSingleShareModal(true)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#FF9100] to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-md shadow-[#FF9100]/20 transition-all cursor-pointer"
+                      >
+                        <span>📸 生成球員圖卡</span>
+                      </button>
+                    )}
+                    <div className="inline-flex p-0.5 rounded-lg bg-[#0E1117] border border-[#30363D]">
                     <button
                       onClick={() => setRadarMode('traditional')}
                       className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
@@ -1462,6 +1489,7 @@ function PlayerCardsContent() {
                     >
                       情境高階
                     </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1782,11 +1810,21 @@ function PlayerCardsContent() {
               </div>
 
               <div className="flex-1 w-full max-w-xl p-6 sm:p-7 rounded-3xl border border-[#30363D] bg-[#161B22] shadow-2xl flex flex-col justify-between items-center min-h-[460px]">
-                <div className="w-full flex items-center justify-between pb-2 border-b border-[#21262D]">
+                <div className="w-full flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#21262D]">
                   <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
                     <Target className="w-3.5 h-3.5 text-[#FF9100]" /> 雷達維度模型
                   </span>
-                  <div className="inline-flex p-0.5 rounded-lg bg-[#0E1117] border border-[#30363D]">
+                  <div className="flex items-center gap-2">
+                    {infoA && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSingleShareModal(true)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#FF9100] to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-md shadow-[#FF9100]/20 transition-all cursor-pointer"
+                      >
+                        <span>📸 生成球員圖卡</span>
+                      </button>
+                    )}
+                    <div className="inline-flex p-0.5 rounded-lg bg-[#0E1117] border border-[#30363D]">
                     <button
                       onClick={() => setRadarMode('traditional')}
                       className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
@@ -1807,6 +1845,7 @@ function PlayerCardsContent() {
                     >
                       情境高階六維
                     </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1973,7 +2012,17 @@ function PlayerCardsContent() {
                   : `${playerAName} • 進階攻守數據細項`}
               </span>
             </h3>
-            {!playerB && (
+            {playerB ? (
+              infoA && infoB && (
+                <button
+                  type="button"
+                  onClick={() => setShowCompareShareModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF9100] to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-lg shadow-[#FF9100]/20 transition-all cursor-pointer"
+                >
+                  <span>📸 生成對決圖卡</span>
+                </button>
+              )
+            ) : (
               <span className="text-xs text-gray-400 font-mono">
                 {stageA}
               </span>
@@ -2281,6 +2330,138 @@ function PlayerCardsContent() {
           )}
         </div>
       </section>
+
+      {infoA && (() => {
+        const pbpStage = pbpLineupData?.meta?.stage || '2026-2027 例行賽';
+        let singleOnOffDiff: number | null = null;
+        if (stageA === pbpStage && pbpLineupData?.teams) {
+          const teamEntry = pbpLineupData.teams[infoA.team_name]?.all?.on_off_players;
+          if (Array.isArray(teamEntry)) {
+            const found = teamEntry.find(
+              (p: any) => String(p.player_name || '').trim() === playerAName.trim()
+            );
+            if (found && Number.isFinite(Number(found.diff_netrtg))) {
+              singleOnOffDiff = Number(found.diff_netrtg);
+            }
+          }
+        }
+        const poolLabelMap: Record<PRPoolMode, string> = {
+          all: '全聯盟',
+          local: '僅本土',
+          import: '僅洋將',
+        };
+        const activeRadarScores =
+          radarMode === 'traditional'
+            ? tradRadarA
+            : (sitRadarA as Record<string, number> | undefined);
+        return (
+          <PlayerSingleShareCardModal
+            isOpen={showSingleShareModal}
+            onClose={() => setShowSingleShareModal(false)}
+            radarMode={radarMode}
+            currentDims={currentDims}
+            radarScores={activeRadarScores}
+            poly={polyA}
+            player={{
+              name: playerAName,
+              stage: stageA,
+              team: infoA.team_name,
+              jersey: infoA.jersey_number,
+              position: infoA.position,
+              identity: infoA.identity,
+              gamesPlayed: Number(infoA.games_played || 0),
+              mpg: Number(infoA.mpg || 0),
+              ppg: Number(infoA.ppg || 0),
+              tsPct: Number(infoA.ts_pct || 0),
+              efgPct: Number(infoA.efg_pct || 0),
+              usgPct: Number(infoA.usg_pct || 0),
+              rpg: Number(infoA.rpg || 0),
+              apg: Number(infoA.apg || 0),
+              gmsc: Number(infoA.gmsc || 0),
+              plusMinus: Number(infoA.plus_minus || 0),
+              onOffDiff: singleOnOffDiff,
+              q4Ppg: sitPlayerA?.q4_crunch_time?.q4_ppg ?? cardA?.clutch_profile?.q4_stats?.ppg ?? null,
+              q4TsPct: sitPlayerA?.q4_crunch_time?.q4_ts_pct ?? cardA?.clutch_profile?.q4_stats?.ts_pct ?? null,
+              paintPct: sitPlayerA?.point_composition?.paint_pct ?? null,
+              threePct: sitPlayerA?.point_composition?.three_pt_pct ?? null,
+              midPct: sitPlayerA?.point_composition?.mid_range_pct ?? null,
+              ptsPr: cohortBadgesA.PTS,
+              tsPr: cohortBadgesA['TS%'],
+              gmscPr: cohortBadgesA.GmSC,
+              prPrefix,
+              poolLabel: poolLabelMap[prPoolMode],
+              archetypes: archetypesA.map((a) => ({ id: a.id, name: a.name, enName: a.enName })),
+            }}
+          />
+        );
+      })()}
+
+      {playerB && infoA && infoB && (() => {
+        const getOnOffDiff = (name: string, team: string, stage: string): number | null => {
+          const pbpStage = pbpLineupData?.meta?.stage || '2026-2027 例行賽';
+          if (stage !== pbpStage || !pbpLineupData?.teams) return null;
+          const teamEntry = pbpLineupData.teams[team]?.all?.on_off_players;
+          if (!Array.isArray(teamEntry)) return null;
+          const found = teamEntry.find((p: any) => String(p.player_name || '').trim() === name.trim());
+          return found && Number.isFinite(Number(found.diff_netrtg)) ? Number(found.diff_netrtg) : null;
+        };
+        const poolLabelMap: Record<PRPoolMode, string> = {
+          all: '全聯盟',
+          local: '僅本土',
+          import: '僅洋將',
+        };
+        return (
+          <PlayerCompareShareCardModal
+            isOpen={showCompareShareModal}
+            onClose={() => setShowCompareShareModal(false)}
+            radarMode={radarMode}
+            poolLabel={poolLabelMap[prPoolMode]}
+            currentDims={currentDims}
+            polyA={polyA}
+            polyB={polyB}
+            playerA={{
+              name: playerAName,
+              stage: stageA,
+              team: infoA.team_name,
+              jersey: infoA.jersey_number,
+              position: infoA.position,
+              identity: infoA.identity,
+              gamesPlayed: Number(infoA.games_played || 0),
+              mpg: Number(infoA.mpg || 0),
+              ppg: Number(infoA.ppg || 0),
+              tsPct: Number(infoA.ts_pct || 0),
+              usgPct: Number(infoA.usg_pct || 0),
+              onOffDiff: getOnOffDiff(playerAName, infoA.team_name, stageA),
+              plusMinus: Number(infoA.plus_minus || 0),
+              q4Ppg: sitPlayerA?.q4_crunch_time?.q4_ppg ?? cardA?.clutch_profile?.q4_stats?.ppg ?? null,
+              q4TsPct: sitPlayerA?.q4_crunch_time?.q4_ts_pct ?? cardA?.clutch_profile?.q4_stats?.ts_pct ?? null,
+              gmsc: Number(infoA.gmsc || 0),
+              rpg: Number(infoA.rpg || 0),
+              apg: Number(infoA.apg || 0),
+            }}
+            playerB={{
+              name: playerBName,
+              stage: stageB,
+              team: infoB.team_name,
+              jersey: infoB.jersey_number,
+              position: infoB.position,
+              identity: infoB.identity,
+              gamesPlayed: Number(infoB.games_played || 0),
+              mpg: Number(infoB.mpg || 0),
+              ppg: Number(infoB.ppg || 0),
+              tsPct: Number(infoB.ts_pct || 0),
+              usgPct: Number(infoB.usg_pct || 0),
+              onOffDiff: getOnOffDiff(playerBName, infoB.team_name, stageB),
+              plusMinus: Number(infoB.plus_minus || 0),
+              q4Ppg: sitPlayerB?.q4_crunch_time?.q4_ppg ?? cardB?.clutch_profile?.q4_stats?.ppg ?? null,
+              q4TsPct: sitPlayerB?.q4_crunch_time?.q4_ts_pct ?? cardB?.clutch_profile?.q4_stats?.ts_pct ?? null,
+              gmsc: Number(infoB.gmsc || 0),
+              rpg: Number(infoB.rpg || 0),
+              apg: Number(infoB.apg || 0),
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import {
   Info,
 } from 'lucide-react';
 import TacticalPlaybookBoard, { TacticalScenario } from '@/components/TacticalPlaybookBoard';
+import WeeklyPreviewShareCardModal from '@/components/WeeklyPreviewShareCardModal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -230,6 +231,7 @@ export default function WeeklyPreviewPage() {
   const [currentBundle, setCurrentBundle] = useState<WeeklyPreviewBundle | null>(null);
   const [selectedArchiveId, setSelectedArchiveId] = useState<number | null>(null);
   const [isFallbackToArchived, setIsFallbackToArchived] = useState<boolean>(false);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
   const loadIndex = async (targetArchiveId?: number | null) => {
     setLoadingList(true);
@@ -598,8 +600,17 @@ export default function WeeklyPreviewPage() {
                   <span>·</span>
                   <span>{report.season_stage}</span>
                 </div>
-                <div className="text-[11px] font-mono text-gray-500">
-                  Engine: {report.model_used}
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-mono text-gray-500">
+                    Engine: {report.model_used}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowShareModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#FF9100] to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-lg shadow-[#FF9100]/20 transition-all cursor-pointer"
+                  >
+                    <span>📸 生成賽前預測圖卡</span>
+                  </button>
                 </div>
               </div>
 
@@ -884,6 +895,13 @@ export default function WeeklyPreviewPage() {
               </div>
             </section>
           </>
+        )}
+        {report && (
+          <WeeklyPreviewShareCardModal
+            isOpen={showShareModal}
+            onClose={() => setShowShareModal(false)}
+            report={report}
+          />
         )}
       </main>
     </div>
