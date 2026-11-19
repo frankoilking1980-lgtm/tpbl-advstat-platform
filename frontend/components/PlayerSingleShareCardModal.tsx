@@ -93,7 +93,7 @@ export default function PlayerSingleShareCardModal({
         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
         : 'bg-[#21262D] text-gray-300 border-[#30363D]';
     return (
-      <span className={`px-2 py-0.5 rounded-md border text-[10px] font-mono font-black ${tone}`}>
+      <span className={`px-2 py-0.5 rounded-md border text-[10px] font-mono font-black whitespace-nowrap shrink-0 ${tone}`}>
         {label}
       </span>
     );
@@ -226,7 +226,7 @@ export default function PlayerSingleShareCardModal({
                     聯盟 GMSC 評級
                   </span>
                   {player.gmscPr !== undefined && Number.isFinite(player.gmscPr) ? (
-                    <span className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border border-amber-500/50 text-xs font-mono font-black">
+                    <span className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border border-amber-500/50 text-xs font-mono font-black whitespace-nowrap shrink-0">
                       {player.prPrefix || ''}PR {Math.round(player.gmscPr)}
                     </span>
                   ) : (
@@ -319,7 +319,7 @@ export default function PlayerSingleShareCardModal({
                     {radarMode === 'traditional' ? '傳統基礎六維雷達' : '情境高階六維雷達'}
                   </span>
                   <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap shrink-0 ${
                       radarMode === 'situational'
                         ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
                         : 'bg-[#FF9100]/20 text-[#FF9100] border border-[#FF9100]/40'
@@ -443,12 +443,12 @@ export default function PlayerSingleShareCardModal({
                     </div>
                   </div>
 
-                  <div className="bg-[#0E1117] border border-[#21262D] rounded-xl p-3.5 flex items-center justify-between">
+                  <div className="bg-[#0E1117] border border-[#21262D] rounded-xl p-3.5 flex items-center justify-between gap-2">
                     <div>
                       <div className="text-xs font-bold text-gray-300">
                         {player.onOffDiff !== null ? 'On/Off 淨效率差' : '場均正負值 (+/-)'}
                       </div>
-                      <div className="text-[11px] text-gray-500 font-mono">
+                      <div className="text-[11px] text-gray-500 font-mono whitespace-nowrap">
                         {player.onOffDiff !== null ? 'PBP WOWY 場上場下差值' : 'Box Score Plus/Minus'}
                       </div>
                     </div>
@@ -456,7 +456,7 @@ export default function PlayerSingleShareCardModal({
                       const val = player.onOffDiff !== null ? player.onOffDiff : player.plusMinus;
                       return (
                         <span
-                          className={`text-xl font-black font-mono ${
+                          className={`text-xl font-black font-mono shrink-0 ${
                             val >= 0 ? 'text-[#00E676]' : 'text-red-400'
                           }`}
                         >
@@ -466,15 +466,15 @@ export default function PlayerSingleShareCardModal({
                     })()}
                   </div>
 
-                  <div className="bg-[#0E1117] border border-[#21262D] rounded-xl p-3.5 flex items-center justify-between">
+                  <div className="bg-[#0E1117] border border-[#21262D] rounded-xl p-3.5 flex items-center justify-between gap-2">
                     <div>
                       <div className="text-xs font-bold text-gray-300">末節 Clutch (Q4 表現)</div>
-                      <div className="text-[11px] text-gray-500 font-mono">
+                      <div className="text-[11px] text-gray-500 font-mono whitespace-nowrap">
                         第四節場均得分 · 真實命中率
                       </div>
                     </div>
                     {player.q4Ppg !== null ? (
-                      <div className="text-right font-mono">
+                      <div className="text-right font-mono shrink-0">
                         <span className="text-base font-black text-purple-300">
                           {player.q4Ppg.toFixed(1)} 分
                         </span>
