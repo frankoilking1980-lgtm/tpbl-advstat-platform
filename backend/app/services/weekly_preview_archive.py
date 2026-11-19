@@ -111,6 +111,7 @@ def _collect_files_snapshot() -> Dict[str, Any]:
             "subheadline": data.get("subheadline", ""),
             "home_win_prob": data.get("home_win_prob", 50),
             "away_win_prob": data.get("away_win_prob", 50),
+            "style_matchup_tags": data.get("style_matchup_tags", []),
             "generated_at": data.get("generated_at", ""),
             "model_used": data.get("model_used", ""),
         })

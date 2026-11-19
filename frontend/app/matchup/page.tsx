@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { HelpCircle, History, Loader2, RotateCcw, Camera } from 'lucide-react';
 import MatchupShareCardModal from '@/components/MatchupShareCardModal';
 import TacticalPlaybookBoard from '@/components/TacticalPlaybookBoard';
+import {
+  computeStyleMatchupAdjustment,
+  LeagueStyleAverage,
+  TeamStyleMetrics,
+} from '@/lib/styleMatchup';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -139,6 +144,8 @@ const calcNextForeignCounts = (
 export default function MatchupPage() {
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
+  const [teamStyleMap, setTeamStyleMap] = useState<Record<string, TeamStyleMetrics>>({});
+  const [leagueStyleAvg, setLeagueStyleAvg] = useState<LeagueStyleAverage | null>(null);
 
   const [teamA, setTeamA] = useState<string>('新北國王');
   const [teamB, setTeamB] = useState<string>('臺北台新戰神');
@@ -230,6 +237,26 @@ export default function MatchupPage() {
           })
           .catch(() => setLoading(false));
       });
+
+    fetch(`${API_BASE}/api/teams/summary?stage=${encodeURIComponent('2026-2027 例行賽')}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((teamsData: TeamStyleMetrics[]) => {
+        if (!Array.isArray(teamsData) || teamsData.length === 0) return;
+        const map: Record<string, TeamStyleMetrics> = {};
+        teamsData.forEach((t) => {
+          if (t.team_name) map[t.team_name] = t;
+        });
+        setTeamStyleMap(map);
+        const first = teamsData[0];
+        if (first && first.league_avg_opp_3pt_pct !== undefined) {
+          setLeagueStyleAvg({
+            opp_3pt_pct: Number(first.league_avg_opp_3pt_pct),
+            orb_pct: Number(first.league_avg_orb_pct ?? 27.9),
+            dreb_pct: Number(first.league_avg_dreb_pct ?? 69.2),
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // 標準常規排陣
@@ -567,10 +594,18 @@ export default function MatchupPage() {
   const aggA = useMemo(() => calculateTeamAggregate(startersA, benchA), [startersA, benchA]);
   const aggB = useMemo(() => calculateTeamAggregate(startersB, benchB), [startersB, benchB]);
 
-  // 4. 全方位立體防守對位演算法
+  // 4. 全方位立體防守對位演算法（含 Possession Squeeze 與 Four Factors 風格相剋係數）
   const matchupResults = useMemo(() => {
+    const styleMatchup = computeStyleMatchupAdjustment(
+      teamA,
+      teamB,
+      teamStyleMap[teamA],
+      teamStyleMap[teamB],
+      leagueStyleAvg
+    );
+
     if (aggA.rawStarterPts === 0 || aggB.rawStarterPts === 0) {
-      return { netDiff: 0, scoreA: 95, scoreB: 95, winRateA: 50, winRateB: 50 };
+      return { netDiff: 0, scoreA: 95, scoreB: 95, winRateA: 50, winRateB: 50, styleMatchup };
     }
 
     const usgFactorA = aggA.totalUsg > 105 ? Math.pow(105 / aggA.totalUsg, 0.85) : 1.0;
@@ -616,7 +651,8 @@ export default function MatchupPage() {
       pureDefenseFactor +
       transitionNetFromDefense +
       benchFactor +
-      effectiveScoringDiff;
+      effectiveScoringDiff +
+      styleMatchup.net_style_adj;
 
     let netRatingDiff = 0;
     if (Math.abs(rawNetDiff) <= 3.5) {
@@ -639,8 +675,9 @@ export default function MatchupPage() {
       scoreB,
       winRateA: winRate,
       winRateB: 100 - winRate,
+      styleMatchup,
     };
-  }, [aggA, aggB]);
+  }, [aggA, aggB, teamA, teamB, teamStyleMap, leagueStyleAvg]);
 
   useEffect(() => {
     isSelectingRef.current = false;
@@ -930,6 +967,87 @@ export default function MatchupPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* ============================================================== */}
+        {/* 1.5 關鍵判讀 / 戰術分析（Four Factors 風格相剋 + 球權排擠） */}
+        {/* ============================================================== */}
+        <div className="bg-[#161B22] border border-[#30363D] rounded-2xl p-5 shadow-xl mb-8">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#21262D]">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              <h2 className="text-base font-black text-white">關鍵判讀 / 戰術分析</h2>
+              <span className="text-[11px] text-gray-400">Four Factors 風格相剋係數 × 球權排擠修正</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {matchupResults.styleMatchup.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-2.5 py-1 rounded-full bg-[#FF9100]/15 border border-[#FF9100]/40 text-xs font-bold text-[#FF9100]"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-xs sm:text-sm text-gray-200 mt-3 leading-relaxed">
+            {matchupResults.styleMatchup.summary}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs">
+            <div className="bg-[#0E1117] border border-[#21262D] rounded-xl p-3">
+              <div className="text-[11px] text-gray-400 font-semibold mb-1">外線風格相剋 (ΔeFG)</div>
+              <div className="flex items-center justify-between font-mono font-bold">
+                <span className={matchupResults.styleMatchup.home_delta_efg >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                  {teamA.slice(-2)} {matchupResults.styleMatchup.home_delta_efg >= 0 ? '+' : ''}
+                  {matchupResults.styleMatchup.home_delta_efg.toFixed(2)}
+                </span>
+                <span className="text-gray-500">vs</span>
+                <span className={matchupResults.styleMatchup.away_delta_efg >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                  {teamB.slice(-2)} {matchupResults.styleMatchup.away_delta_efg >= 0 ? '+' : ''}
+                  {matchupResults.styleMatchup.away_delta_efg.toFixed(2)}
+                </span>
+              </div>
+              <div className="text-[10px] text-gray-500 mt-1">
+                依據進攻方 3PAr 與防守方限制對手 3PT% 落差計算
+              </div>
+            </div>
+
+            <div className="bg-[#0E1117] border border-[#21262D] rounded-xl p-3">
+              <div className="text-[11px] text-gray-400 font-semibold mb-1">籃板衝搶相剋 (ΔOREB)</div>
+              <div className="flex items-center justify-between font-mono font-bold">
+                <span className={matchupResults.styleMatchup.home_delta_oreb >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                  {teamA.slice(-2)} {matchupResults.styleMatchup.home_delta_oreb >= 0 ? '+' : ''}
+                  {matchupResults.styleMatchup.home_delta_oreb.toFixed(2)}
+                </span>
+                <span className="text-gray-500">vs</span>
+                <span className={matchupResults.styleMatchup.away_delta_oreb >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                  {teamB.slice(-2)} {matchupResults.styleMatchup.away_delta_oreb >= 0 ? '+' : ''}
+                  {matchupResults.styleMatchup.away_delta_oreb.toFixed(2)}
+                </span>
+              </div>
+              <div className="text-[10px] text-gray-500 mt-1">
+                依據進攻方 OREB% 與防守方 DREB% 落差計算
+              </div>
+            </div>
+
+            <div className="bg-[#0E1117] border border-[#21262D] rounded-xl p-3">
+              <div className="text-[11px] text-gray-400 font-semibold mb-1">球權排擠 & 總風格淨修正</div>
+              <div className="flex items-center justify-between font-mono font-bold">
+                <span className={matchupResults.styleMatchup.net_style_adj >= 0 ? 'text-[#FF9100]' : 'text-[#2979FF]'}>
+                  風格淨差 {matchupResults.styleMatchup.net_style_adj >= 0 ? '+' : ''}
+                  {matchupResults.styleMatchup.net_style_adj.toFixed(2)}
+                </span>
+                <span className="text-[11px] text-amber-300">
+                  {aggA.totalUsg > 115 || aggB.totalUsg > 115 ? '⚠ 觸發球權排擠' : '✓ 球權分配均衡'}
+                </span>
+              </div>
+              <div className="text-[10px] text-gray-500 mt-1">
+                {teamA.slice(-2)} USG {aggA.totalUsg.toFixed(1)}% · {teamB.slice(-2)} USG {aggB.totalUsg.toFixed(1)}%
+              </div>
+            </div>
           </div>
         </div>
 

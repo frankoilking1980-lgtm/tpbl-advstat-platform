@@ -953,6 +953,8 @@ def get_stages():
 # =====================================================================
 @router.get("/teams/summary", summary="取得指定賽季階段 7 隊四要素戰力榜")
 def get_team_summary(stage: str = Query("2026-2027 例行賽", description="賽季階段名稱")):
+    from app.services.style_matchup import get_stage_team_style_metrics
+
     with db_session() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -967,11 +969,17 @@ def get_team_summary(stage: str = Query("2026-2027 例行賽", description="賽�
             ORDER BY net_rtg DESC, ortg DESC
         """, (stage,))
         rows = cur.fetchall()
+        style_data = get_stage_team_style_metrics(conn, stage)
+
+    style_teams = style_data.get("teams", {})
+    league_avg = style_data.get("league_avg", {})
 
     teams = []
     for idx, r in enumerate(rows):
+        t_name = r["team_name"]
+        t_style = style_teams.get(t_name, {})
         teams.append({
-            "team_name": r["team_name"],
+            "team_name": t_name,
             "games_played": int(r["games_played"] or 0),
             "record": r["record"] or "0勝-0敗",
             "total_time": 0,
@@ -988,6 +996,11 @@ def get_team_summary(stage: str = Query("2026-2027 例行賽", description="賽�
             "tov_pct": normalize_pct(r["tov_pct"], 0.0, scale_to_100=True),
             "orb_pct": normalize_pct(r["orb_pct"], 0.0, scale_to_100=True),
             "ftr": normalize_pct(r["ftr"], 0.0, scale_to_100=True),
+            "opp_3pt_pct": t_style.get("opp_3pt_pct", league_avg.get("opp_3pt_pct", 34.0)),
+            "dreb_pct": t_style.get("dreb_pct", league_avg.get("dreb_pct", 70.0)),
+            "league_avg_opp_3pt_pct": league_avg.get("opp_3pt_pct", 34.0),
+            "league_avg_orb_pct": league_avg.get("orb_pct", 28.0),
+            "league_avg_dreb_pct": league_avg.get("dreb_pct", 70.0),
             "high_usg_core": r["high_usg_core"] or "",
             "high_eff_finisher": r["high_eff_finisher"] or "",
             "system_notes": r["system_notes"] or "",

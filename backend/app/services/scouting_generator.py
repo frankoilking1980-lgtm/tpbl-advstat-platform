@@ -204,6 +204,8 @@ class WeeklyPreviewReport(BaseModel):
     subheadline: str
     home_win_prob: float
     away_win_prob: float
+    style_matchup_tags: List[str] = Field(default_factory=list)
+    style_matchup_detail: Optional[Dict[str, Any]] = None
     home_summary: TeamMetricsSummary
     away_summary: TeamMetricsSummary
     home_roster: List[str]
@@ -258,6 +260,7 @@ def _rebuild_index_files() -> None:
                     "subheadline": data.get("subheadline", ""),
                     "home_win_prob": data.get("home_win_prob", 50),
                     "away_win_prob": data.get("away_win_prob", 50),
+                    "style_matchup_tags": data.get("style_matchup_tags", []),
                     "generated_at": data.get("generated_at", ""),
                     "model_used": data.get("model_used", ""),
                 })
@@ -770,16 +773,43 @@ def get_excel_injuries(home_team: str, away_team: str) -> Dict:
 
 
 def build_matchup_context(home_team: str, away_team: str, extra_notes: Optional[str] = None) -> Tuple[str, Dict]:
+    from app.services.style_matchup import compute_style_matchup_adjustment, get_stage_team_style_metrics
+
     conn = get_db_connection()
     try:
         stage = _pick_latest_stage(conn)
         home_ctx = _fetch_team_context(conn, stage, home_team)
         away_ctx = _fetch_team_context(conn, stage, away_team)
         excel_inj = get_excel_injuries(home_team, away_team)
+
+        style_data = get_stage_team_style_metrics(conn, stage)
+        style_teams = style_data.get("teams", {})
+        league_avg = style_data.get("league_avg", {})
+        home_style_stats = style_teams.get(home_team) or {
+            "three_par": home_ctx["summary"].get("three_par", 40.0),
+            "orb_pct": home_ctx["summary"].get("orb_pct", 28.0),
+            "opp_3pt_pct": league_avg.get("opp_3pt_pct", 34.0),
+            "dreb_pct": league_avg.get("dreb_pct", 70.0),
+        }
+        away_style_stats = style_teams.get(away_team) or {
+            "three_par": away_ctx["summary"].get("three_par", 40.0),
+            "orb_pct": away_ctx["summary"].get("orb_pct", 28.0),
+            "opp_3pt_pct": league_avg.get("opp_3pt_pct", 34.0),
+            "dreb_pct": league_avg.get("dreb_pct", 70.0),
+        }
+        style_matchup = compute_style_matchup_adjustment(
+            home_team_name=home_team,
+            away_team_name=away_team,
+            home_stats=home_style_stats,
+            away_stats=away_style_stats,
+            league_avg=league_avg,
+        )
+
         context = {
             "season_stage": stage,
             "home_team": home_ctx,
             "away_team": away_ctx,
+            "style_matchup": style_matchup,
             "confirmed_injuries": {
                 "home_injuries": excel_inj["home_injuries"],
                 "away_injuries": excel_inj["away_injuries"],
@@ -1071,6 +1101,22 @@ def _finalize_and_save_report(
     normalized_dict = _normalize_gemini_payload(raw_dict, context)
     parsed = GeminiReportPayload.model_validate(normalized_dict)
 
+    # 套用 Four Factors 風格相剋係數微調預估得分與勝率
+    style_matchup = context.get("style_matchup") or {}
+    home_total_adj = float(style_matchup.get("home_total_adj", 0.0) or 0.0)
+    away_total_adj = float(style_matchup.get("away_total_adj", 0.0) or 0.0)
+    net_style_adj = float(style_matchup.get("net_style_adj", 0.0) or 0.0)
+
+    adjusted_home_prob = round(max(5.0, min(95.0, parsed.home_win_prob + net_style_adj * 2.5)), 1)
+    adjusted_away_prob = round(100.0 - adjusted_home_prob, 1)
+
+    xf = parsed.x_factors_and_prediction.model_copy(
+        update={
+            "predicted_home_score": max(60, int(round(parsed.x_factors_and_prediction.predicted_home_score + home_total_adj * 0.8))),
+            "predicted_away_score": max(60, int(round(parsed.x_factors_and_prediction.predicted_away_score + away_total_adj * 0.8))),
+        }
+    )
+
     slug = make_preview_slug(game_date, home_team, away_team)
     report = WeeklyPreviewReport(
         slug=slug,
@@ -1083,8 +1129,10 @@ def _finalize_and_save_report(
         model_used=model_used,
         headline=parsed.headline,
         subheadline=parsed.subheadline,
-        home_win_prob=round(parsed.home_win_prob, 1),
-        away_win_prob=round(100.0 - parsed.home_win_prob, 1),
+        home_win_prob=adjusted_home_prob,
+        away_win_prob=adjusted_away_prob,
+        style_matchup_tags=list(style_matchup.get("tags") or []),
+        style_matchup_detail=style_matchup or None,
         home_summary=TeamMetricsSummary(**context["home_team"]["summary"]),
         away_summary=TeamMetricsSummary(**context["away_team"]["summary"]),
         home_roster=parsed.home_roster,
@@ -1092,7 +1140,7 @@ def _finalize_and_save_report(
         situation_analysis=parsed.situation_analysis,
         key_matchups=parsed.key_matchups,
         tactical_scenarios=parsed.tactical_scenarios,
-        x_factors_and_prediction=parsed.x_factors_and_prediction,
+        x_factors_and_prediction=xf,
     )
 
     save_weekly_preview(report)
@@ -1152,6 +1200,7 @@ def generate_weekly_preview(
     extra_notes: Optional[str] = None,
     model_name: Optional[str] = None,
 ) -> WeeklyPreviewReport:
+    import time
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("伺服器尚未設定 GEMINI_API_KEY 環境變數，無法呼叫 Gemini 生成報告。")
@@ -1166,19 +1215,50 @@ def generate_weekly_preview(
         game_label=game_label,
         extra_notes=extra_notes,
     )
-    client = genai.Client(api_key=api_key)
+    # 明確放寬 HTTP SDK Timeout 至 120 秒 (120,000 ms)，避免長結構化 JSON 生成時提前斷線
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=120_000),
+    )
     chosen_model = (model_name or "").strip().replace("models/", "")
     model_name = chosen_model if chosen_model else select_best_gemini_model(client)
 
-    response = client.models.generate_content(
-        model=model_name,
-        contents=user_prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            response_mime_type="application/json",
-            temperature=0.4,
-        ),
-    )
+    config_kwargs: Dict[str, Any] = {
+        "system_instruction": system_instruction,
+        "response_mime_type": "application/json",
+        "temperature": 0.4,
+    }
+    lower_model = model_name.lower()
+    if any(tok in lower_model for tok in ("2.5", "3.", "thinking")):
+        config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
+
+    gen_config = types.GenerateContentConfig(**config_kwargs)
+
+    last_err: Optional[Exception] = None
+    response = None
+    transient_tokens = ("remoteprotocol", "server disconnected", "disconnect", "timeout", "connection")
+    for attempt in range(2):
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=user_prompt,
+                config=gen_config,
+            )
+            break
+        except Exception as exc:
+            last_err = exc
+            err_sig = f"{type(exc).__name__} {exc}".lower()
+            if attempt == 0 and any(tok in err_sig for tok in transient_tokens):
+                time.sleep(1.5)
+                continue
+            if any(tok in err_sig for tok in transient_tokens):
+                raise RuntimeError(
+                    f"Gemini API 連線逾時或伺服器無回應斷線（模型 {model_name}，已自動重試 1 次仍失敗）：{exc}"
+                ) from exc
+            raise
+
+    if response is None and last_err is not None:
+        raise RuntimeError(f"Gemini API 請求失敗：{last_err}") from last_err
 
     return _finalize_and_save_report(
         raw_text=response.text,

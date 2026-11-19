@@ -92,6 +92,7 @@ interface PreviewIndexItem {
   subheadline: string;
   home_win_prob: number;
   away_win_prob: number;
+  style_matchup_tags?: string[];
   generated_at: string;
   model_used: string;
 }
@@ -145,6 +146,17 @@ interface WeeklyPreviewReport {
   subheadline: string;
   home_win_prob: number;
   away_win_prob: number;
+  style_matchup_tags?: string[];
+  style_matchup_detail?: {
+    primary_tag?: string;
+    tags?: string[];
+    summary?: string;
+    home_delta_efg?: number;
+    away_delta_efg?: number;
+    home_delta_oreb?: number;
+    away_delta_oreb?: number;
+    net_style_adj?: number;
+  } | null;
   home_summary: TeamMetricsSummary;
   away_summary: TeamMetricsSummary;
   home_roster: string[];
@@ -856,6 +868,24 @@ export default function WeeklyPreviewPage() {
                 <div className="inline-block px-3 py-1 rounded-full bg-[#161B22] border border-[#30363D] text-xs font-bold text-[#00E676]">
                   預估分差區間：{report.x_factors_and_prediction.predicted_margin_range}
                 </div>
+                {report.style_matchup_tags && report.style_matchup_tags.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    {report.style_matchup_tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2.5 py-1 rounded-full bg-[#FF9100]/15 border border-[#FF9100]/40 text-xs font-bold text-[#FF9100]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {report.style_matchup_detail?.summary && (
+                  <div className="text-xs text-amber-200/90 max-w-2xl mx-auto bg-[#161B22]/80 border border-[#30363D] rounded-lg px-3 py-2">
+                    <span className="font-bold text-[#FF9100]">Four Factors 風格相剋：</span>
+                    {report.style_matchup_detail.summary}
+                  </div>
+                )}
                 <p className="text-sm text-gray-200 max-w-3xl mx-auto leading-relaxed pt-1">
                   {report.x_factors_and_prediction.fun_prediction_verdict}
                 </p>
