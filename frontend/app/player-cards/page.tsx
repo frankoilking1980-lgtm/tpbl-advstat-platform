@@ -286,13 +286,49 @@ const staticJsonFetcher = async (url: string) => {
   return res.json();
 };
 
-type PRPoolMode = 'all' | 'local' | 'import';
+type PRPoolMode = 'all' | 'local' | 'import' | 'G' | 'F' | 'C';
+
+const PR_POOL_PREFIX_MAP: Record<PRPoolMode, string> = {
+  all: '聯盟',
+  local: '本土',
+  import: '洋將',
+  G: '後衛',
+  F: '鋒線',
+  C: '中鋒',
+};
+
+const PR_POOL_DISPLAY_MAP: Record<PRPoolMode, string> = {
+  all: '全聯盟',
+  local: '僅本土',
+  import: '僅洋將',
+  G: '後衛組 (G)',
+  F: '鋒線組 (F)',
+  C: '中鋒組 (C)',
+};
 
 const isImportIdentity = (identity?: string, identityGroup?: string): boolean => {
   if (identityGroup === 'import') return true;
   if (identityGroup === 'local') return false;
   const ident = (identity || '').trim();
   return ident.includes('洋將') || ident.includes('外籍生') || ident.includes('歸化');
+};
+
+const matchesPositionPool = (position: string | undefined, mode: PRPoolMode): boolean => {
+  const pos = (position || '').toUpperCase();
+  if (mode === 'G') return pos.includes('G');
+  if (mode === 'F') return pos.includes('F');
+  if (mode === 'C') return pos.includes('C');
+  return true;
+};
+
+const matchesPoolMode = (
+  p: { identity?: string; identity_group?: string; position?: string },
+  mode: PRPoolMode
+): boolean => {
+  if (mode === 'local') return !isImportIdentity(p.identity, p.identity_group);
+  if (mode === 'import') return isImportIdentity(p.identity, p.identity_group);
+  if (mode === 'G' || mode === 'F' || mode === 'C') return matchesPositionPool(p.position, mode);
+  return true;
 };
 
 const normalizePctVal = (val: unknown): number => {
@@ -316,11 +352,7 @@ const getQualifiedCohortPool = (
     }
   }
 
-  const byIdentity = list.filter((p) => {
-    if (poolMode === 'local') return !isImportIdentity(p.identity, p.identity_group);
-    if (poolMode === 'import') return isImportIdentity(p.identity, p.identity_group);
-    return true;
-  });
+  const byIdentity = list.filter((p) => matchesPoolMode(p, poolMode));
 
   const qualified = byIdentity.filter((p) => {
     const gp = Number(p.games_played || 0);
@@ -510,12 +542,6 @@ function PlayerCardsContent() {
     fetcher,
     swrApiOptions
   );
-
-  const matchesPoolMode = (p: PlayerInfo, mode: PRPoolMode): boolean => {
-    if (mode === 'local') return !isImportIdentity(p.identity, p.identity_group);
-    if (mode === 'import') return isImportIdentity(p.identity, p.identity_group);
-    return true;
-  };
 
   const teamsA = useMemo(() => {
     if (!listA) return [];
@@ -724,7 +750,7 @@ function PlayerCardsContent() {
 
   const prPoolA = useMemo(() => getQualifiedCohortPool(listA, prPoolMode), [listA, prPoolMode]);
   const prPoolB = useMemo(() => getQualifiedCohortPool(listB, prPoolMode), [listB, prPoolMode]);
-  const prPrefix = prPoolMode === 'local' ? '本土' : prPoolMode === 'import' ? '洋將' : '聯盟';
+  const prPrefix = PR_POOL_PREFIX_MAP[prPoolMode];
 
   const buildCohortPRMap = (
     info: PlayerInfo | undefined,
@@ -1101,16 +1127,20 @@ function PlayerCardsContent() {
   ];
 
   const identityMapForLeaderboard = useMemo(() => {
-    const map: Record<string, { identity?: string; identity_group?: string }> = {};
+    const map: Record<string, { identity?: string; identity_group?: string; position?: string }> = {};
     if (listA) {
       for (const p of listA) {
-        map[p.player_name.trim()] = { identity: p.identity, identity_group: p.identity_group };
+        map[p.player_name.trim()] = {
+          identity: p.identity,
+          identity_group: p.identity_group,
+          position: p.position,
+        };
       }
     }
     if (prData?.players) {
       for (const [name, item] of Object.entries(prData.players)) {
         if (!map[name.trim()]) {
-          map[name.trim()] = { identity: item.identity };
+          map[name.trim()] = { identity: item.identity, position: item.position };
         }
       }
     }
@@ -1134,8 +1164,15 @@ function PlayerCardsContent() {
     if (prPoolMode === 'all') return rawList;
 
     const filtered = rawList.filter((p) => {
-      const isImp = isImportIdentity(p.identity);
-      return prPoolMode === 'import' ? isImp : !isImp;
+      const meta = identityMapForLeaderboard[String(p.name || '').trim()];
+      return matchesPoolMode(
+        {
+          identity: p.identity ?? meta?.identity,
+          identity_group: meta?.identity_group,
+          position: p.position ?? meta?.position,
+        },
+        prPoolMode
+      );
     });
 
     return filtered.map((p, idx) => {
@@ -1158,7 +1195,7 @@ function PlayerCardsContent() {
         },
       };
     });
-  }, [prData, prPoolMode]);
+  }, [prData, prPoolMode, identityMapForLeaderboard]);
 
   return (
     <div className="space-y-10 pb-16">
@@ -1183,11 +1220,14 @@ function PlayerCardsContent() {
             <span className="text-[11px] font-bold text-gray-400">
               PR 百分位與雷達基準池
             </span>
-            <div className="inline-flex p-1 rounded-xl bg-[#0E1117] border border-[#30363D] shadow-md">
+            <div className="inline-flex flex-wrap p-1 rounded-xl bg-[#0E1117] border border-[#30363D] shadow-md gap-0.5">
               {[
                 { value: 'all' as const, label: '全聯盟' },
                 { value: 'local' as const, label: '僅本土' },
                 { value: 'import' as const, label: '僅洋將' },
+                { value: 'G' as const, label: '後衛組 (G)' },
+                { value: 'F' as const, label: '鋒線組 (F)' },
+                { value: 'C' as const, label: '中鋒組 (C)' },
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -1350,7 +1390,7 @@ function PlayerCardsContent() {
                   overridePr={cohortBadgesA.GmSC}
                   overrideMetricLabel="GMSC"
                   overridePrefix={prPrefix}
-                  poolLabel={prPoolMode === 'local' ? '本土輪替球員' : prPoolMode === 'import' ? '洋將輪替球員' : '聯盟輪替球員'}
+                  poolLabel={`${prPrefix}輪替球員`}
                 />
               </div>
 
@@ -1702,7 +1742,7 @@ function PlayerCardsContent() {
                   overridePr={cohortBadgesB.GmSC}
                   overrideMetricLabel="GMSC"
                   overridePrefix={prPrefix}
-                  poolLabel={prPoolMode === 'local' ? '本土輪替球員' : prPoolMode === 'import' ? '洋將輪替球員' : '聯盟輪替球員'}
+                  poolLabel={`${prPrefix}輪替球員`}
                 />
               </div>
             </div>
@@ -1718,7 +1758,7 @@ function PlayerCardsContent() {
                   overridePr={cohortBadgesA.GmSC}
                   overrideMetricLabel="GMSC"
                   overridePrefix={prPrefix}
-                  poolLabel={prPoolMode === 'local' ? '本土輪替球員' : prPoolMode === 'import' ? '洋將輪替球員' : '聯盟輪替球員'}
+                  poolLabel={`${prPrefix}輪替球員`}
                 />
               </div>
 
@@ -2228,7 +2268,7 @@ function PlayerCardsContent() {
               <span className="w-3 h-3 rounded-full bg-[#FF9100] animate-pulse" />
               <div className="flex items-center flex-wrap gap-2">
                 <h3 className="text-lg font-black text-white tracking-wide">
-                  {prPoolMode === 'all' ? '全聯盟' : prPoolMode === 'local' ? '全聯盟本土' : '全聯盟洋將'}輪替球員 PR 排名總表 (Box Score)
+                  {prPoolMode === 'all' ? '全聯盟' : `全聯盟${prPrefix}`}輪替球員 PR 排名總表 (Box Score)
                 </h3>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/10 text-gray-300 font-mono font-normal">
                   {rankingList.length > 0 ? `${rankingList.length} 位達標球員` : '載入中...'}
@@ -2345,11 +2385,7 @@ function PlayerCardsContent() {
             }
           }
         }
-        const poolLabelMap: Record<PRPoolMode, string> = {
-          all: '全聯盟',
-          local: '僅本土',
-          import: '僅洋將',
-        };
+        const poolLabelMap = PR_POOL_DISPLAY_MAP;
         const activeRadarScores =
           radarMode === 'traditional'
             ? tradRadarA
@@ -2389,7 +2425,7 @@ function PlayerCardsContent() {
               tsPr: cohortBadgesA['TS%'],
               gmscPr: cohortBadgesA.GmSC,
               prPrefix,
-              poolLabel: poolLabelMap[prPoolMode],
+              poolLabel: PR_POOL_DISPLAY_MAP[prPoolMode],
               archetypes: archetypesA.map((a) => ({ id: a.id, name: a.name, enName: a.enName })),
             }}
           />
@@ -2405,11 +2441,7 @@ function PlayerCardsContent() {
           const found = teamEntry.find((p: any) => String(p.player_name || '').trim() === name.trim());
           return found && Number.isFinite(Number(found.diff_netrtg)) ? Number(found.diff_netrtg) : null;
         };
-        const poolLabelMap: Record<PRPoolMode, string> = {
-          all: '全聯盟',
-          local: '僅本土',
-          import: '僅洋將',
-        };
+        const poolLabelMap = PR_POOL_DISPLAY_MAP;
         return (
           <PlayerCompareShareCardModal
             isOpen={showCompareShareModal}

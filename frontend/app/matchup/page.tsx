@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { HelpCircle, History, RotateCcw, Camera } from 'lucide-react';
+import { HelpCircle, History, Loader2, RotateCcw, Camera } from 'lucide-react';
 import MatchupShareCardModal from '@/components/MatchupShareCardModal';
 import TacticalPlaybookBoard from '@/components/TacticalPlaybookBoard';
 
@@ -151,6 +151,12 @@ export default function MatchupPage() {
 
   // 社群 1:1 戰報卡彈窗開關狀態
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // 上一場陣容載入中狀態鎖
+  const [loadingLastLineup, setLoadingLastLineup] = useState<{ A: boolean; B: boolean }>({
+    A: false,
+    B: false,
+  });
 
   // 各隊陣容記憶池與非同步請求序號保護
   const savedLineupsRef = useRef<Record<string, TeamLineupState>>({});
@@ -334,10 +340,12 @@ export default function MatchupPage() {
     }
   }, [allPlayers]);
 
-  // 一鍵精準帶入上一場真實先發名單（含請求競態隔離與 TPBL 洋將/去重校驗）
+  // 一鍵精準帶入上一場真實先發名單（含請求競態隔離、Loading 狀態鎖與 TPBL 洋將/去重校驗）
   const handleLoadLastGameRoster = async (side: 'A' | 'B') => {
+    if (loadingLastLineup[side]) return;
     const targetTeam = side === 'A' ? latestTeamARef.current : latestTeamBRef.current;
     const reqId = ++rosterReqSeqRef.current[side];
+    setLoadingLastLineup((prev) => ({ ...prev, [side]: true }));
     try {
       const res = await fetch(`${API_BASE}/api/teams/last-lineup?team=${encodeURIComponent(targetTeam)}`);
       if (res.ok) {
@@ -386,18 +394,27 @@ export default function MatchupPage() {
           return;
         }
       }
+
+      const currentTeam = side === 'A' ? latestTeamARef.current : latestTeamBRef.current;
+      if (reqId === rosterReqSeqRef.current[side] && currentTeam === targetTeam) {
+        alert(`未能抓取到【${targetTeam}】上一場的先發標記，請確認後端 routes.py 是否已更新。`);
+      }
     } catch (e) {
       console.warn('API 呼叫失敗，請確保後端已重啟', e);
-    }
-
-    const currentTeam = side === 'A' ? latestTeamARef.current : latestTeamBRef.current;
-    if (reqId === rosterReqSeqRef.current[side] && currentTeam === targetTeam) {
-      alert(`未能抓取到【${targetTeam}】上一場的先發標記，請確認後端 routes.py 是否已更新。`);
+      const currentTeam = side === 'A' ? latestTeamARef.current : latestTeamBRef.current;
+      if (reqId === rosterReqSeqRef.current[side] && currentTeam === targetTeam) {
+        alert(`未能抓取到【${targetTeam}】上一場的先發標記，請確認後端 routes.py 是否已更新。`);
+      }
+    } finally {
+      if (reqId === rosterReqSeqRef.current[side]) {
+        setLoadingLastLineup((prev) => ({ ...prev, [side]: false }));
+      }
     }
   };
 
   const handleResetLineup = (side: 'A' | 'B') => {
     rosterReqSeqRef.current[side] += 1;
+    setLoadingLastLineup((prev) => ({ ...prev, [side]: false }));
     const targetTeam = side === 'A' ? teamA : teamB;
     const def = generateDefaultLineup(targetTeam, allPlayers);
     if (side === 'A') {
@@ -931,12 +948,17 @@ export default function MatchupPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  disabled={loadingLastLineup.A}
                   onClick={() => handleLoadLastGameRoster('A')}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#21262D] hover:bg-[#30363D] text-[11px] font-bold text-amber-300 border border-[#30363D] transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#21262D] hover:bg-[#30363D] disabled:opacity-60 disabled:cursor-not-allowed text-[11px] font-bold text-amber-300 border border-[#30363D] transition-colors"
                   title="帶入官方標註真實先發名單"
                 >
-                  <History className="w-3.5 h-3.5 text-amber-400" />
-                  <span>上一場陣容</span>
+                  {loadingLastLineup.A ? (
+                    <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                  ) : (
+                    <History className="w-3.5 h-3.5 text-amber-400" />
+                  )}
+                  <span>{loadingLastLineup.A ? '載入上一場陣容中...' : '上一場陣容'}</span>
                 </button>
 
                 <button
@@ -1093,12 +1115,17 @@ export default function MatchupPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  disabled={loadingLastLineup.B}
                   onClick={() => handleLoadLastGameRoster('B')}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#21262D] hover:bg-[#30363D] text-[11px] font-bold text-sky-300 border border-[#30363D] transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#21262D] hover:bg-[#30363D] disabled:opacity-60 disabled:cursor-not-allowed text-[11px] font-bold text-sky-300 border border-[#30363D] transition-colors"
                   title="帶入官方標註真實先發名單"
                 >
-                  <History className="w-3.5 h-3.5 text-sky-400" />
-                  <span>上一場陣容</span>
+                  {loadingLastLineup.B ? (
+                    <Loader2 className="w-3.5 h-3.5 text-sky-400 animate-spin" />
+                  ) : (
+                    <History className="w-3.5 h-3.5 text-sky-400" />
+                  )}
+                  <span>{loadingLastLineup.B ? '載入上一場陣容中...' : '上一場陣容'}</span>
                 </button>
 
                 <button
@@ -1249,14 +1276,48 @@ export default function MatchupPage() {
         {/* 2.5 互動式 SVG 半場戰術板（即時連動主客隊與 1～5 號位先發名單） */}
         {/* ============================================================== */}
         <div className="mb-8">
-          <TacticalPlaybookBoard
-            mode="matchup"
-            hideCaseClips={true}
-            homeTeam={teamA}
-            awayTeam={teamB}
-            homeRoster={startersA.map((p, idx) => p?.player_name || `${teamA.slice(-2)}${idx + 1}號位`)}
-            awayRoster={startersB.map((p, idx) => p?.player_name || `${teamB.slice(-2)}${idx + 1}號位`)}
-          />
+          {(() => {
+            const POSITION_WEIGHT: Record<string, number> = {
+              PG: 0,
+              G: 1,
+              SG: 2,
+              'G/F': 3,
+              SF: 4,
+              F: 5,
+              PF: 6,
+              'PF/C': 7,
+              C: 8,
+            };
+            const getPositionWeight = (pos?: string | null): number => {
+              if (!pos) return 99;
+              const norm = pos.trim().toUpperCase().replace(/\s+/g, '');
+              if (norm in POSITION_WEIGHT) return POSITION_WEIGHT[norm];
+              if (norm.includes('PG')) return 0.5;
+              if (norm.includes('SG') && norm.includes('SF')) return 3;
+              if (norm.includes('SF') && norm.includes('PF')) return 5;
+              if (norm.includes('F/C') || norm.includes('C/PF')) return 7;
+              if (norm.includes('G')) return 1;
+              if (norm.includes('F')) return 5;
+              if (norm.includes('C')) return 8;
+              return 99;
+            };
+            const sortStartersByPosition = (starters: (Player | null)[], teamName: string): string[] =>
+              starters
+                .map((p, idx) => ({ p, idx, weight: p ? getPositionWeight(p.position) : 999 }))
+                .sort((a, b) => (a.weight !== b.weight ? a.weight - b.weight : a.idx - b.idx))
+                .map((item, idx) => item.p?.player_name || `${teamName.slice(-2)}${idx + 1}號位`);
+
+            return (
+              <TacticalPlaybookBoard
+                mode="matchup"
+                hideCaseClips={true}
+                homeTeam={teamA}
+                awayTeam={teamB}
+                homeRoster={sortStartersByPosition(startersA, teamA)}
+                awayRoster={sortStartersByPosition(startersB, teamB)}
+              />
+            );
+          })()}
         </div>
 
         {/* ============================================================== */}

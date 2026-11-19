@@ -62,10 +62,33 @@ interface Props {
   metric?: LeaderboardMetric;
   setMetric?: (metric: LeaderboardMetric) => void;
   focusedPlayer?: string | null;
-  poolMode?: 'all' | 'local' | 'import';
-  identityMap?: Record<string, { identity?: string; identity_group?: string }>;
+  poolMode?: 'all' | 'local' | 'import' | 'G' | 'F' | 'C';
+  identityMap?: Record<string, { identity?: string; identity_group?: string; position?: string }>;
   stage?: string;
 }
+
+const POOL_MODE_LABELS: Record<'all' | 'local' | 'import' | 'G' | 'F' | 'C', string> = {
+  all: '全聯盟',
+  local: '僅本土',
+  import: '僅洋將',
+  G: '後衛組 (G)',
+  F: '鋒線組 (F)',
+  C: '中鋒組 (C)',
+};
+
+const matchesLeaderboardPoolMode = (
+  meta: { identity?: string; identity_group?: string; position?: string } | undefined,
+  poolMode: 'all' | 'local' | 'import' | 'G' | 'F' | 'C'
+): boolean => {
+  if (poolMode === 'all' || !meta) return true;
+  if (poolMode === 'local') return !isImportByIdentity(meta.identity, meta.identity_group);
+  if (poolMode === 'import') return isImportByIdentity(meta.identity, meta.identity_group);
+  const pos = (meta.position || '').toUpperCase();
+  if (poolMode === 'G') return pos.includes('G');
+  if (poolMode === 'F') return pos.includes('F');
+  if (poolMode === 'C') return pos.includes('C');
+  return true;
+};
 
 const isImportByIdentity = (identity?: string, identityGroup?: string): boolean => {
   if (identityGroup === 'import') return true;
@@ -106,10 +129,12 @@ export default function PlayerSituationsLeaderboard({
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000, keepPreviousData: true }
   );
-  const clutchRows = useMemo(
-    () => (Array.isArray(clutchData?.players) ? clutchData!.players : []),
-    [clutchData]
-  );
+  const clutchRows = useMemo(() => {
+    const raw = Array.isArray(clutchData?.players) ? clutchData!.players : [];
+    if (poolMode !== 'G' && poolMode !== 'F' && poolMode !== 'C') return raw;
+    if (!identityMap) return raw;
+    return raw.filter((row) => matchesLeaderboardPoolMode(identityMap[row.player_name.trim()], poolMode));
+  }, [clutchData, poolMode, identityMap]);
 
   const rankedList = useMemo(() => {
     if (!situationsData || typeof situationsData !== 'object') return [];
@@ -126,8 +151,7 @@ export default function PlayerSituationsLeaderboard({
       if (poolMode === 'all' || !identityMap) return true;
       const meta = identityMap[p.name.trim()];
       if (!meta) return true;
-      const isImp = isImportByIdentity(meta.identity, meta.identity_group);
-      return poolMode === 'import' ? isImp : !isImp;
+      return matchesLeaderboardPoolMode(meta, poolMode);
     });
 
     return filtered.sort((a, b) => {
@@ -166,7 +190,7 @@ export default function PlayerSituationsLeaderboard({
             </span>
             {poolMode !== 'all' && (
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#00E676]/15 text-[#00E676] font-mono border border-[#00E676]/30">
-                {poolMode === 'local' ? '僅本土池' : '僅洋將池'}
+                {POOL_MODE_LABELS[poolMode]}池
               </span>
             )}
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-800/80 text-gray-400 font-mono border border-gray-700/60">
@@ -266,7 +290,7 @@ export default function PlayerSituationsLeaderboard({
                 <div className="text-[11px] text-orange-300/90 font-mono">
                   篩選門檻：出賽 ≥ {minGames} 場 且 場均時間 ≥ {toFiniteNum(clutchData?.min_mpg, 10)} 分（避免極端值洗榜）
                   ・共 {toFiniteNum(clutchData?.total, 0)} 位達標
-                  {poolMode !== 'all' && `・${poolMode === 'local' ? '僅本土' : '僅洋將'}`}
+                  {poolMode !== 'all' && `・${POOL_MODE_LABELS[poolMode]}`}
                 </div>
                 <div className="flex gap-1.5">
                   {([

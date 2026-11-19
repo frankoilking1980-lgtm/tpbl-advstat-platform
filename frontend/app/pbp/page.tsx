@@ -331,6 +331,9 @@ function PBPContent() {
   // 排除垃圾時間開關
   const [excludeGarbageTime, setExcludeGarbageTime] = useState<boolean>(false);
 
+  // 隱藏低樣本球員開關（預設勾選：場均 >= 8 分鐘）
+  const [hideLowSample, setHideLowSample] = useState<boolean>(true);
+
   // 排序狀態
   const [sortField, setSortField] = useState<string>('pts');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -423,7 +426,11 @@ function PBPContent() {
   const sortedPlayerList = useMemo(() => {
     if (!rawPlayerList || rawPlayerList.length === 0) return [];
 
-    return [...rawPlayerList].sort((a, b) => {
+    const filteredList = hideLowSample
+      ? rawPlayerList.filter((p) => parseSeconds(p.seconds, p.minutes) >= 8 * 60)
+      : rawPlayerList;
+
+    return [...filteredList].sort((a, b) => {
       let valA: number = 0;
       let valB: number = 0;
 
@@ -554,7 +561,7 @@ function PBPContent() {
 
       return sortDirection === 'asc' ? valA - valB : valB - valA;
     });
-  }, [rawPlayerList, sortField, sortDirection, authoritativeUsgMap]);
+  }, [rawPlayerList, hideLowSample, sortField, sortDirection, authoritativeUsgMap]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -973,30 +980,42 @@ function PBPContent() {
                   </span>
                 </div>
 
-                <div className="inline-flex p-1 rounded-2xl bg-[#0E1117] border border-[#30363D] shadow-md shrink-0">
-                  <button
-                    onClick={() => setBoxScoreView('traditional')}
-                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      boxScoreView === 'traditional'
-                        ? 'bg-amber-500 text-black shadow-sm font-black'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <BarChart3 className="w-3.5 h-3.5" />
-                    <span>基礎數據 (Traditional)</span>
-                  </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0E1117] border border-[#30363D] text-xs font-bold text-gray-300 hover:text-white cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={hideLowSample}
+                      onChange={(e) => setHideLowSample(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-[#30363D] bg-[#161B22] accent-[#00E676] cursor-pointer"
+                    />
+                    <span>過濾低樣本（場均 ≥ 8 分鐘）</span>
+                  </label>
 
-                  <button
-                    onClick={() => setBoxScoreView('advanced')}
-                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      boxScoreView === 'advanced'
-                        ? 'bg-[#00E676] text-black shadow-sm font-black'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                    <span>進階數據 (Advanced)</span>
-                  </button>
+                  <div className="inline-flex p-1 rounded-2xl bg-[#0E1117] border border-[#30363D] shadow-md shrink-0">
+                    <button
+                      onClick={() => setBoxScoreView('traditional')}
+                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        boxScoreView === 'traditional'
+                          ? 'bg-amber-500 text-black shadow-sm font-black'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      <span>基礎數據 (Traditional)</span>
+                    </button>
+
+                    <button
+                      onClick={() => setBoxScoreView('advanced')}
+                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        boxScoreView === 'advanced'
+                          ? 'bg-[#00E676] text-black shadow-sm font-black'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <span>進階數據 (Advanced)</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
