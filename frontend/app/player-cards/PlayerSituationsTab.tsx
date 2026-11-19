@@ -397,7 +397,7 @@ export default function PlayerSituationsTab({ activeTab, data, prBadges, prPrefi
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>⚡ 關鍵最後 5 分鐘 (Clutch)</span>
+              <span>關鍵最後 5 分鐘 (Clutch)</span>
             </button>
 
             <button
@@ -451,7 +451,7 @@ export default function PlayerSituationsTab({ activeTab, data, prBadges, prPrefi
                 <div className="mt-1 flex items-center justify-center">
                   <InlinePRTag pr={prBadges?.clutch_ts} prefix={prPrefix} />
                 </div>
-                <div className="text-[10px] text-gray-500 mt-0.5 font-mono">常態: {q4Ts}%</div>
+                <div className="text-[10px] text-gray-500 mt-0.5 font-mono">Q4 非關鍵: {q4Ts}%</div>
               </div>
 
               <div className="bg-[#0e1117] p-3 rounded-lg border border-amber-500/30 text-center">

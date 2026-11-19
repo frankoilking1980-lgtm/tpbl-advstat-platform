@@ -208,6 +208,18 @@ const smartPctStr = (v: unknown, d = 1): string => {
   return `${finalVal.toFixed(d)}%`;
 };
 
+const get3PArPct = (p: TeamBoxPlayer): number | null => {
+  let val: number | null = null;
+  if (isNum(p.threepar)) {
+    val = Math.abs(p.threepar) <= 1 ? p.threepar * 100 : p.threepar;
+  } else if (isNum(p.tpa) && isNum(p.fga) && p.fga > 0) {
+    const totalFga = Math.max(p.fga, p.tpa);
+    val = (p.tpa / totalFga) * 100;
+  }
+  if (val === null || !Number.isFinite(val)) return null;
+  return Math.min(100, Math.max(0, val));
+};
+
 const signed = (n: number | null | undefined, d = 1): string => {
   if (!isNum(n)) return '-';
   return `${n > 0 ? '+' : ''}${n.toFixed(d)}`;
@@ -508,8 +520,8 @@ function PBPContent() {
           valB = b.ts_pct ?? 0;
           break;
         case 'threepar':
-          valA = a.threepar ?? (a.fga ? (a.tpa || 0) / a.fga : 0);
-          valB = b.threepar ?? (b.fga ? (b.tpa || 0) / b.fga : 0);
+          valA = get3PArPct(a) ?? 0;
+          valB = get3PArPct(b) ?? 0;
           break;
         case 'ftr':
           valA = a.ftr ?? (a.fga ? (a.fta || 0) / a.fga : 0);
@@ -1055,7 +1067,7 @@ function PBPContent() {
                           const calcTpPct = p.tp_pct ?? (isNum(p.tpm) && isNum(p.tpa) && p.tpa > 0 ? (p.tpm / p.tpa) * 100 : null);
                           const calcFtPct = p.ft_pct ?? (isNum(p.ftm) && isNum(p.fta) && p.fta > 0 ? (p.ftm / p.fta) * 100 : null);
 
-                          const calc3PAr = p.threepar ?? (isNum(p.tpa) && isNum(p.fga) && p.fga > 0 ? (p.tpa / p.fga) * 100 : null);
+                          const calc3PAr = get3PArPct(p);
                           const calcFTr = p.ftr ?? (isNum(p.fta) && isNum(p.fga) && p.fga > 0 ? (p.fta / p.fga) * 100 : null);
 
                           const cleanName = (p.player_name || '').trim();
@@ -1127,7 +1139,7 @@ function PBPContent() {
                                 <>
                                   <td className="py-3 px-3 text-right text-[#FF9100]">{smartPctStr(p.efg_pct)}</td>
                                   <td className="py-3 px-3 text-right text-[#FF9100]">{smartPctStr(p.ts_pct)}</td>
-                                  <td className="py-3 px-3 text-right text-gray-300">{smartPctStr(calc3PAr)}</td>
+                                  <td className="py-3 px-3 text-right text-gray-300">{isNum(calc3PAr) ? `${calc3PAr.toFixed(1)}%` : '-'}</td>
                                   <td className="py-3 px-3 text-right text-gray-300">{smartPctStr(calcFTr)}</td>
                                   <td className="py-3 px-3 text-right text-[#00E676] font-bold">{smartPctStr(finalUsg)}</td>
                                   <td className="py-3 px-3 text-right text-[#00E676] font-bold">{fx(p.gmsc)}</td>
