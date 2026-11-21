@@ -13,6 +13,7 @@ TPBL 賽後全自動數據精算一鍵入口腳本
 """
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,7 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BACKEND_DIR.parent
+STAGING_DIR = BACKEND_DIR / "data" / "staging"
 
 CALC_STEPS = [
     ("calculate_pbp_lineups.py", "真實 PBP On/Off 與五人陣容"),
@@ -45,11 +47,11 @@ def sync_season_data_to_backend():
     print(f"📦 已同步 {copied} 個 season2026 檔案至 {dst_dir}")
 
 
-def run_step(label: str, cmd: list[str]):
+def run_step(label: str, cmd: list[str], env: dict | None = None):
     print(f"\n▶ {label}")
     print(f"  指令: {' '.join(cmd)}")
     t0 = time.time()
-    subprocess.run(cmd, cwd=str(BACKEND_DIR), check=True)
+    subprocess.run(cmd, cwd=str(BACKEND_DIR), env=env, check=True)
     print(f"✅ 完成 ({time.time() - t0:.2f}s)")
 
 
@@ -59,14 +61,21 @@ def main():
     parser.add_argument("-g", "--g_num", type=int, default=1, help="起始場次編號 Gxx（預設 1）")
     parser.add_argument("-c", "--count", type=int, default=1, help="連續抓取場數（預設 1）")
     parser.add_argument("--skip-existing", action="store_true", help="抓取時跳過已存在的 stats / broadcasts 檔案")
+    parser.add_argument("--staging", action="store_true", help="預覽暫存模式：讀取 staging DB 並輸出 JSON 至 backend/data/staging/")
     args = parser.parse_args()
 
     total_t0 = time.time()
     print("=" * 64)
-    print("🏀 TPBL 賽後全自動數據精算一鍵流程啟動")
+    print("🏀 TPBL 賽後全自動數據精算一鍵流程啟動" + (" [STAGING 預覽模式]" if args.staging else ""))
     print("=" * 64)
 
-    sync_season_data_to_backend()
+    sub_env = os.environ.copy()
+    if args.staging:
+        STAGING_DIR.mkdir(parents=True, exist_ok=True)
+        sub_env["TPBL_DB_PATH"] = str(STAGING_DIR / "tpbl_stats_staging.db")
+        sub_env["TPBL_STAGING_OUT_DIR"] = str(STAGING_DIR)
+    else:
+        sync_season_data_to_backend()
 
     if args.fetch is not None:
         fetch_cmd = [
@@ -80,14 +89,14 @@ def main():
         ]
         if args.skip_existing:
             fetch_cmd.append("--skip-existing")
-        run_step("步驟 0：抓取官方 Stats 與 Broadcasts", fetch_cmd)
+        run_step("步驟 0：抓取官方 Stats 與 Broadcasts", fetch_cmd, env=sub_env)
 
     total_steps = len(CALC_STEPS)
     for idx, (script_name, desc) in enumerate(CALC_STEPS, start=1):
         script_path = BACKEND_DIR / script_name
         if not script_path.exists():
             raise FileNotFoundError(f"找不到精算腳本：{script_path}")
-        run_step(f"步驟 [{idx}/{total_steps}]：{desc} ({script_name})", [sys.executable, str(script_path)])
+        run_step(f"步驟 [{idx}/{total_steps}]：{desc} ({script_name})", [sys.executable, str(script_path)], env=sub_env)
 
     print("\n" + "=" * 64)
     print(f"🎉 全部精算與前後端 JSON 同步完成！總耗時：{time.time() - total_t0:.2f}s")

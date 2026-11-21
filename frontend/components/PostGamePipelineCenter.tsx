@@ -12,8 +12,67 @@ import {
   RefreshCw,
   Sparkles,
   Terminal,
+  Trash2,
   Zap,
 } from 'lucide-react';
+
+interface StagingGameCheck {
+  game_id: string;
+  game_code: string;
+  schedule_id: number | null;
+  date: string;
+  away_team: string;
+  home_team: string;
+  away_score: number;
+  home_score: number;
+  pbp_away_score: number | null;
+  pbp_home_score: number | null;
+  diff_away: number;
+  diff_home: number;
+  total_diff: number;
+  pbp_status: 'OK' | 'NEEDS_REVIEW' | 'NO_PBP';
+  included: boolean;
+  is_new?: boolean;
+  is_changed?: boolean;
+}
+
+interface StagingTeamChange {
+  team_name: string;
+  games_played: number;
+  prev_games_played: number;
+  record: string;
+  prev_record: string;
+  pace: number;
+  ortg: number;
+  drtg: number;
+  net_rtg: number;
+  prev_net_rtg: number | null;
+  efg_pct: number;
+  three_par: number;
+  tov_pct: number;
+  orb_pct: number;
+  ftr: number;
+}
+
+interface StagingNewPlayer {
+  team_name: string;
+  player_name: string;
+  jersey_number: string;
+  position: string;
+  games_played: number;
+  mpg: number;
+  ppg: number;
+}
+
+interface StagingPreviewManifest {
+  generated_at: string;
+  stage: string;
+  needs_review_count: number;
+  new_games_count: number;
+  games: StagingGameCheck[];
+  team_changes: StagingTeamChange[];
+  new_players: StagingNewPlayer[];
+}
 
 interface RecentGameItem {
   id: string;
@@ -87,6 +146,11 @@ export default function PostGamePipelineCenter({
   const [logsExpanded, setLogsExpanded] = useState<boolean>(false);
   const [missingFiles, setMissingFiles] = useState<string[]>([]);
   const [syncErrorMsg, setSyncErrorMsg] = useState<string>('');
+  const [stagingPreview, setStagingPreview] = useState<StagingPreviewManifest | null>(null);
+  const [approvedGameIds, setApprovedGameIds] = useState<string[]>([]);
+  const [publishLoading, setPublishLoading] = useState<boolean>(false);
+  const [discardLoading, setDiscardLoading] = useState<boolean>(false);
+  const [publishMsg, setPublishMsg] = useState<string>('');
 
   // 區塊 B：AI 質化戰術短評生成
   const [recentGames, setRecentGames] = useState<RecentGameItem[]>([]);
@@ -127,8 +191,26 @@ export default function PostGamePipelineCenter({
     }
   };
 
+  const loadStagingPreview = async () => {
+    if (!adminSecret) return;
+    try {
+      const res = await fetch(`${apiBase}/api/admin/pipeline/staging-preview`, {
+        headers: { 'X-Admin-Secret': adminSecret },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.has_staging && data.staging_preview) {
+          setStagingPreview(data.staging_preview);
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
   useEffect(() => {
     loadRecentGames();
+    loadStagingPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminSecret]);
 
@@ -185,6 +267,7 @@ export default function PostGamePipelineCenter({
     setSyncRunning(true);
     setSyncStatus('idle');
     setSyncErrorMsg('');
+    setPublishMsg('');
     setMissingFiles([]);
     setSyncDuration(null);
 
@@ -204,6 +287,8 @@ export default function PostGamePipelineCenter({
         body: JSON.stringify({
           fetch_latest: fetchLatest,
           game_ids: parsedIds.length > 0 ? parsedIds : null,
+          preview_only: true,
+          approved_game_ids: approvedGameIds,
         }),
       });
       const { ok, status, data, rawText } = await readApiResponse(res);
@@ -217,6 +302,9 @@ export default function PostGamePipelineCenter({
       setSyncDuration(data.duration_sec ?? null);
       setSyncLogs(data.logs || '');
       setMissingFiles(Array.isArray(data.missing_files) ? data.missing_files : []);
+      if (data.staging_preview) {
+        setStagingPreview(data.staging_preview);
+      }
       if (data.status !== 'ok') {
         setLogsExpanded(true);
         setSyncErrorMsg('管線執行中斷，請展開下方終端機日誌查看錯誤原因。');
@@ -230,6 +318,72 @@ export default function PostGamePipelineCenter({
       setSyncErrorMsg(err?.message || '網路連線錯誤');
     } finally {
       setSyncRunning(false);
+    }
+  };
+
+  const toggleApproveGame = (gameId: string) => {
+    setApprovedGameIds((prev) =>
+      prev.includes(gameId) ? prev.filter((id) => id !== gameId) : [...prev, gameId]
+    );
+  };
+
+  const handleStagingPublish = async () => {
+    setPublishLoading(true);
+    setSyncErrorMsg('');
+    setPublishMsg('');
+    try {
+      const res = await fetch(`${apiBase}/api/admin/pipeline/staging-publish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Secret': adminSecret,
+        },
+        body: JSON.stringify({ approved_game_ids: approvedGameIds }),
+      });
+      const { ok, status, data, rawText } = await readApiResponse(res);
+      if (!ok || !data || data.status !== 'ok') {
+        const parsed = parseErrorDetail(data, status, rawText);
+        setSyncErrorMsg(parsed.msg || '正式發佈失敗');
+        if (data?.logs) {
+          setSyncLogs(data.logs);
+          setLogsExpanded(true);
+        }
+        return;
+      }
+      setStagingPreview(null);
+      setApprovedGameIds([]);
+      setSyncLogs(data.logs || '');
+      setSyncDuration(data.duration_sec ?? null);
+      setPublishMsg('✅ 已正式寫入 tpbl_stats.db 並同步更新前台數據與快取！');
+      if (Array.isArray(data.recent_games) && data.recent_games.length > 0) {
+        setRecentGames(data.recent_games);
+        setSelectedGameId(data.recent_games[0].id);
+      }
+    } catch (err: any) {
+      setSyncErrorMsg(err?.message || '正式發佈失敗');
+    } finally {
+      setPublishLoading(false);
+    }
+  };
+
+  const handleStagingDiscard = async () => {
+    setDiscardLoading(true);
+    setSyncErrorMsg('');
+    setPublishMsg('');
+    try {
+      const res = await fetch(`${apiBase}/api/admin/pipeline/staging-discard`, {
+        method: 'POST',
+        headers: { 'X-Admin-Secret': adminSecret },
+      });
+      if (res.ok) {
+        setStagingPreview(null);
+        setApprovedGameIds([]);
+        setPublishMsg('🗑️ 已捨棄本次 Staging 預覽，線上正式數據未受任何影響。');
+      }
+    } catch (err: any) {
+      setSyncErrorMsg(err?.message || '捨棄預覽失敗');
+    } finally {
+      setDiscardLoading(false);
     }
   };
 
@@ -571,6 +725,170 @@ export default function PostGamePipelineCenter({
                 <li key={i}>{item}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {publishMsg && (
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-300 font-semibold">
+            {publishMsg}
+          </div>
+        )}
+
+        {stagingPreview && (
+          <div className="rounded-2xl border border-amber-500/40 bg-[#161B22] p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#30363D] pb-3">
+              <div>
+                <h4 className="text-sm font-black text-amber-300 flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4" />
+                  <span>賽後數據預覽與發佈審核區 (Staging)</span>
+                </h4>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  目前僅寫入暫存區，尚未覆蓋正式資料庫與前台數據。新場次：{stagingPreview.new_games_count} 場｜待人工確認：{stagingPreview.needs_review_count} 場｜新增球員：{stagingPreview.new_players.length} 名
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={handleStagingDiscard}
+                  disabled={discardLoading || publishLoading}
+                  className="px-3 py-2 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold flex items-center space-x-1.5 disabled:opacity-50"
+                >
+                  {discardLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  <span>捨棄本次預覽（還原）</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStagingPublish}
+                  disabled={publishLoading || discardLoading}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black flex items-center space-x-1.5 disabled:opacity-50"
+                >
+                  {publishLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>確認無誤，正式發佈上線</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 1. 場次與 PBP 兩級制校驗明細 */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-gray-300">1. 場次比分與 PBP 校驗狀態（僅供後台審核，不顯示於前台）</div>
+              <div className="max-h-56 overflow-y-auto rounded-xl border border-[#30363D] divide-y divide-[#30363D]">
+                {stagingPreview.games.slice().reverse().map((g) => {
+                  const isNeedsReview = g.pbp_status === 'NEEDS_REVIEW';
+                  const isApproved = approvedGameIds.includes(g.game_id);
+                  return (
+                    <div key={g.game_id} className="px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs bg-[#0E1117]">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono font-bold text-emerald-400">{g.game_code}</span>
+                        {g.is_new && (
+                          <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[10px] font-bold">NEW</span>
+                        )}
+                        <span className="text-gray-400">{g.date}</span>
+                        <span className="text-white font-semibold">
+                          {g.away_team} {g.away_score} : {g.home_score} {g.home_team}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        {g.pbp_status === 'OK' && (
+                          <span className="text-[11px] text-emerald-400 font-semibold">
+                            ✅ 自動通過{g.total_diff > 0 ? `（PBP 容許誤差 ${g.total_diff} 分）` : ''}
+                          </span>
+                        )}
+                        {g.pbp_status === 'NO_PBP' && (
+                          <span className="text-[11px] text-gray-400">無 PBP 檔（僅採 Box Score）</span>
+                        )}
+                        {isNeedsReview && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[11px] text-amber-300 font-bold">
+                              ⚠️ 需人工確認（Box {g.away_score}-{g.home_score} vs PBP {g.pbp_away_score}-{g.pbp_home_score}，總差 {g.total_diff} 分）
+                            </span>
+                            <label className="inline-flex items-center space-x-1 cursor-pointer bg-amber-500/15 border border-amber-500/40 px-2 py-0.5 rounded text-[11px] text-amber-200 font-bold">
+                              <input
+                                type="checkbox"
+                                checked={isApproved}
+                                onChange={() => toggleApproveGame(g.game_id)}
+                                className="rounded border-amber-400 text-amber-500"
+                              />
+                              <span>人手強制通過</span>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. 最新 7 隊戰績與 Four Factors 變化 */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-gray-300">2. 預覽 7 隊最新戰績與 Four Factors 變化</div>
+              <div className="overflow-x-auto rounded-xl border border-[#30363D]">
+                <table className="w-full text-[11px] text-left">
+                  <thead className="bg-[#0E1117] text-gray-400">
+                    <tr>
+                      <th className="px-2.5 py-2">球隊</th>
+                      <th className="px-2 py-2">戰績 (原→新)</th>
+                      <th className="px-2 py-2">Pace</th>
+                      <th className="px-2 py-2">ORtg</th>
+                      <th className="px-2 py-2">DRtg</th>
+                      <th className="px-2 py-2">NetRtg</th>
+                      <th className="px-2 py-2">eFG%</th>
+                      <th className="px-2 py-2">3PAr</th>
+                      <th className="px-2 py-2">TOV%</th>
+                      <th className="px-2 py-2">ORB%</th>
+                      <th className="px-2 py-2">FTr</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#30363D] bg-[#0B0E14]">
+                    {stagingPreview.team_changes.map((t) => {
+                      const netDelta =
+                        t.prev_net_rtg !== null && t.prev_net_rtg !== undefined
+                          ? Number((t.net_rtg - t.prev_net_rtg).toFixed(1))
+                          : null;
+                      return (
+                        <tr key={t.team_name} className="text-gray-200">
+                          <td className="px-2.5 py-1.5 font-bold text-white">{t.team_name}</td>
+                          <td className="px-2 py-1.5 font-mono">
+                            <span className="text-gray-500">{t.prev_record}</span> → <span className="text-emerald-400 font-bold">{t.record}</span>
+                          </td>
+                          <td className="px-2 py-1.5 font-mono">{t.pace}</td>
+                          <td className="px-2 py-1.5 font-mono">{t.ortg}</td>
+                          <td className="px-2 py-1.5 font-mono">{t.drtg}</td>
+                          <td className="px-2 py-1.5 font-mono">
+                            <span className={t.net_rtg >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{t.net_rtg}</span>
+                            {netDelta !== null && netDelta !== 0 && (
+                              <span className="ml-1 text-[10px] text-gray-400">({netDelta > 0 ? `+${netDelta}` : netDelta})</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-1.5 font-mono">{t.efg_pct}%</td>
+                          <td className="px-2 py-1.5 font-mono">{t.three_par}%</td>
+                          <td className="px-2 py-1.5 font-mono">{t.tov_pct}%</td>
+                          <td className="px-2 py-1.5 font-mono">{t.orb_pct}%</td>
+                          <td className="px-2 py-1.5 font-mono">{t.ftr}%</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 3. 新增球員名單 */}
+            {stagingPreview.new_players.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="text-xs font-bold text-gray-300">3. 本次新增球員名單 ({stagingPreview.new_players.length} 名)</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {stagingPreview.new_players.map((p) => (
+                    <span
+                      key={`${p.team_name}-${p.player_name}`}
+                      className="px-2 py-1 rounded-lg bg-[#0E1117] border border-[#30363D] text-[11px] text-gray-200"
+                    >
+                      <span className="text-sky-400 font-bold">{p.team_name}</span> #{p.jersey_number || '-'} {p.player_name} ({p.ppg} PPG)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

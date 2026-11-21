@@ -1,0 +1,63 @@
+{
+  "game_id": "2026-2027 例行賽-G13",
+  "exported_at": "2026-11-21T19:39:51",
+  "count": 4,
+  "playbooks": [
+    {
+      "stage": "2026-2027 例行賽",
+      "team_name": "桃園台啤永豐雲豹",
+      "side": "offense",
+      "play_name": "抄截轉換快攻",
+      "summary": "{O5} 鞏固防守籃板後，{O1} 迅速帶球推進前場，吸引防守注意力後，精準傳給沿邊線快下的 {O3} 完成上籃終結。",
+      "tactical_tags": "[\"抄截轉換快攻 (Transition)\", \"轉換快攻\", \"防守反擊\", \"邊線快下\", \"行進間傳球\", \"上籃終結\"]",
+      "svg_playbook_json": "{\"key\": \"home_offense\", \"label\": \"桃園台啤永豐雲豹 進攻體系\", \"playName\": \"抄截轉換快攻\", \"tacticalGoal\": \"{O5} 鞏固防守籃板後，{O1} 迅速帶球推進前場，吸引防守注意力後，精準傳給沿邊線快下的 {O3} 完成上籃終結。\", \"tacticalPattern\": \"抄截轉換快攻 (Transition)\", \"offenseTeam\": \"home\", \"side\": \"offense\", \"teamName\": \"桃園台啤永豐雲豹\", \"sourceQuarter\": \"Q3\", \"sourceClock\": \"11:06\", \"youtubeSeconds\": 6280, \"relatedPlays\": [{\"quarter\": \"Q3\", \"game_clock\": \"11:06\", \"description\": \"錢肯尼 運球上籃兩分球命中（高錦瑋 助攻）\", \"youtube_seconds\": 6280}, {\"quarter\": \"Q3\", \"game_clock\": \"09:07\", \"description\": \"錢肯尼 運球上籃兩分球命中（高錦瑋 助攻）\", \"youtube_seconds\": 6424}, {\"quarter\": \"Q3\", \"game_clock\": \"03:59\", \"description\": \"莫騰 上籃兩分球命中（曹薰襄 助攻）\", \"youtube_seconds\": 7233}], \"tacticalTags\": [\"抄截轉換快攻 (Transition)\", \"轉換快攻\", \"防守反擊\", \"邊線快下\", \"行進間傳球\", \"上籃終結\"], \"offenseRoster\": [\"高錦瑋\", \"莊博元\", \"錢肯尼\", \"溫布許\", \"莫騰\"], \"defenseRoster\": [\"曾柏喻\", \"劉丞勳\", \"蔡宸綱\", \"德魯\", \"迪亞洛\"], \"phases\": [{\"title\": \"快速推進與邊線快下\", \"description\": \"{O1} 接獲傳球後迅速運球推進過半場，同時 {O3} 沿著左側邊線全速快下，尋求早攻機會。\", \"keyRead\": \"觀察退防陣型，尋找快下箭頭。\", \"ballPos\": [250, 120], \"offense\": [[250, 120], [400, 150], [80, 150], [180, 90], [320, 90]], \"defense\": [[250, 160], [400, 190], [80, 190], [220, 280], [280, 280]], \"paths\": [{\"from\": [250, 120], \"to\": [250, 200], \"type\": \"dribble\"}]}, {\"title\": \"吸引防守與行進間傳球\", \"description\": \"{O1} 運球至三分線頂端，吸引 {D1} 與退防內線的注意力，隨即將球傳給已經切入側翼空檔的 {O3}。\", \"keyRead\": \"掌握傳球時機，避開協防者。\", \"ballPos\": [250, 200], \"offense\": [[250, 200], [400, 250], [120, 280], [180, 160], [320, 160]], \"defense\": [[250, 240], [400, 290], [140, 310], [220, 300], [280, 300]], \"paths\": [{\"from\": [250, 200], \"to\": [120, 280], \"type\": \"pass\"}]}, {\"title\": \"接球終結與護框對抗\", \"description\": \"{O3} 在禁區邊緣接球，順勢帶球切入籃下，面對 {D3} 的回防干擾，完成上籃得分。\", \"keyRead\": \"保持身體平衡，完成終結。\", \"ballPos\": [200, 370], \"offense\": [[250, 220], [400, 350], [200, 370], [180, 250], [320, 250]], \"defense\": [[250, 260], [400, 390], [220, 390], [200, 320], [280, 320]], \"paths\": [{\"from\": [200, 370], \"to\": [230, 390], \"type\": \"dribble\"}]}], \"ballFrames\": [{\"t\": 0.0, \"pos\": [250, 120], \"inAir\": false, \"isShot\": false}, {\"t\": 0.4, \"pos\": [250, 160], \"inAir\": false, \"isShot\": false}, {\"t\": 0.8, \"pos\": [250, 200], \"inAir\": false, \"isShot\": false}, {\"t\": 1.2, \"pos\": [185, 240], \"inAir\": true, \"isShot\": false}, {\"t\": 1.6, \"pos\": [120, 280], \"inAir\": false, \"isShot\": false}, {\"t\": 1.8, \"pos\": [200, 370], \"inAir\": false, \"isShot\": false}, {\"t\": 2.0, \"pos\": [250, 407], \"inAir\": false, \"isShot\": true}]}",
+      "source_game_id": "2026-2027 例行賽-G13",
+      "source_quarter": "Q3",
+      "source_clock": "11:06",
+      "youtube_seconds": 6280,
+      "created_at": "2026-11-16 22:24:25"
+    },
+    {
+      "stage": "2026-2027 例行賽",
+      "team_name": "桃園台啤永豐雲豹",
+      "side": "defense",
+      "play_name": "側翼壓迫與傳球阻絕",
+      "summary": "雲豹防守端透過 {D3} 的強勢對球壓迫與 {D5} 的傳球路徑阻絕，成功迫使 {O3} 發生傳球失誤。",
+      "tactical_tags": "[\"對球施壓\", \"傳球阻絕\", \"製造失誤\"]",
+      "svg_playbook_json": "{\"key\": \"home_defense\", \"label\": \"桃園台啤永豐雲豹 防守體系\", \"playName\": \"側翼壓迫與傳球阻絕\", \"tacticalGoal\": \"雲豹防守端透過 {D3} 的強勢對球壓迫與 {D5} 的傳球路徑阻絕，成功迫使 {O3} 發生傳球失誤。\", \"tacticalPattern\": null, \"offenseTeam\": \"away\", \"side\": \"defense\", \"teamName\": \"桃園台啤永豐雲豹\", \"sourceQuarter\": \"Q3\", \"sourceClock\": \"08:29\", \"youtubeSeconds\": 6493, \"relatedPlays\": [{\"quarter\": \"Q3\", \"game_clock\": \"08:29\", \"description\": \"迫使對手 蔡宸綱 發生傳球失誤\", \"youtube_seconds\": 6493}, {\"quarter\": \"Q3\", \"game_clock\": \"05:51\", \"description\": \"迫使對手 德魯 發生傳球失誤\", \"youtube_seconds\": 6981}, {\"quarter\": \"Q3\", \"game_clock\": \"04:14\", \"description\": \"迫使對手 曾柏喻 發生傳球失誤\", \"youtube_seconds\": 7201}], \"tacticalTags\": [\"對球施壓\", \"傳球阻絕\", \"製造失誤\"], \"offenseRoster\": [\"曾柏喻\", \"劉丞勳\", \"蔡宸綱\", \"德魯\", \"迪亞洛\"], \"defenseRoster\": [\"高錦瑋\", \"莊博元\", \"錢肯尼\", \"溫布許\", \"莫騰\"], \"phases\": [{\"title\": \"側翼對球施壓\", \"description\": \"{O3} 在側翼接球後，{D3} 迅速上前對球施壓，踩住中路突破路線，將其逼向邊線。\", \"keyRead\": \"{D3} 保持防守圓柱體，利用身體對抗給予持球者壓力。\", \"ballPos\": [380, 250], \"offense\": [[250, 180], [120, 250], [380, 250], [200, 320], [440, 380]], \"defense\": [[250, 220], [150, 280], [350, 280], [220, 350], [410, 380]], \"paths\": [{\"from\": [350, 280], \"to\": [365, 265], \"type\": \"defense\"}]}, {\"title\": \"阻絕接應點\", \"description\": \"{O3} 被迫停球尋找隊友，此時 {D5} 緊貼底角的 {O5}，{D1} 也阻絕了弧頂 {O1} 的接應路線。\", \"keyRead\": \"弱側與強側防守者同步啟動阻絕，切斷所有傳球路徑。\", \"ballPos\": [380, 250], \"offense\": [[250, 180], [120, 250], [380, 250], [200, 320], [440, 380]], \"defense\": [[250, 210], [150, 280], [365, 265], [220, 350], [425, 380]], \"paths\": [{\"from\": [380, 250], \"to\": [460, 400], \"type\": \"pass\"}]}, {\"title\": \"製造傳球失誤\", \"description\": \"在 {D3} 的持續壓迫與無球防守者的阻絕下，{O3} 勉強將球傳向底角，最終導致傳球出界失誤。\", \"keyRead\": \"高強度的防守壓迫成功破壞進攻節奏，完成防守反制。\", \"ballPos\": [460, 400], \"offense\": [[250, 180], [120, 250], [380, 250], [200, 320], [440, 380]], \"defense\": [[250, 210], [150, 280], [365, 265], [220, 350], [425, 380]], \"paths\": []}], \"ballFrames\": [{\"t\": 0.0, \"pos\": [380, 250], \"inAir\": false, \"isShot\": false}, {\"t\": 1.0, \"pos\": [420, 325], \"inAir\": true, \"isShot\": false}, {\"t\": 2.0, \"pos\": [460, 400], \"inAir\": true, \"isShot\": false}]}",
+      "source_game_id": "2026-2027 例行賽-G13",
+      "source_quarter": "Q3",
+      "source_clock": "08:29",
+      "youtube_seconds": 6493,
+      "created_at": "2026-11-16 22:24:25"
+    },
+    {
+      "stage": "2026-2027 例行賽",
+      "team_name": "新竹御嵿攻城獅",
+      "side": "offense",
+      "play_name": "側翼突破分球內線跟進",
+      "summary": "{O2} 於側翼持球發動強勢突破，吸引 {D5} 補防後，巧妙分球給空切禁區的 {O5} 完成籃下終結。",
+      "tactical_tags": "[\"強側突破與禁區空切 (Drive and Dish)\", \"Drive and Dish\", \"Paint Attack\", \"Rim Pressure\", \"Help Defense Punishment\"]",
+      "svg_playbook_json": "{\"key\": \"away_offense\", \"label\": \"新竹御嵿攻城獅 進攻體系\", \"playName\": \"側翼突破分球內線跟進\", \"tacticalGoal\": \"{O2} 於側翼持球發動強勢突破，吸引 {D5} 補防後，巧妙分球給空切禁區的 {O5} 完成籃下終結。\", \"tacticalPattern\": \"強側突破與禁區空切 (Drive and Dish)\", \"offenseTeam\": \"away\", \"side\": \"offense\", \"teamName\": \"新竹御嵿攻城獅\", \"sourceQuarter\": \"Q3\", \"sourceClock\": \"10:37\", \"youtubeSeconds\": 6310, \"relatedPlays\": [{\"quarter\": \"Q3\", \"game_clock\": \"10:37\", \"description\": \"迪亞洛 上籃兩分球命中（劉丞勳 助攻）\", \"youtube_seconds\": 6310}, {\"quarter\": \"Q3\", \"game_clock\": \"02:47\", \"description\": \"德魯 上籃兩分球命中（奧獅頓 助攻）\", \"youtube_seconds\": 7318}, {\"quarter\": \"Q3\", \"game_clock\": \"01:09\", \"description\": \"奧獅頓 灌籃兩分球命中（迪亞洛 助攻）\", \"youtube_seconds\": 7451}], \"tacticalTags\": [\"強側突破與禁區空切 (Drive and Dish)\", \"Drive and Dish\", \"Paint Attack\", \"Rim Pressure\", \"Help Defense Punishment\"], \"offenseRoster\": [\"曾柏喻\", \"劉丞勳\", \"蔡宸綱\", \"德魯\", \"迪亞洛\"], \"defenseRoster\": [\"高錦瑋\", \"莊博元\", \"錢肯尼\", \"溫布許\", \"莫騰\"], \"phases\": [{\"title\": \"空間拉開與側翼持球\", \"description\": \"進攻方佈下四外一內陣型，{O2} 於右側四十五度角持球，{O5} 沉退至右側低位準備接應，其餘球員拉開空間牽制防守。\", \"keyRead\": \"觀察 {D2} 的防守重心與 {D5} 的協防站位。\", \"ballPos\": [380, 220], \"offense\": [[250, 150], [380, 220], [120, 220], [60, 380], [350, 350]], \"defense\": [[250, 180], [350, 250], [150, 250], [100, 390], [310, 370]], \"paths\": []}, {\"title\": \"強側突破與吸引協防\", \"description\": \"{O2} 啟動向禁區強勢突破，迫使 {D5} 放棄對 {O5} 的看管上前補防，此時 {O5} 順勢往籃下防守盲區空切。\", \"keyRead\": \"{O2} 突破深度的掌握以及 {O5} 尋找空檔的切入時機。\", \"ballPos\": [300, 320], \"offense\": [[250, 150], [300, 320], [120, 220], [60, 380], [270, 390]], \"defense\": [[250, 180], [280, 340], [150, 250], [100, 390], [244, 412]], \"paths\": [{\"from\": [380, 220], \"to\": [300, 320], \"type\": \"dribble\"}, {\"from\": [310, 370], \"to\": [290, 360], \"type\": \"defense\"}]}, {\"title\": \"內線分球與籃下終結\", \"description\": \"{O2} 在吸引防守包夾的瞬間，將球精準傳給已落位籃下空檔的 {O5}，{O5} 輕鬆接球上籃得分。\", \"keyRead\": \"{O2} 在行進間的傳球視野與 {O5} 的終結手感。\", \"ballPos\": [270, 390], \"offense\": [[250, 150], [300, 320], [120, 220], [60, 380], [270, 390]], \"defense\": [[250, 180], [280, 340], [150, 250], [100, 390], [244, 412]], \"paths\": [{\"from\": [300, 320], \"to\": [270, 390], \"type\": \"pass\"}]}], \"ballFrames\": [{\"t\": 0.0, \"pos\": [380, 220], \"inAir\": false, \"isShot\": false}, {\"t\": 0.5, \"pos\": [340, 270], \"inAir\": false, \"isShot\": false}, {\"t\": 1.0, \"pos\": [300, 320], \"inAir\": false, \"isShot\": false}, {\"t\": 1.5, \"pos\": [285, 355], \"inAir\": true, \"isShot\": false}, {\"t\": 1.8, \"pos\": [270, 390], \"inAir\": false, \"isShot\": false}, {\"t\": 2.0, \"pos\": [250, 407], \"inAir\": true, \"isShot\": true}]}",
+      "source_game_id": "2026-2027 例行賽-G13",
+      "source_quarter": "Q3",
+      "source_clock": "10:37",
+      "youtube_seconds": 6310,
+      "created_at": "2026-11-16 22:24:25"
+    },
+    {
+      "stage": "2026-2027 例行賽",
+      "team_name": "新竹御嵿攻城獅",
+      "side": "defense",
+      "play_name": "側翼壓迫與製造進攻犯規",
+      "summary": "{D4} 在側翼對 {O4} 施加高強度身體對抗，精準判斷其切入路線並提前站位，成功製造對手進攻犯規，展現強悍的防守反制能力。",
+      "tactical_tags": "[\"壓迫防守\", \"製造進攻犯規\", \"側翼阻絕\", \"防守反擊\"]",
+      "svg_playbook_json": "{\"key\": \"away_defense\", \"label\": \"新竹御嵿攻城獅 防守體系\", \"playName\": \"側翼壓迫與製造進攻犯規\", \"tacticalGoal\": \"{D4} 在側翼對 {O4} 施加高強度身體對抗，精準判斷其切入路線並提前站位，成功製造對手進攻犯規，展現強悍的防守反制能力。\", \"tacticalPattern\": null, \"offenseTeam\": \"home\", \"side\": \"defense\", \"teamName\": \"新竹御嵿攻城獅\", \"sourceQuarter\": \"Q3\", \"sourceClock\": \"09:26\", \"youtubeSeconds\": 6377, \"relatedPlays\": [{\"quarter\": \"Q3\", \"game_clock\": \"09:26\", \"description\": \"迫使對手 溫布許 發生進攻犯規\", \"youtube_seconds\": 6377}, {\"quarter\": \"Q3\", \"game_clock\": \"03:28\", \"description\": \"迫使對手 林信寬 發生傳球失誤\", \"youtube_seconds\": 7278}, {\"quarter\": \"Q4\", \"game_clock\": \"04:17\", \"description\": \"迫使對手 高錦瑋 發生傳球失誤\", \"youtube_seconds\": 8640}], \"tacticalTags\": [\"壓迫防守\", \"製造進攻犯規\", \"側翼阻絕\", \"防守反擊\"], \"offenseRoster\": [\"高錦瑋\", \"莊博元\", \"錢肯尼\", \"溫布許\", \"莫騰\"], \"defenseRoster\": [\"曾柏喻\", \"劉丞勳\", \"蔡宸綱\", \"德魯\", \"迪亞洛\"], \"phases\": [{\"title\": \"側翼接球與防守對位\", \"description\": \"{O1} 在弧頂持球，將球轉移給側翼的 {O4}。{D4} 迅速貼近，保持在 {O4} 與籃框之間的防守滑步距離，準備迎接對抗。\", \"keyRead\": \"觀察 {O4} 接球後的重心變化，{D4} 需保持防守圓柱體並降低重心。\", \"ballPos\": [120, 220], \"offense\": [[250, 150], [380, 220], [55, 405], [120, 220], [250, 350]], \"defense\": [[250, 180], [350, 260], [85, 405], [150, 260], [250, 380]], \"paths\": [{\"from\": [250, 150], \"to\": [120, 220], \"type\": \"pass\"}]}, {\"title\": \"阻絕切入路線\", \"description\": \"{O4} 嘗試向底線方向強行切入，{D4} 橫向滑步並用身體阻擋其推進路線，不給予輕易進入油漆區的空間。\", \"keyRead\": \"{D4} 必須預判 {O4} 的突破方向，提前佔據有利防守位置。\", \"ballPos\": [120, 300], \"offense\": [[250, 150], [380, 220], [55, 405], [120, 300], [250, 350]], \"defense\": [[250, 180], [350, 260], [85, 405], [150, 330], [250, 380]], \"paths\": [{\"from\": [120, 220], \"to\": [120, 300], \"type\": \"dribble\"}, {\"from\": [150, 260], \"to\": [150, 330], \"type\": \"defense\"}]}, {\"title\": \"製造進攻犯規\", \"description\": \"{O4} 在無法擺脫防守的情況下，使用手部推人動作試圖清出空間，{D4} 順勢倒地，成功製造 {O4} 的進攻犯規，奪回球權。\", \"keyRead\": \"裁判響哨，{D4} 的交代動作與防守站位是成功製造犯規的關鍵。\", \"ballPos\": [120, 320], \"offense\": [[250, 150], [380, 220], [55, 405], [120, 320], [250, 350]], \"defense\": [[250, 180], [350, 260], [85, 405], [140, 350], [250, 380]], \"paths\": [{\"from\": [120, 300], \"to\": [120, 320], \"type\": \"dribble\"}, {\"from\": [150, 330], \"to\": [140, 350], \"type\": \"defense\"}]}], \"ballFrames\": [{\"t\": 0.0, \"pos\": [250, 150], \"inAir\": false, \"isShot\": false}, {\"t\": 0.3, \"pos\": [185, 185], \"inAir\": true, \"isShot\": false}, {\"t\": 0.6, \"pos\": [120, 220], \"inAir\": false, \"isShot\": false}, {\"t\": 1.3, \"pos\": [120, 300], \"inAir\": false, \"isShot\": false}, {\"t\": 2.0, \"pos\": [120, 320], \"inAir\": false, \"isShot\": false}]}",
+      "source_game_id": "2026-2027 例行賽-G13",
+      "source_quarter": "Q3",
+      "source_clock": "09:26",
+      "youtube_seconds": 6377,
+      "created_at": "2026-11-16 22:24:25"
+    }
+  ]
+}

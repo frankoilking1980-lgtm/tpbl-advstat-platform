@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sqlite3
 from pathlib import Path
@@ -10,12 +11,13 @@ RAW_DIR = CURRENT_DIR / "data" / "raw_game_stats"
 if not RAW_DIR.exists():
     RAW_DIR = PROJECT_ROOT / "data" / "raw_game_stats"
 
-DB_PATH = CURRENT_DIR / "data" / "tpbl_stats.db"
+DB_PATH = Path(os.environ["TPBL_DB_PATH"]) if os.environ.get("TPBL_DB_PATH") else (CURRENT_DIR / "data" / "tpbl_stats.db")
 if not DB_PATH.exists():
     DB_PATH = PROJECT_ROOT / "backend" / "data" / "tpbl_stats.db"
 
-OUTPUT_BACKEND_JSON = CURRENT_DIR / "data" / "team_situations_stats.json"
-OUTPUT_FRONTEND_JSON = PROJECT_ROOT / "frontend" / "public" / "team_situations_stats.json"
+STAGING_OUT_DIR = Path(os.environ["TPBL_STAGING_OUT_DIR"]) if os.environ.get("TPBL_STAGING_OUT_DIR") else None
+OUTPUT_BACKEND_JSON = (STAGING_OUT_DIR / "team_situations_stats.json") if STAGING_OUT_DIR else (CURRENT_DIR / "data" / "team_situations_stats.json")
+OUTPUT_FRONTEND_JSON = None if STAGING_OUT_DIR else (PROJECT_ROOT / "frontend" / "public" / "team_situations_stats.json")
 
 EXCLUDE_GAME_IDS = {"27540", "27541"}
 
@@ -214,9 +216,10 @@ def calculate():
     with open(OUTPUT_BACKEND_JSON, "w", encoding="utf-8") as fp:
         json.dump(result, fp, ensure_ascii=False, indent=2)
 
-    OUTPUT_FRONTEND_JSON.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_FRONTEND_JSON, "w", encoding="utf-8") as fp:
-        json.dump(result, fp, ensure_ascii=False, indent=2)
+    if OUTPUT_FRONTEND_JSON is not None:
+        OUTPUT_FRONTEND_JSON.parent.mkdir(parents=True, exist_ok=True)
+        with open(OUTPUT_FRONTEND_JSON, "w", encoding="utf-8") as fp:
+            json.dump(result, fp, ensure_ascii=False, indent=2)
 
     print(f"✅ 團隊情境矩陣統計完成！共產出 {len(result['teams'])} 隊數據。")
     print(f"   -> {OUTPUT_FRONTEND_JSON}")

@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BACKEND_DIR / "data"
 RAW_GAME_STATS_DIR = DATA_DIR / "raw_game_stats"
+AI_TACTICAL_BOARDS_DIR = DATA_DIR / "ai_tactical_boards"
 DB_PATH = DATA_DIR / "tpbl_stats.db"
 
 YOUTUBE_LEAD_IN_SECONDS = 2
@@ -1019,7 +1020,63 @@ def generate_and_save_pbp_playbooks(
         cur.execute(f"DELETE FROM team_playbooks WHERE id IN ({placeholders})", stale_ids)
 
     conn.commit()
+    export_game_playbooks_to_json(conn, source_game_id)
     return saved_rows
+
+
+def export_game_playbooks_to_json(
+    conn: sqlite3.Connection,
+    source_game_id: str,
+    output_dir: Path = AI_TACTICAL_BOARDS_DIR,
+) -> Optional[Path]:
+    """將指定場次的 team_playbooks 同步匯出至 backend/data/ai_tactical_boards/{game_id}.json。"""
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT stage, team_name, side, play_name, summary, tactical_tags,
+               svg_playbook_json, source_game_id, source_quarter, source_clock,
+               youtube_seconds, created_at
+        FROM team_playbooks
+        WHERE source_game_id = ?
+        ORDER BY id ASC
+        """,
+        (source_game_id,),
+    )
+    rows = cur.fetchall()
+    if not rows:
+        return None
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = source_game_id.replace("/", "_").replace("\\", "_")
+    out_path = output_dir / f"{safe_name}.json"
+
+    records = []
+    for r in rows:
+        records.append(
+            {
+                "stage": r[0],
+                "team_name": r[1],
+                "side": r[2],
+                "play_name": r[3],
+                "summary": r[4],
+                "tactical_tags": r[5],
+                "svg_playbook_json": r[6],
+                "source_game_id": r[7],
+                "source_quarter": r[8],
+                "source_clock": r[9],
+                "youtube_seconds": r[10],
+                "created_at": r[11],
+            }
+        )
+
+    payload = {
+        "game_id": source_game_id,
+        "exported_at": datetime.now().isoformat(timespec="seconds"),
+        "count": len(records),
+        "playbooks": records,
+    }
+    out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return out_path
 
 
 def fetch_game_playbooks(conn: sqlite3.Connection, source_game_id: str, home_team: str) -> List[Dict[str, Any]]:

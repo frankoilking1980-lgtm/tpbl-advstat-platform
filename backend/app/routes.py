@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, time
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Literal, Union
 from fastapi import APIRouter, BackgroundTasks, File, Header, HTTPException, Query, Response, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import openpyxl
 
 from app.database import get_db_connection, db_session
@@ -1609,6 +1609,147 @@ def _fetch_real_matchups(stage: str, game_id: str, home_team: str, away_team: st
     return home_list, away_list
 
 
+_RAW_POS_SHORT = {
+    "PointGuard": "PG",
+    "ShootingGuard": "SG",
+    "PointGuardAndShootingGuard": "PG/SG",
+    "SmallForward": "SF",
+    "PowerForward": "PF",
+    "SmallForwardAndPowerForward": "SF/PF",
+    "ShootingGuardAndSmallForward": "SG/SF",
+    "Center": "C",
+    "PowerForwardAndCenter": "PF/C",
+}
+
+
+def _parse_raw_json_game_boxscore(schedule_id: Optional[int]) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """直接從 raw_game_stats/game_{schedule_id}_stats.json 解析單場精準 Box Score (home_box, away_box)。"""
+    if not schedule_id:
+        return [], []
+    stats_path = BACKEND_DIR / "data" / "raw_game_stats" / f"game_{int(schedule_id)}_stats.json"
+    if not stats_path.exists():
+        return [], []
+    try:
+        data = json.loads(stats_path.read_text(encoding="utf-8"))
+    except Exception:
+        return [], []
+
+    def _build_side(side_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        players_tot = (side_data.get("players") or {}).get("total") or {}
+        if not isinstance(players_tot, dict):
+            return []
+
+        raw_list = []
+        team_sec = 0
+        team_fga = 0
+        team_fta = 0
+        team_tov = 0
+
+        for p in players_tot.values():
+            if not isinstance(p, dict):
+                continue
+            sec = int(round(clean_val_num(p.get("time_on_court"), 0.0)))
+            pts = int(round(clean_val_num(p.get("score"), 0.0)))
+            fga = int(round(clean_val_num(p.get("field_goals_attempted"), 0.0)))
+            fta = int(round(clean_val_num(p.get("free_throws_attempted"), 0.0)))
+            tov = int(round(clean_val_num(p.get("turnovers"), 0.0)))
+            reb = int(round(clean_val_num(p.get("rebounds"), 0.0)))
+            ast = int(round(clean_val_num(p.get("assists"), 0.0)))
+            if sec <= 0 and pts == 0 and fga == 0 and reb == 0 and ast == 0:
+                continue
+            team_sec += sec
+            team_fga += fga
+            team_fta += fta
+            team_tov += tov
+            raw_list.append(p)
+
+        team_min = team_sec / 60.0
+        team_poss_used = team_fga + 0.44 * team_fta + team_tov
+
+        out: List[Dict[str, Any]] = []
+        for p in raw_list:
+            pname = str(p.get("name") or "").strip()
+            sec = int(round(clean_val_num(p.get("time_on_court"), 0.0)))
+            p_min = sec / 60.0
+            pts = int(round(clean_val_num(p.get("score"), 0.0)))
+            fgm = int(round(clean_val_num(p.get("field_goals_made"), 0.0)))
+            fga = int(round(clean_val_num(p.get("field_goals_attempted"), 0.0)))
+            tpm = int(round(clean_val_num(p.get("three_pointers_made"), 0.0)))
+            tpa = int(round(clean_val_num(p.get("three_pointers_attempted"), 0.0)))
+            ftm = int(round(clean_val_num(p.get("free_throws_made"), 0.0)))
+            fta = int(round(clean_val_num(p.get("free_throws_attempted"), 0.0)))
+            orb = int(round(clean_val_num(p.get("offensive_rebounds"), 0.0)))
+            drb = int(round(clean_val_num(p.get("defensive_rebounds"), 0.0)))
+            reb = int(round(clean_val_num(p.get("rebounds"), 0.0)))
+            ast = int(round(clean_val_num(p.get("assists"), 0.0)))
+            stl = int(round(clean_val_num(p.get("steals"), 0.0)))
+            blk = int(round(clean_val_num(p.get("blocks"), 0.0)))
+            tov = int(round(clean_val_num(p.get("turnovers"), 0.0)))
+            pf = int(round(clean_val_num(p.get("personal_fouls"), 0.0)))
+            pm = clean_val_num(p.get("plus_minus"), 0.0)
+
+            fg_pct = round((fgm / fga) * 100.0, 1) if fga > 0 else 0.0
+            tp_pct = round((tpm / tpa) * 100.0, 1) if tpa > 0 else 0.0
+            ft_pct = round((ftm / fta) * 100.0, 1) if fta > 0 else 0.0
+            efg_dec = round((fgm + 0.5 * tpm) / fga, 3) if fga > 0 else 0.0
+            ts_denom = 2.0 * (fga + 0.44 * fta)
+            ts_dec = round(pts / ts_denom, 3) if ts_denom > 0 else 0.0
+            p_poss_used = fga + 0.44 * fta + tov
+            usg_100 = (
+                round(100.0 * (p_poss_used * (team_min / 5.0)) / (p_min * team_poss_used), 1)
+                if (p_min > 0 and team_poss_used > 0)
+                else 0.0
+            )
+            gmsc = round(
+                pts + 0.4 * fgm - 0.7 * fga - 0.4 * (fta - ftm)
+                + 0.7 * orb + 0.3 * drb + stl + 0.7 * ast + 0.7 * blk - 0.4 * pf - tov,
+                1,
+            )
+            raw_pos = str(p.get("positions") or "").strip()
+            pos_str = _RAW_POS_SHORT.get(raw_pos, raw_pos[:8])
+
+            out.append({
+                "jersey_number": str(p.get("number") or "").strip(),
+                "player_name": pname,
+                "position": pos_str,
+                "identity": "本土",
+                "is_starter": bool(p.get("is_starting")),
+                "minutes": f"{sec // 60}:{sec % 60:02d}",
+                "seconds": sec,
+                "pts": pts,
+                "fgm": fgm,
+                "fga": fga,
+                "fg_pct": fg_pct,
+                "tpm": tpm,
+                "tpa": tpa,
+                "tp_pct": tp_pct,
+                "ftm": ftm,
+                "fta": fta,
+                "ft_pct": ft_pct,
+                "orb": orb,
+                "drb": drb,
+                "reb": reb,
+                "ast": ast,
+                "stl": stl,
+                "blk": blk,
+                "tov": tov,
+                "pf": pf,
+                "plus_minus": pm,
+                "efg_pct": efg_dec,
+                "ts_pct": ts_dec,
+                "usg_pct": usg_100,
+                "gmsc": gmsc,
+                "ortg": None,
+                "drtg": None,
+                "netrtg": None,
+            })
+
+        out.sort(key=lambda x: (not x["is_starter"], -x["seconds"], -x["pts"]))
+        return out
+
+    return _build_side(data.get("home_team") or {}), _build_side(data.get("away_team") or {})
+
+
 @router.get("/games/{game_id}", summary="取得單場比賽詳細資訊與球員統計 (DetailedGameData)")
 def get_game_detail(game_id: str):
     with db_session() as conn:
@@ -1627,12 +1768,29 @@ def get_game_detail(game_id: str):
     game_code = gid_match.group(1).upper() if gid_match else str(real_db_id)
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
 
-    home_excel = _find_team_excel_file(season_folder, home_team)
-    away_excel = _find_team_excel_file(season_folder, away_team)
+    raw_sid = g["schedule_id"] if "schedule_id" in g.keys() else None
+    if not raw_sid:
+        try:
+            from app.services.scouting_generator import resolve_schedule_id_for_game
+            raw_sid = resolve_schedule_id_for_game(dict(g), _load_pbp_lineup_json())
+        except Exception:
+            raw_sid = None
 
-    home_box, home_on_off, home_l, home_p = _parse_real_excel_game(home_excel, game_code)
-    away_box, away_on_off, away_l, away_p = _parse_real_excel_game(away_excel, game_code)
+    home_box, away_box = _parse_raw_json_game_boxscore(raw_sid)
+    home_on_off, away_on_off = [], []
+    home_l, away_l, home_p, away_p = [], [], [], []
     home_worst_l, away_worst_l = [], []
+
+    if not home_box or not away_box:
+        home_excel = _find_team_excel_file(season_folder, home_team)
+        away_excel = _find_team_excel_file(season_folder, away_team)
+
+        ex_home_box, home_on_off, home_l, home_p = _parse_real_excel_game(home_excel, game_code)
+        ex_away_box, away_on_off, away_l, away_p = _parse_real_excel_game(away_excel, game_code)
+        if not home_box:
+            home_box = ex_home_box
+        if not away_box:
+            away_box = ex_away_box
 
     if not home_box or not away_box:
         home_aliases = get_team_search_keywords(home_team)
@@ -2835,6 +2993,12 @@ def admin_ping_gemini(
 class PipelineUpdateStatsRequest(BaseModel):
     fetch_latest: bool = True
     game_ids: Optional[List[int]] = None
+    preview_only: bool = True
+    approved_game_ids: Optional[List[str]] = None
+
+
+class PipelineStagingPublishRequest(BaseModel):
+    approved_game_ids: List[str] = Field(default_factory=list)
 
 
 class PipelineGenerateReviewsRequest(BaseModel):
@@ -3082,7 +3246,18 @@ def admin_pipeline_update_stats(
                     "recent_games": recent_games,
                 }
 
-    if not _run_subprocess("步驟 2：重建/更新 SQLite 資料庫 (build_db.py)", [sys.executable, str(BACKEND_DIR / "build_db.py")]):
+    build_cmd = [sys.executable, str(BACKEND_DIR / "build_db.py"), "--season", "season2026"]
+    if req.preview_only:
+        build_cmd.append("--staging")
+    if req.approved_game_ids:
+        build_cmd.extend(["--approved-games", ",".join(req.approved_game_ids)])
+
+    step2_label = (
+        "步驟 2：寫入 Staging 暫存資料庫並產生預覽 (build_db.py --staging)"
+        if req.preview_only
+        else "步驟 2：增量更新 SQLite 正式資料庫 (build_db.py --season season2026)"
+    )
+    if not _run_subprocess(step2_label, build_cmd):
         recent_games = _get_recent_finished_games(10)
         return {
             "status": "error",
@@ -3092,7 +3267,15 @@ def admin_pipeline_update_stats(
             "recent_games": recent_games,
         }
 
-    if not _run_subprocess("步驟 3：重算全站進階指標並同步至 frontend/public (update_all_stats.py)", [sys.executable, str(BACKEND_DIR / "update_all_stats.py")]):
+    update_cmd = [sys.executable, str(BACKEND_DIR / "update_all_stats.py")]
+    if req.preview_only:
+        update_cmd.append("--staging")
+    step3_label = (
+        "步驟 3：重算進階指標並輸出至 Staging 暫存區 (update_all_stats.py --staging)"
+        if req.preview_only
+        else "步驟 3：重算全站進階指標並同步至 frontend/public (update_all_stats.py)"
+    )
+    if not _run_subprocess(step3_label, update_cmd):
         recent_games = _get_recent_finished_games(10)
         return {
             "status": "error",
@@ -3102,19 +3285,121 @@ def admin_pipeline_update_stats(
             "recent_games": recent_games,
         }
 
-    clear_all_data_caches(re_warmup=True)
-    log_chunks.append("✅ 步驟 4：已清除並背景預熱後端記憶體快取 (clear_all_data_caches)")
+    staging_preview = None
+    if req.preview_only:
+        manifest_path = BACKEND_DIR / "data" / "staging" / "preview_manifest.json"
+        if manifest_path.exists():
+            try:
+                staging_preview = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except Exception:
+                staging_preview = None
+        log_chunks.append("🧪 已完成 Staging 暫存預覽產出（尚未覆蓋正式資料庫與前台 JSON，等待人工確認發佈）")
+    else:
+        clear_all_data_caches(re_warmup=True)
+        log_chunks.append("✅ 步驟 4：已清除並背景預熱後端記憶體快取 (clear_all_data_caches)")
 
     recent_games = _get_recent_finished_games(10)
     missing_files = _collect_missing_raw_files(recent_games, req.game_ids)
 
     return {
         "status": "ok",
+        "preview_only": req.preview_only,
         "duration_sec": round(_time.time() - t0, 2),
         "logs": "\n\n".join(log_chunks),
         "missing_files": missing_files,
         "recent_games": recent_games,
+        "staging_preview": staging_preview,
     }
+
+
+def _clear_staging_dir() -> None:
+    staging_dir = BACKEND_DIR / "data" / "staging"
+    if not staging_dir.exists():
+        return
+    for item in staging_dir.iterdir():
+        try:
+            if item.is_file():
+                item.unlink()
+        except Exception:
+            pass
+
+
+@router.get("/admin/pipeline/staging-preview", summary="讀取目前 Staging 暫存預覽狀態")
+def admin_pipeline_staging_preview(
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    manifest_path = BACKEND_DIR / "data" / "staging" / "preview_manifest.json"
+    if not manifest_path.exists():
+        return {"has_staging": False, "staging_preview": None}
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        return {"has_staging": True, "staging_preview": data}
+    except Exception:
+        return {"has_staging": False, "staging_preview": None}
+
+
+@router.post("/admin/pipeline/staging-publish", summary="確認無誤，正式將 Staging 數據發佈上線")
+def admin_pipeline_staging_publish(
+    req: PipelineStagingPublishRequest,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    t0 = _time.time()
+    log_chunks: List[str] = []
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+
+    def _run_pub_step(label: str, cmd: List[str]) -> bool:
+        log_chunks.append(f"▶ {label}\n$ {' '.join(cmd)}")
+        proc = subprocess.run(
+            cmd,
+            cwd=str(BACKEND_DIR),
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if proc.stdout:
+            log_chunks.append(proc.stdout.strip())
+        if proc.stderr:
+            log_chunks.append(f"[stderr]\n{proc.stderr.strip()}")
+        if proc.returncode != 0:
+            log_chunks.append(f"❌ 發佈失敗 (exit code={proc.returncode})")
+            return False
+        log_chunks.append(f"✅ {label} 完成")
+        return True
+
+    build_cmd = [sys.executable, str(BACKEND_DIR / "build_db.py"), "--season", "season2026"]
+    if req.approved_game_ids:
+        build_cmd.extend(["--approved-games", ",".join(req.approved_game_ids)])
+
+    if not _run_pub_step("發佈步驟 1：正式寫入 SQLite 資料庫 (build_db.py)", build_cmd):
+        return {"status": "error", "duration_sec": round(_time.time() - t0, 2), "logs": "\n\n".join(log_chunks)}
+
+    if not _run_pub_step("發佈步驟 2：正式重算並覆蓋 frontend/public/*.json (update_all_stats.py)", [sys.executable, str(BACKEND_DIR / "update_all_stats.py")]):
+        return {"status": "error", "duration_sec": round(_time.time() - t0, 2), "logs": "\n\n".join(log_chunks)}
+
+    _clear_staging_dir()
+    clear_all_data_caches(re_warmup=True)
+    log_chunks.append("✅ 發佈步驟 3：已清空 Staging 暫存區並預熱後端記憶體快取")
+
+    return {
+        "status": "ok",
+        "duration_sec": round(_time.time() - t0, 2),
+        "logs": "\n\n".join(log_chunks),
+        "recent_games": _get_recent_finished_games(10),
+    }
+
+
+@router.post("/admin/pipeline/staging-discard", summary="捨棄本次 Staging 預覽（不影響線上正式數據）")
+def admin_pipeline_staging_discard(
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    _require_admin_secret(x_admin_secret)
+    _clear_staging_dir()
+    return {"status": "ok", "message": "已捨棄本次 Staging 預覽，線上正式資料庫與前台數據未受任何影響。"}
 
 
 @router.post("/admin/pipeline/generate-reviews", summary="生成或寫入賽後 AI 質化戰術短評（單場 WOWY + 兩隊總評 + 全員賽季短評）")
@@ -3180,6 +3465,7 @@ def admin_sync_game_youtube(
     from app.services.playbook_generator import (
         RAW_GAME_STATS_DIR,
         ensure_playbook_schema,
+        export_game_playbooks_to_json,
         fetch_game_playbooks,
         lookup_event_youtube_seconds,
     )
@@ -3260,6 +3546,7 @@ def admin_sync_game_youtube(
             updated_count += 1
 
         conn.commit()
+        export_game_playbooks_to_json(conn, real_id)
         clear_all_data_caches(re_warmup=True)
         playbooks = fetch_game_playbooks(conn, real_id, normalize_team_name(game_row["home_team"]))
 

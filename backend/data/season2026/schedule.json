@@ -152,5 +152,17 @@
     "home_score": 94,
     "sheet_name": "2026-11-15 G16 戰神 vs 中信特攻",
     "status": "FINAL"
+  },
+  {
+    "game_id": "G17",
+    "schedule_id": 27558,
+    "date": "2026.11.21",
+    "time": "00:00",
+    "away_team": "高雄全家海神",
+    "away_score": 107,
+    "home_team": "福爾摩沙夢想家",
+    "home_score": 90,
+    "sheet_name": "2026.11.21 G17 高雄全家海神 vs 福爾摩沙夢想家",
+    "status": "FINAL"
   }
 ]

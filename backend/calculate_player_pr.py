@@ -1,13 +1,15 @@
 import json
+import os
 from pathlib import Path
 import sqlite3
 import numpy as np
 import pandas as pd
 
 CURRENT_DIR = Path(__file__).resolve().parent
-DB_PATH = CURRENT_DIR / "data" / "tpbl_stats.db"
-OUTPUT_BACKEND_JSON = CURRENT_DIR / "data" / "player_pr_stats.json"
-OUTPUT_FRONTEND_JSON = (
+DB_PATH = Path(os.environ["TPBL_DB_PATH"]) if os.environ.get("TPBL_DB_PATH") else (CURRENT_DIR / "data" / "tpbl_stats.db")
+STAGING_OUT_DIR = Path(os.environ["TPBL_STAGING_OUT_DIR"]) if os.environ.get("TPBL_STAGING_OUT_DIR") else None
+OUTPUT_BACKEND_JSON = (STAGING_OUT_DIR / "player_pr_stats.json") if STAGING_OUT_DIR else (CURRENT_DIR / "data" / "player_pr_stats.json")
+OUTPUT_FRONTEND_JSON = None if STAGING_OUT_DIR else (
     CURRENT_DIR.parent / "frontend" / "public" / "player_pr_stats.json"
 )
 
@@ -173,13 +175,13 @@ def main():
     return
 
   OUTPUT_BACKEND_JSON.parent.mkdir(parents=True, exist_ok=True)
-  OUTPUT_FRONTEND_JSON.parent.mkdir(parents=True, exist_ok=True)
-
   with open(OUTPUT_BACKEND_JSON, "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 
-  with open(OUTPUT_FRONTEND_JSON, "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+  if OUTPUT_FRONTEND_JSON is not None:
+    OUTPUT_FRONTEND_JSON.parent.mkdir(parents=True, exist_ok=True)
+    with open(OUTPUT_FRONTEND_JSON, "w", encoding="utf-8") as f:
+      json.dump(data, f, ensure_ascii=False, indent=2)
 
   print("🚀 前後端 JSON 均已同步完成")
 

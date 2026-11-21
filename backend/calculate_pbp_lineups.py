@@ -15,6 +15,7 @@ TPBL 真實逐球文字直播 (Broadcasts PBP) 陣容與 On/Off 精算引擎
 """
 
 import json
+import os
 import sqlite3
 from collections import defaultdict
 from itertools import combinations
@@ -24,11 +25,14 @@ from typing import Dict, List, Set, Tuple, Any
 CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent
 RAW_DIR = CURRENT_DIR / "data" / "raw_game_stats"
-DB_PATH = CURRENT_DIR / "data" / "tpbl_stats.db"
-SCHED_PATH = PROJECT_ROOT / "data" / "season2026" / "schedule.json"
+DB_PATH = Path(os.environ["TPBL_DB_PATH"]) if os.environ.get("TPBL_DB_PATH") else (CURRENT_DIR / "data" / "tpbl_stats.db")
+SCHED_PATH = CURRENT_DIR / "data" / "season2026" / "schedule.json"
+if not SCHED_PATH.exists():
+    SCHED_PATH = PROJECT_ROOT / "data" / "season2026" / "schedule.json"
 
-OUT_BACKEND = CURRENT_DIR / "data" / "pbp_lineup_stats.json"
-OUT_FRONTEND = PROJECT_ROOT / "frontend" / "public" / "pbp_lineup_stats.json"
+STAGING_OUT_DIR = Path(os.environ["TPBL_STAGING_OUT_DIR"]) if os.environ.get("TPBL_STAGING_OUT_DIR") else None
+OUT_BACKEND = (STAGING_OUT_DIR / "pbp_lineup_stats.json") if STAGING_OUT_DIR else (CURRENT_DIR / "data" / "pbp_lineup_stats.json")
+OUT_FRONTEND = None if STAGING_OUT_DIR else (PROJECT_ROOT / "frontend" / "public" / "pbp_lineup_stats.json")
 
 TEAM_ALIASES_MAP = {
     "新竹御嵿攻城獅": ["新竹御嵿攻城獅", "新竹御頂攻城獅", "新竹攻城獅", "攻城獅"],
@@ -673,11 +677,14 @@ def main():
         "teams": teams_out,
     }
 
+    OUT_BACKEND.parent.mkdir(parents=True, exist_ok=True)
     OUT_BACKEND.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    OUT_FRONTEND.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    if OUT_FRONTEND is not None:
+        OUT_FRONTEND.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"✅ 已處理 {len(games_out)} 場比賽、{len(teams_out)} 支球隊，輸出至：")
     print(f"   - {OUT_BACKEND}")
-    print(f"   - {OUT_FRONTEND}")
+    if OUT_FRONTEND is not None:
+        print(f"   - {OUT_FRONTEND}")
 
     # 全場次快速守恆摘要
     print("\n🔍 全場次守恆快速檢查：")

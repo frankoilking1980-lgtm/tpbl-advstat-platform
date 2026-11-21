@@ -1,11 +1,13 @@
 import json
+import os
 from pathlib import Path
 from collections import defaultdict
 
 CURRENT_DIR = Path(__file__).resolve().parent
 RAW_DIR = CURRENT_DIR / "data" / "raw_game_stats"
-OUTPUT_JSON_BACKEND = CURRENT_DIR / "data" / "player_situations_stats.json"
-OUTPUT_JSON_FRONTEND = CURRENT_DIR.parent / "frontend" / "public" / "player_situations_stats.json"
+STAGING_OUT_DIR = Path(os.environ["TPBL_STAGING_OUT_DIR"]) if os.environ.get("TPBL_STAGING_OUT_DIR") else None
+OUTPUT_JSON_BACKEND = (STAGING_OUT_DIR / "player_situations_stats.json") if STAGING_OUT_DIR else (CURRENT_DIR / "data" / "player_situations_stats.json")
+OUTPUT_JSON_FRONTEND = None if STAGING_OUT_DIR else (CURRENT_DIR.parent / "frontend" / "public" / "player_situations_stats.json")
 
 EXCLUDE_GAME_IDS = {"27540", "27541"}
 
@@ -317,11 +319,12 @@ def calculate():
     with open(OUTPUT_JSON_BACKEND, "w", encoding="utf-8") as f:
         json.dump(final_result, f, ensure_ascii=False, indent=2)
 
-    OUTPUT_JSON_FRONTEND.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_JSON_FRONTEND, "w", encoding="utf-8") as f:
-        json.dump(final_result, f, ensure_ascii=False, indent=2)
+    if OUTPUT_JSON_FRONTEND is not None:
+        OUTPUT_JSON_FRONTEND.parent.mkdir(parents=True, exist_ok=True)
+        with open(OUTPUT_JSON_FRONTEND, "w", encoding="utf-8") as f:
+            json.dump(final_result, f, ensure_ascii=False, indent=2)
 
-    print(f"🎉 成功更新 JSON 至:\n   -> {OUTPUT_JSON_BACKEND}\n   -> {OUTPUT_JSON_FRONTEND}")
+    print(f"🎉 成功更新 JSON 至:\n   -> {OUTPUT_JSON_BACKEND}")
 
 if __name__ == "__main__":
     calculate()
