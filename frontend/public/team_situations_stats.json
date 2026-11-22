@@ -1,7 +1,7 @@
 {
   "meta": {
     "season": "2026-2027 例行賽",
-    "total_games": 15
+    "total_games": 16
   },
   "teams": [
     {
@@ -71,6 +71,39 @@
       }
     },
     {
+      "team_name": "新北中信特攻",
+      "games_played": 5,
+      "ppg": 104.4,
+      "starter": {
+        "ppg": 73.4,
+        "share_pct": 70.3
+      },
+      "bench": {
+        "ppg": 31.0,
+        "share_pct": 29.7
+      },
+      "local": {
+        "ppg": 52.8,
+        "share_pct": 50.6
+      },
+      "import": {
+        "ppg": 51.6,
+        "share_pct": 49.4
+      },
+      "shot_distribution": {
+        "two_pt_fga_pg": 48.2,
+        "two_pt_share_pct": 59.2,
+        "three_pt_fga_pg": 33.2,
+        "three_pt_share_pct": 40.8
+      },
+      "situations": {
+        "paint_ppg": 46.8,
+        "paint_share_pct": 44.8,
+        "fast_break_ppg": 13.0,
+        "fast_break_share_pct": 12.5
+      }
+    },
+    {
       "team_name": "臺北台新戰神",
       "games_played": 4,
       "ppg": 103.2,
@@ -104,69 +137,36 @@
       }
     },
     {
-      "team_name": "新北中信特攻",
-      "games_played": 4,
-      "ppg": 101.8,
-      "starter": {
-        "ppg": 73.0,
-        "share_pct": 71.7
-      },
-      "bench": {
-        "ppg": 28.8,
-        "share_pct": 28.3
-      },
-      "local": {
-        "ppg": 53.5,
-        "share_pct": 52.6
-      },
-      "import": {
-        "ppg": 48.2,
-        "share_pct": 47.4
-      },
-      "shot_distribution": {
-        "two_pt_fga_pg": 49.8,
-        "two_pt_share_pct": 59.9,
-        "three_pt_fga_pg": 33.2,
-        "three_pt_share_pct": 40.1
-      },
-      "situations": {
-        "paint_ppg": 49.5,
-        "paint_share_pct": 48.6,
-        "fast_break_ppg": 14.0,
-        "fast_break_share_pct": 13.8
-      }
-    },
-    {
       "team_name": "福爾摩沙夢想家",
-      "games_played": 4,
-      "ppg": 100.2,
+      "games_played": 5,
+      "ppg": 99.8,
       "starter": {
-        "ppg": 61.0,
-        "share_pct": 60.8
+        "ppg": 62.6,
+        "share_pct": 62.7
       },
       "bench": {
-        "ppg": 39.2,
-        "share_pct": 39.2
+        "ppg": 37.2,
+        "share_pct": 37.3
       },
       "local": {
-        "ppg": 73.8,
-        "share_pct": 73.6
+        "ppg": 74.2,
+        "share_pct": 74.3
       },
       "import": {
-        "ppg": 26.5,
-        "share_pct": 26.4
+        "ppg": 25.6,
+        "share_pct": 25.7
       },
       "shot_distribution": {
-        "two_pt_fga_pg": 49.2,
-        "two_pt_share_pct": 59.5,
-        "three_pt_fga_pg": 33.5,
-        "three_pt_share_pct": 40.5
+        "two_pt_fga_pg": 49.6,
+        "two_pt_share_pct": 60.9,
+        "three_pt_fga_pg": 31.8,
+        "three_pt_share_pct": 39.1
       },
       "situations": {
-        "paint_ppg": 43.5,
-        "paint_share_pct": 43.4,
-        "fast_break_ppg": 13.0,
-        "fast_break_share_pct": 13.0
+        "paint_ppg": 43.2,
+        "paint_share_pct": 43.3,
+        "fast_break_ppg": 10.8,
+        "fast_break_share_pct": 10.8
       }
     },
     {
