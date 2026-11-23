@@ -798,39 +798,23 @@ def _generate_single_system_with_gemini(
             + user_prompt,
         ]
 
-    last_err: Optional[Exception] = None
-    response = None
-    for attempt in range(2):
-        try:
-            response = client.models.generate_content(
-                model=chosen_model,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    response_mime_type="application/json",
-                    response_schema=TacticalSystemModel,
-                    temperature=0.25,
-                ),
-            )
-            break
-        except Exception as exc:
-            last_err = exc
-            if attempt == 0 and any(
-                k in type(exc).__name__.lower() or k in str(exc).lower()
-                for k in ("remoteprotocol", "disconnect", "timeout", "connection")
-            ):
-                continue
-            raise
-    if response is None and last_err is not None:
-        raise last_err
+    from app.services.scouting_generator import call_gemini_stream_with_retry
 
-    parsed_obj = getattr(response, "parsed", None)
-    if isinstance(parsed_obj, TacticalSystemModel):
-        return parsed_obj
-    if isinstance(parsed_obj, dict):
-        return TacticalSystemModel.model_validate(parsed_obj)
-    raw_text = _strip_json_markdown_fences(getattr(response, "text", None) or "")
-    return TacticalSystemModel.model_validate(json.loads(raw_text))
+    raw_text = call_gemini_stream_with_retry(
+        client,
+        model_name=chosen_model,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            response_mime_type="application/json",
+            response_schema=TacticalSystemModel,
+            temperature=0.25,
+        ),
+        max_retries=2,
+        retry_delay_sec=3.0,
+    )
+    cleaned_text = _strip_json_markdown_fences(raw_text)
+    return TacticalSystemModel.model_validate(json.loads(cleaned_text))
 
 
 def generate_and_save_pbp_playbooks(
@@ -875,10 +859,16 @@ def generate_and_save_pbp_playbooks(
 
     from google import genai
     from google.genai import types
-    from app.services.scouting_generator import select_best_gemini_model
+    from app.services.scouting_generator import (
+        GEMINI_HTTP_TIMEOUT_MS,
+        resolve_gemini_model_name,
+    )
 
-    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=180_000))
-    chosen_model = (model_name or "").strip().replace("models/", "") or select_best_gemini_model(client)
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=GEMINI_HTTP_TIMEOUT_MS),
+    )
+    chosen_model = resolve_gemini_model_name(model_name)
 
     ai_results: Dict[str, TacticalSystemModel] = {}
     with ThreadPoolExecutor(max_workers=4) as executor:

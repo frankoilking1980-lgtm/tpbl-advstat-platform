@@ -167,8 +167,9 @@ export default function SystemConsolePage() {
     available_models?: string[];
     message: string;
   } | null>(null);
+  const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
   const [pingingGemini, setPingingGemini] = useState(false);
-  const [selectedGeminiModel, setSelectedGeminiModel] = useState<string>('');
+  const [selectedGeminiModel, setSelectedGeminiModel] = useState<string>(DEFAULT_GEMINI_MODEL);
 
   const handlePingGemini = async (secretOverride?: string) => {
     const sec = secretOverride || adminSecret;
@@ -326,6 +327,7 @@ export default function SystemConsolePage() {
     try {
       const directBase = apiBase.replace(/\/+$/, '');
       const generateUrl = `${directBase}/api/weekly-previews/generate`;
+      const activeModel = selectedGeminiModel || DEFAULT_GEMINI_MODEL;
 
       const res = await fetch(generateUrl, {
         method: 'POST',
@@ -340,7 +342,7 @@ export default function SystemConsolePage() {
           game_date: genDate,
           game_label: genLabel || '本週焦點大戰',
           extra_notes: genNotes.trim() || null,
-          model_name: selectedGeminiModel || null,
+          model_name: activeModel,
         }),
       });
       const initData = await parseApiResponse(res);
@@ -379,7 +381,7 @@ export default function SystemConsolePage() {
           const result = jobData.result || {};
           setGenResultMsg({
             type: 'ok',
-            text: `已成功透過 ${result.model_used || selectedGeminiModel || 'Gemini'} 生成報告（${result.slug || ''}），並自動更新 7 隊戰術庫！`,
+            text: `已成功透過 ${result.model_used || activeModel} 生成報告（${result.slug || ''}），並自動更新 7 隊戰術庫！`,
           });
           await loadConsoleWeeklyData(adminSecret);
           return;
@@ -706,7 +708,7 @@ export default function SystemConsolePage() {
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {geminiPing.available_models.slice(0, 12).map((m) => {
-                        const isSelected = m === (selectedGeminiModel || geminiPing.selected_model);
+                        const isSelected = m === (selectedGeminiModel || geminiPing.selected_model || DEFAULT_GEMINI_MODEL);
                         return (
                           <button
                             key={m}
@@ -873,7 +875,7 @@ export default function SystemConsolePage() {
               <h2 className="text-lg font-black text-white">本週對戰 AI 球探報告生成器</h2>
             </div>
             <div className="text-xs px-3 py-1 rounded-full bg-[#0E1117] border border-[#30363D] text-gray-300 font-mono">
-              使用模型：<span className="text-[#00E676] font-bold">{selectedGeminiModel || '自動選用最新 Pro 模型'}</span>
+              使用模型：<span className="text-[#00E676] font-bold">{selectedGeminiModel || DEFAULT_GEMINI_MODEL}</span>
             </div>
           </div>
 

@@ -1,37 +1,37 @@
 [
   {
-    "slug": "2026-11-22-dreamers-vs-dea",
-    "game_date": "2026-11-22",
-    "game_label": "G18 焦點對決",
+    "slug": "2026-11-27-dreamers-vs-leopards",
+    "game_date": "2026-11-27",
+    "game_label": "G20 焦點對決",
     "season_stage": "2026-2027 例行賽",
     "home_team": "福爾摩沙夢想家",
-    "away_team": "新北中信特攻",
-    "headline": "洲際直落狂潮碰上閃電重盾！夢想家外線核武衝擊特攻高壓防線",
-    "subheadline": "林俊吉極端效率對決阿巴西超高效切擊，禁區高柏鎧與法拉帝油漆區肉搏成勝負分水嶺",
-    "home_win_prob": 56.9,
-    "away_win_prob": 43.1,
+    "away_team": "桃園台啤永豐雲豹",
+    "headline": "快打旋風撞上極致降速！失血雙雄的焦土肉搏，誰能搶下止血關鍵勝？",
+    "subheadline": "夢想家場均飆近百分卻吞四連敗、失誤率高居 16.8%；雲豹少了頭號效率終結者米勒，靠 32.5% 進攻籃板率拚地面戰",
+    "home_win_prob": 47.0,
+    "away_win_prob": 53.0,
+    "style_matchup_tags": [
+      "🔥 外線火力克制"
+    ],
+    "generated_at": "2026-11-23T21:27:45",
+    "model_used": "gemini-4-hydrogen"
+  },
+  {
+    "slug": "2026-11-25-dreamers-vs-lioneers",
+    "game_date": "2026-11-25",
+    "game_label": "G19 焦點對決",
+    "season_stage": "2026-2027 例行賽",
+    "home_team": "福爾摩沙夢想家",
+    "away_team": "新竹御嵿攻城獅",
+    "headline": "籃板絞肉機遇上高效率後場雙槍：攻城獅強襲洲際迷你蛋，夢想家傷兵潮下如何守住主場？",
+    "subheadline": "團隊進攻籃板率 36.2% 對決聯盟後段班護板率，當雙塔場均狂吃 42 分鐘遇上林俊吉與蔣淯安的極致效率，勝負取決於禁區消耗與外線懲罰。",
+    "home_win_prob": 46.6,
+    "away_win_prob": 53.4,
     "style_matchup_tags": [
       "💪 禁區二次進攻優勢",
       "🔥 外線火力克制"
     ],
-    "generated_at": "2026-11-19T20:53:55",
-    "model_used": "gemini-3.8-flash"
-  },
-  {
-    "slug": "2026-11-21-dreamers-vs-aquas",
-    "game_date": "2026-11-21",
-    "game_label": "G17 焦點對決",
-    "season_stage": "2026-2027 例行賽",
-    "home_team": "福爾摩沙夢想家",
-    "away_team": "高雄全家海神",
-    "headline": "洲際火線復仇戰：夢想家禁區制空權決戰海神外線砲火群",
-    "subheadline": "高柏鎧禁區雙十護框對撞海神洋將狂潮，失誤率與二次進攻成為勝負分水嶺",
-    "home_win_prob": 59.5,
-    "away_win_prob": 40.5,
-    "style_matchup_tags": [
-      "💪 禁區二次進攻優勢"
-    ],
-    "generated_at": "2026-11-19T20:48:45",
-    "model_used": "gemini-3.8-flash"
+    "generated_at": "2026-11-23T21:26:04",
+    "model_used": "gemini-4-hydrogen"
   }
 ]

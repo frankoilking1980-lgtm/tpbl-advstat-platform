@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import sqlite3
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
@@ -876,8 +877,82 @@ def _gemini_model_sort_key(name: str):
     return (-major, -minor, tier, is_preview, low)
 
 
+DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_HTTP_TIMEOUT_MS = 180_000  # 180 秒 (google-genai HttpOptions.timeout 單位為毫秒)
+_TRANSIENT_GEMINI_ERR_TOKENS = (
+    "remoteprotocol",
+    "server disconnected",
+    "disconnect",
+    "timeout",
+    "timed out",
+    "connection reset",
+    "connection aborted",
+    "connection error",
+    "connection",
+    "broken pipe",
+    "eof occurred",
+)
+
+
+def resolve_gemini_model_name(model_name: Optional[str] = None) -> str:
+    """正規化並解析最終使用的 Gemini 模型名稱，未指定時統一對齊 DEFAULT_GEMINI_MODEL。"""
+    cleaned = (model_name or "").strip()
+    if cleaned.startswith("models/"):
+        cleaned = cleaned[len("models/"):]
+    return cleaned or DEFAULT_GEMINI_MODEL
+
+
+def call_gemini_stream_with_retry(
+    client: Any,
+    *,
+    model_name: str,
+    contents: Any,
+    config: Any,
+    max_retries: int = 2,
+    retry_delay_sec: float = 3.0,
+) -> str:
+    """使用 generate_content_stream 接收完整文字並附帶指數/固定退避重試機制。"""
+    resolved_model = resolve_gemini_model_name(model_name)
+    last_err: Optional[Exception] = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            chunks: List[str] = []
+            for chunk in client.models.generate_content_stream(
+                model=resolved_model,
+                contents=contents,
+                config=config,
+            ):
+                text_part = getattr(chunk, "text", None)
+                if text_part:
+                    chunks.append(text_part)
+
+            raw_text = "".join(chunks).strip()
+            if not raw_text:
+                raise RuntimeError(f"Gemini 串流回傳空內容（模型：{resolved_model}）")
+            return raw_text
+        except Exception as exc:
+            last_err = exc
+            err_sig = f"{type(exc).__name__} {exc}".lower()
+            is_transient = isinstance(exc, TimeoutError) or any(
+                tok in err_sig for tok in _TRANSIENT_GEMINI_ERR_TOKENS
+            )
+            if is_transient and attempt < max_retries:
+                time.sleep(retry_delay_sec)
+                continue
+            if is_transient:
+                raise RuntimeError(
+                    f"Gemini API 連線逾時或伺服器無回應斷線（模型：{resolved_model}，已重試 {attempt} 次、共嘗試 {attempt + 1} 次仍失敗）：{exc}"
+                ) from exc
+            raise RuntimeError(
+                f"Gemini API 呼叫失敗（模型：{resolved_model}，已重試 {attempt} 次）：{exc}"
+            ) from exc
+
+    raise RuntimeError(f"Gemini API 請求失敗（模型：{resolved_model}）：{last_err}") from last_err
+
+
 def select_best_gemini_model(client, available_names: Optional[List[str]] = None) -> str:
-    """動態掃描可用 Gemini 模型，優先選用最新推理旗艦模型，不寫死過時型號"""
+    """動態掃描可用 Gemini 模型，優先選用預設標準模型與最新可用模型。"""
     if available_names is None:
         available_names = []
         try:
@@ -889,6 +964,7 @@ def select_best_gemini_model(client, available_names: Optional[List[str]] = None
             pass
 
     priority_patterns = [
+        r"^gemini-3\.8-flash",
         r"^gemini-3\.1-pro",
         r"^gemini-3.*pro",
         r"^gemini-2\.5-pro",
@@ -908,7 +984,7 @@ def select_best_gemini_model(client, available_names: Optional[List[str]] = None
     if available_names:
         sorted_all = sorted(dict.fromkeys(available_names), key=_gemini_model_sort_key)
         return sorted_all[0]
-    return "gemini-2.5-pro"
+    return DEFAULT_GEMINI_MODEL
 
 
 def _strip_json_markdown_fences(raw_text: str) -> str:
@@ -1200,7 +1276,6 @@ def generate_weekly_preview(
     extra_notes: Optional[str] = None,
     model_name: Optional[str] = None,
 ) -> WeeklyPreviewReport:
-    import time
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("伺服器尚未設定 GEMINI_API_KEY 環境變數，無法呼叫 Gemini 生成報告。")
@@ -1215,60 +1290,42 @@ def generate_weekly_preview(
         game_label=game_label,
         extra_notes=extra_notes,
     )
-    # 明確放寬 HTTP SDK Timeout 至 120 秒 (120,000 ms)，避免長結構化 JSON 生成時提前斷線
+    # 明確放寬 HTTP SDK Timeout 至 180 秒 (180,000 ms)，並改用串流接收避免閘道閒置斷線
     client = genai.Client(
         api_key=api_key,
-        http_options=types.HttpOptions(timeout=120_000),
+        http_options=types.HttpOptions(timeout=GEMINI_HTTP_TIMEOUT_MS),
     )
-    chosen_model = (model_name or "").strip().replace("models/", "")
-    model_name = chosen_model if chosen_model else select_best_gemini_model(client)
+    resolved_model = resolve_gemini_model_name(model_name)
 
     config_kwargs: Dict[str, Any] = {
         "system_instruction": system_instruction,
         "response_mime_type": "application/json",
         "temperature": 0.4,
     }
-    lower_model = model_name.lower()
+    lower_model = resolved_model.lower()
     if any(tok in lower_model for tok in ("2.5", "3.", "thinking")):
         config_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=2048)
 
     gen_config = types.GenerateContentConfig(**config_kwargs)
 
-    last_err: Optional[Exception] = None
-    response = None
-    transient_tokens = ("remoteprotocol", "server disconnected", "disconnect", "timeout", "connection")
-    for attempt in range(2):
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=user_prompt,
-                config=gen_config,
-            )
-            break
-        except Exception as exc:
-            last_err = exc
-            err_sig = f"{type(exc).__name__} {exc}".lower()
-            if attempt == 0 and any(tok in err_sig for tok in transient_tokens):
-                time.sleep(1.5)
-                continue
-            if any(tok in err_sig for tok in transient_tokens):
-                raise RuntimeError(
-                    f"Gemini API 連線逾時或伺服器無回應斷線（模型 {model_name}，已自動重試 1 次仍失敗）：{exc}"
-                ) from exc
-            raise
-
-    if response is None and last_err is not None:
-        raise RuntimeError(f"Gemini API 請求失敗：{last_err}") from last_err
+    raw_text = call_gemini_stream_with_retry(
+        client,
+        model_name=resolved_model,
+        contents=user_prompt,
+        config=gen_config,
+        max_retries=2,
+        retry_delay_sec=3.0,
+    )
 
     return _finalize_and_save_report(
-        raw_text=response.text,
+        raw_text=raw_text,
         context=context,
         stage=stage,
         home_team=home_team,
         away_team=away_team,
         game_date=game_date,
         game_label=game_label,
-        model_used=model_name,
+        model_used=resolved_model,
     )
 
 
@@ -1901,7 +1958,7 @@ def _normalize_player_reviews_order(
 
 def generate_post_game_reviews(
     game_id: Union[int, str],
-    model_name: str = "gemini-2.5-flash",
+    model_name: str = DEFAULT_GEMINI_MODEL,
     youtube_url: Optional[str] = None,
     q1_tipoff_seconds: Optional[int] = None,
     q3_tipoff_seconds: Optional[int] = None,
@@ -1999,43 +2056,28 @@ def generate_post_game_reviews(
         + json.dumps(prompt_context, ensure_ascii=False)
     )
 
-    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=180_000))
-    chosen_model = (model_name or "").strip().replace("models/", "") or select_best_gemini_model(client)
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=GEMINI_HTTP_TIMEOUT_MS))
+    chosen_model = resolve_gemini_model_name(model_name)
 
-    last_err: Optional[Exception] = None
-    response = None
-    for attempt in range(2):
-        try:
-            response = client.models.generate_content(
-                model=chosen_model,
-                contents=user_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    response_mime_type="application/json",
-                    response_schema=PostGameReviewPayload,
-                    temperature=0.3,
-                ),
-            )
-            break
-        except Exception as exc:
-            last_err = exc
-            if attempt == 0 and any(k in type(exc).__name__.lower() or k in str(exc).lower() for k in ("remoteprotocol", "disconnect", "timeout", "connection")):
-                continue
-            raise
-    if response is None and last_err is not None:
-        raise last_err
+    raw_text = call_gemini_stream_with_retry(
+        client,
+        model_name=chosen_model,
+        contents=user_prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            response_mime_type="application/json",
+            response_schema=PostGameReviewPayload,
+            temperature=0.3,
+        ),
+        max_retries=2,
+        retry_delay_sec=3.0,
+    )
 
-    parsed_obj = getattr(response, "parsed", None)
-    if isinstance(parsed_obj, PostGameReviewPayload):
-        parsed = parsed_obj
-    elif isinstance(parsed_obj, dict):
-        parsed = PostGameReviewPayload.model_validate(parsed_obj)
-    else:
-        raw_text = _strip_json_markdown_fences(getattr(response, "text", None) or "")
-        decoded = json.loads(raw_text)
-        if not isinstance(decoded, dict):
-            raise ValueError(f"Gemini 回傳非預期的 JSON 物件型別：{type(decoded).__name__}")
-        parsed = PostGameReviewPayload.model_validate(decoded)
+    cleaned_text = _strip_json_markdown_fences(raw_text)
+    decoded = json.loads(cleaned_text)
+    if not isinstance(decoded, dict):
+        raise ValueError(f"Gemini 回傳非預期的 JSON 物件型別：{type(decoded).__name__}")
+    parsed = PostGameReviewPayload.model_validate(decoded)
 
     player_reviews = {
         away_team: _normalize_player_reviews_order(parsed.away_player_reviews, inputs["away_players"]),
