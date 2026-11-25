@@ -8,7 +8,8 @@
     "home_team": "桃園台啤永豐雲豹",
     "home_score": 105,
     "sheet_name": "2025.10.19 G01 國王 vs 雲豹",
-    "status": "FINAL"
+    "status": "FINAL",
+    "schedule_id": 6316
   },
   {
     "game_id": "Group A-G02",
@@ -19,7 +20,8 @@
     "home_team": "桃園台啤永豐雲豹",
     "home_score": 114,
     "sheet_name": "2025.10.19 G02 國王 vs 雲豹",
-    "status": "FINAL"
+    "status": "FINAL",
+    "schedule_id": 6317
   },
   {
     "game_id": "Group A-G03",
@@ -30,7 +32,8 @@
     "home_team": "新北國王",
     "home_score": 104,
     "sheet_name": "2025.10.19 G03 雲豹 vs 國王",
-    "status": "FINAL"
+    "status": "FINAL",
+    "schedule_id": 6318
   },
   {
     "game_id": "Group A-G04",
@@ -41,7 +44,8 @@
     "home_team": "新北國王",
     "home_score": 116,
     "sheet_name": "2025.10.19 G04 雲豹 vs 國王",
-    "status": "FINAL"
+    "status": "FINAL",
+    "schedule_id": 6319
   },
   {
     "game_id": "Group B-G01",
@@ -52,7 +56,8 @@
     "home_team": "福爾摩沙夢想家",
     "home_score": 94,
     "sheet_name": "2025.10.19 G01 攻城獅 vs 夢想家",
-    "status": "FINAL"
+    "status": "FINAL",
+    "schedule_id": 6033
   },
   {
     "game_id": "Group B-G02",
@@ -63,7 +68,8 @@
     "home_team": "福爾摩沙夢想家",
     "home_score": 83,
     "sheet_name": "2025.10.19 G02 攻城獅 vs 夢想家",
-    "status": "FINAL"
+    "status": "FINAL",
+    "schedule_id": 6034
   },
   {
     "game_id": "Group B-G03",
@@ -74,7 +80,8 @@
     "home_team": "新竹御嵿攻城獅",
     "home_score": 106,
     "sheet_name": "2025.10.19 G03 夢想家 vs 攻城獅",
-    "status": "FINAL"
+    "status": "FINAL",
+    "schedule_id": 6035
   },
   {
     "game_id": "Group B-G04",
@@ -85,6 +92,7 @@
     "home_team": "新竹御嵿攻城獅",
     "home_score": 93,
     "sheet_name": "2025.10.19 G04 夢想家 vs 攻城獅",
-    "status": "FINAL"
+    "status": "FINAL",
+    "schedule_id": 6036
   }
 ]

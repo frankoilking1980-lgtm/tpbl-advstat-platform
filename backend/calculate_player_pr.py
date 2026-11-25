@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 from pathlib import Path
@@ -13,7 +14,16 @@ OUTPUT_FRONTEND_JSON = None if STAGING_OUT_DIR else (
     CURRENT_DIR.parent / "frontend" / "public" / "player_pr_stats.json"
 )
 
-TARGET_STAGE = "2026-2027 例行賽"
+STAGE_MAPPING = {
+    "season2024": "2024-2025 例行賽",
+    "season2025": "2025-2026 例行賽",
+    "playin2025": "2025-2026 季後挑戰賽",
+    "playoff2025": "2025-2026 季後賽",
+    "final20252026": "2025-2026 冠軍賽",
+    "preseason2026": "2026-2027 熱身賽",
+    "season2026": "2026-2027 例行賽",
+}
+DEFAULT_STAGE = "2026-2027 例行賽"
 MIN_MPG = 8.0  # 基本時間門檻
 
 
@@ -31,10 +41,10 @@ def get_team_games_map(conn, stage: str) -> dict:
   return {row[0]: int(row[1]) for row in rows if row[0]}
 
 
-def load_data():
+def load_data(stage: str = DEFAULT_STAGE):
   conn = sqlite3.connect(DB_PATH, timeout=30.0)
   try:
-    team_games_map = get_team_games_map(conn, TARGET_STAGE)
+    team_games_map = get_team_games_map(conn, stage)
 
     query = """
       SELECT 
@@ -44,7 +54,7 @@ def load_data():
       FROM player_stats
       WHERE season_stage = ?
       """
-    df = pd.read_sql_query(query, conn, params=(TARGET_STAGE,))
+    df = pd.read_sql_query(query, conn, params=(stage,))
     return df, team_games_map
   finally:
     conn.close()
@@ -75,21 +85,21 @@ def _normalize_pct_series(s: pd.Series) -> pd.Series:
   return num.where(~((num > 0.0) & (num <= 1.0)), num * 100.0)
 
 
-def calculate_percentiles(df: pd.DataFrame, team_games_map: dict):
+def calculate_percentiles(df: pd.DataFrame, team_games_map: dict, stage: str = DEFAULT_STAGE):
   if df.empty:
     return {}
 
   qualified_mask = df.apply(lambda r: is_qualified(r, team_games_map), axis=1)
   qualified_df = df[qualified_mask].copy()
 
-  print(f"📊 賽季總球員: {len(df)} 位")
-  print(f"🏀 各隊真實已賽場次: {team_games_map}")
-  print(f"✅ 符合出賽門檻的合格母體: {len(qualified_df)} 位")
+  print(f"📊 [{stage}] 賽季總球員: {len(df)} 位")
+  print(f"🏀 [{stage}] 各隊真實已賽場次: {team_games_map}")
+  print(f"✅ [{stage}] 符合出賽門檻的合格母體: {len(qualified_df)} 位")
 
   if qualified_df.empty:
     return {
         "meta": {
-            "stage": TARGET_STAGE,
+            "stage": stage,
             "min_mpg": MIN_MPG,
             "team_games": team_games_map,
             "total_qualified": 0,
@@ -158,7 +168,7 @@ def calculate_percentiles(df: pd.DataFrame, team_games_map: dict):
 
   return {
       "meta": {
-          "stage": TARGET_STAGE,
+          "stage": stage,
           "min_mpg": MIN_MPG,
           "team_games": team_games_map,
           "total_qualified": len(ranked_list),
@@ -168,22 +178,73 @@ def calculate_percentiles(df: pd.DataFrame, team_games_map: dict):
   }
 
 
+def _load_existing_payload() -> dict:
+  for cand in (OUTPUT_BACKEND_JSON, OUTPUT_FRONTEND_JSON):
+    if cand is not None and cand.exists():
+      try:
+        return json.loads(cand.read_text(encoding="utf-8"))
+      except Exception:
+        pass
+  return {}
+
+
 def main():
-  df, team_games_map = load_data()
-  data = calculate_percentiles(df, team_games_map)
-  if not data:
+  parser = argparse.ArgumentParser(description="計算全聯盟球員 PR 百分位排行榜 (支援多賽季)")
+  parser.add_argument("--season", type=str, default=None, help="指定賽季資料夾 (例如: season2024)")
+  parser.add_argument("--all-seasons", action="store_true", help="遍歷所有具備 schedule.json 的賽季資料夾")
+  args = parser.parse_args()
+
+  data_root = CURRENT_DIR / "data"
+  if args.all_seasons:
+    target_seasons = [
+        d.name for d in sorted(data_root.iterdir())
+        if d.is_dir() and d.name in STAGE_MAPPING and (d / "schedule.json").exists()
+    ]
+  elif args.season:
+    target_seasons = [args.season]
+  else:
+    target_seasons = ["season2026"]
+
+  existing = _load_existing_payload()
+  stages_dict = dict(existing.get("stages") or {})
+  if not stages_dict and existing.get("players") is not None:
+    ex_stage = (existing.get("meta") or {}).get("stage") or DEFAULT_STAGE
+    stages_dict[ex_stage] = {
+        "meta": existing.get("meta", {}),
+        "players": existing.get("players", {}),
+        "rankings": existing.get("rankings", []),
+    }
+
+  for season_folder in target_seasons:
+    stage = STAGE_MAPPING.get(season_folder, season_folder)
+    df, team_games_map = load_data(stage)
+    stage_data = calculate_percentiles(df, team_games_map, stage=stage)
+    if stage_data:
+      stages_dict[stage] = stage_data
+
+  root_data = stages_dict.get(DEFAULT_STAGE)
+  if not root_data and stages_dict:
+    root_data = next(iter(stages_dict.values()))
+  if not root_data:
     return
+
+  final_payload = {
+      "meta": root_data.get("meta", {}),
+      "players": root_data.get("players", {}),
+      "rankings": root_data.get("rankings", []),
+      "stages": stages_dict,
+  }
 
   OUTPUT_BACKEND_JSON.parent.mkdir(parents=True, exist_ok=True)
   with open(OUTPUT_BACKEND_JSON, "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+    json.dump(final_payload, f, ensure_ascii=False, indent=2)
 
   if OUTPUT_FRONTEND_JSON is not None:
     OUTPUT_FRONTEND_JSON.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_FRONTEND_JSON, "w", encoding="utf-8") as f:
-      json.dump(data, f, ensure_ascii=False, indent=2)
+      json.dump(final_payload, f, ensure_ascii=False, indent=2)
 
-  print("🚀 前後端 JSON 均已同步完成")
+  print(f"🚀 前後端 PR JSON 均已同步完成（涵蓋 {len(stages_dict)} 個賽季階段）")
 
 
 if __name__ == "__main__":

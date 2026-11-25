@@ -43,15 +43,15 @@ export function PlayerPortrait({
       .then((res) => res.json())
       .then((data) => {
         const cleanName = playerName.trim();
-        const prStage = data?.meta?.stage || '2026-2027 例行賽';
+        const targetStage = stage || '2026-2027 例行賽';
+        const stageBlock =
+          data?.stages && data.stages[targetStage]
+            ? data.stages[targetStage]
+            : targetStage === (data?.meta?.stage || '2026-2027 例行賽')
+            ? data
+            : null;
 
-        // 核心檢查：如果選擇的不是有 PR 數據的賽季 (如 2025-2026)，立刻清空，絕對不顯示！
-        if (stage && stage !== prStage) {
-          setPrData(null);
-          return;
-        }
-
-        const playersMap = data?.players || data;
+        const playersMap = stageBlock?.players || (stageBlock === data ? data : null);
         if (playersMap && playersMap[cleanName]) {
           setPrData(playersMap[cleanName]);
         } else {

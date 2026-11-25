@@ -374,9 +374,15 @@ function PBPContent() {
   const authoritativeUsgMap = useMemo(() => {
     const map = new Map<string, number>();
 
-    const prStage = prStatsData?.meta?.stage || '2026-2027 例行賽';
-    if (prStatsData?.players && stage === prStage) {
-      Object.entries(prStatsData.players).forEach(([name, pData]: [string, any]) => {
+    const stagePrBlock =
+      prStatsData?.stages && prStatsData.stages[stage]
+        ? prStatsData.stages[stage]
+        : stage === (prStatsData?.meta?.stage || '2026-2027 例行賽')
+        ? prStatsData
+        : null;
+
+    if (stagePrBlock?.players) {
+      Object.entries(stagePrBlock.players).forEach(([name, pData]: [string, any]) => {
         const val = pData?.badges?.['USG%']?.val;
         if (isNum(val) && val > 0) {
           map.set(name.trim(), val);

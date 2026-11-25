@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useStage } from '@/context/StageContext';
 
 interface TeamSituation {
   team_name: string;
@@ -19,17 +20,26 @@ interface TeamSituation {
 }
 
 export default function TeamSituationsMatrix() {
-  const [data, setData] = useState<TeamSituation[]>([]);
+  const { stage } = useStage();
+  const [rawJson, setRawJson] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'bench' | 'import' | 'shots'>('bench');
 
   useEffect(() => {
     fetch('/team_situations_stats.json')
       .then((res) => res.json())
       .then((json) => {
-        if (json?.teams) setData(json.teams);
+        setRawJson(json);
       })
       .catch(() => {});
   }, []);
+
+  const stageBlock =
+    rawJson?.stages && rawJson.stages[stage]
+      ? rawJson.stages[stage]
+      : stage === (rawJson?.meta?.stage || rawJson?.meta?.season || '2026-2027 例行賽')
+      ? rawJson
+      : null;
+  const data: TeamSituation[] = stageBlock?.teams || [];
 
   if (data.length === 0) return null;
 

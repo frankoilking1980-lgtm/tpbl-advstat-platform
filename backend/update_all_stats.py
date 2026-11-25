@@ -62,6 +62,8 @@ def main():
     parser.add_argument("-c", "--count", type=int, default=1, help="連續抓取場數（預設 1）")
     parser.add_argument("--skip-existing", action="store_true", help="抓取時跳過已存在的 stats / broadcasts 檔案")
     parser.add_argument("--staging", action="store_true", help="預覽暫存模式：讀取 staging DB 並輸出 JSON 至 backend/data/staging/")
+    parser.add_argument("--season", type=str, default=None, help="指定單一賽季資料夾進行重算 (例如: season2024)")
+    parser.add_argument("--all-seasons", action="store_true", help="遍歷所有具備 schedule.json 的賽季資料夾重算多賽季 JSON")
     args = parser.parse_args()
 
     total_t0 = time.time()
@@ -91,12 +93,18 @@ def main():
             fetch_cmd.append("--skip-existing")
         run_step("步驟 0：抓取官方 Stats 與 Broadcasts", fetch_cmd, env=sub_env)
 
+    extra_calc_args: list[str] = []
+    if args.all_seasons:
+        extra_calc_args.append("--all-seasons")
+    elif args.season:
+        extra_calc_args.extend(["--season", args.season])
+
     total_steps = len(CALC_STEPS)
     for idx, (script_name, desc) in enumerate(CALC_STEPS, start=1):
         script_path = BACKEND_DIR / script_name
         if not script_path.exists():
             raise FileNotFoundError(f"找不到精算腳本：{script_path}")
-        run_step(f"步驟 [{idx}/{total_steps}]：{desc} ({script_name})", [sys.executable, str(script_path)], env=sub_env)
+        run_step(f"步驟 [{idx}/{total_steps}]：{desc} ({script_name})", [sys.executable, str(script_path), *extra_calc_args], env=sub_env)
 
     print("\n" + "=" * 64)
     print(f"🎉 全部精算與前後端 JSON 同步完成！總耗時：{time.time() - total_t0:.2f}s")

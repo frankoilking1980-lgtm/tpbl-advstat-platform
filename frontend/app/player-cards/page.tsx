@@ -527,9 +527,26 @@ function PlayerCardsContent() {
     swrStaticOptions
   );
 
+  const resolveStageBlock = <T extends Record<string, any>>(
+    raw: T | undefined,
+    targetStage: string
+  ): T | undefined => {
+    if (!raw) return undefined;
+    if (raw.stages && raw.stages[targetStage]) {
+      return raw.stages[targetStage] as T;
+    }
+    const rootStage = raw?.meta?.stage || raw?.meta?.season || '2026-2027 例行賽';
+    return targetStage === rootStage ? raw : undefined;
+  };
+
+  const prBlockA = useMemo(() => resolveStageBlock(prData as any, stageA), [prData, stageA]);
+  const prBlockB = useMemo(() => resolveStageBlock(prData as any, stageB), [prData, stageB]);
   const situationsData = useMemo(() => {
-    return situationsRaw?.players || {};
-  }, [situationsRaw]);
+    return resolveStageBlock(situationsRaw as any, stageA)?.players || {};
+  }, [situationsRaw, stageA]);
+  const situationsDataB = useMemo(() => {
+    return resolveStageBlock(situationsRaw as any, stageB)?.players || {};
+  }, [situationsRaw, stageB]);
 
   const { data: listA } = useSWR<PlayerInfo[]>(
     `/api/players/advanced?stage=${encodeURIComponent(stageA)}`,
@@ -668,31 +685,27 @@ function PlayerCardsContent() {
   const playerAName = infoA?.player_name || playerA;
   const playerBName = infoB?.player_name || playerB;
 
-  const currentPRStage = prData?.meta?.stage || '2026-2027 例行賽';
-
   const prPlayerA = useMemo(() => {
-    if (stageA !== currentPRStage) return null;
-    const dict = prData?.players || (prData as any);
+    const dict = prBlockA?.players || (prBlockA as any);
     if (!dict || !playerAName) return null;
     return dict[playerAName.trim()] || null;
-  }, [prData, playerAName, stageA, currentPRStage]);
+  }, [prBlockA, playerAName]);
 
   const prPlayerB = useMemo(() => {
-    if (stageB !== currentPRStage) return null;
-    const dict = prData?.players || (prData as any);
+    const dict = prBlockB?.players || (prBlockB as any);
     if (!dict || !playerBName) return null;
     return dict[playerBName.trim()] || null;
-  }, [prData, playerBName, stageB, currentPRStage]);
+  }, [prBlockB, playerBName]);
 
   const sitPlayerA = useMemo(() => {
-    if (stageA !== '2026-2027 例行賽' || !playerAName) return undefined;
+    if (!playerAName) return undefined;
     return situationsData[playerAName.trim()];
-  }, [situationsData, playerAName, stageA]);
+  }, [situationsData, playerAName]);
 
   const sitPlayerB = useMemo(() => {
-    if (stageB !== '2026-2027 例行賽' || !playerBName) return undefined;
-    return situationsData[playerBName.trim()];
-  }, [situationsData, playerBName, stageB]);
+    if (!playerBName) return undefined;
+    return situationsDataB[playerBName.trim()];
+  }, [situationsDataB, playerBName]);
 
   const archetypesA = useMemo(() => {
     return determinePlayerArchetypes(infoA, sitPlayerA);
@@ -864,8 +877,8 @@ function PlayerCardsContent() {
       return calculateSituationalRadar(info, sit, realTpg);
     }
 
-    const useSit = stageName === '2026-2027 例行賽';
-    const getSit = (name?: string) => (useSit && name ? situationsData[name.trim()] : undefined);
+    const sitMap = resolveStageBlock(situationsRaw as any, stageName)?.players || {};
+    const getSit = (name?: string) => (name ? sitMap[name.trim()] : undefined);
 
     const getIsoVal = (p: PlayerInfo, s?: PlayerSituationsData) => {
       const sc = s?.finishing_breakdown?.self_created?.fga;
@@ -1137,22 +1150,22 @@ function PlayerCardsContent() {
         };
       }
     }
-    if (prData?.players) {
-      for (const [name, item] of Object.entries(prData.players)) {
+    if (prBlockA?.players) {
+      for (const [name, item] of Object.entries(prBlockA.players as Record<string, any>)) {
         if (!map[name.trim()]) {
           map[name.trim()] = { identity: item.identity, position: item.position };
         }
       }
     }
     return map;
-  }, [listA, prData]);
+  }, [listA, prBlockA]);
 
   const rankingList: PRPlayerItem[] = useMemo(() => {
     const rawList: PRPlayerItem[] =
-      prData?.rankings && prData.rankings.length > 0
-        ? prData.rankings
+      prBlockA?.rankings && prBlockA.rankings.length > 0
+        ? prBlockA.rankings
         : (() => {
-            const dict = prData?.players || (prData as any);
+            const dict = prBlockA?.players || (prBlockA as any);
             if (!dict) return [];
             return Object.keys(dict).map((name, idx) => ({
               rank: idx + 1,
@@ -1195,7 +1208,7 @@ function PlayerCardsContent() {
         },
       };
     });
-  }, [prData, prPoolMode, identityMapForLeaderboard]);
+  }, [prBlockA, prPoolMode, identityMapForLeaderboard]);
 
   return (
     <div className="space-y-10 pb-16">
@@ -2372,10 +2385,10 @@ function PlayerCardsContent() {
       </section>
 
       {infoA && (() => {
-        const pbpStage = pbpLineupData?.meta?.stage || '2026-2027 例行賽';
+        const pbpBlockA = resolveStageBlock(pbpLineupData, stageA);
         let singleOnOffDiff: number | null = null;
-        if (stageA === pbpStage && pbpLineupData?.teams) {
-          const teamEntry = pbpLineupData.teams[infoA.team_name]?.all?.on_off_players;
+        if (pbpBlockA?.teams) {
+          const teamEntry = pbpBlockA.teams[infoA.team_name]?.all?.on_off_players;
           if (Array.isArray(teamEntry)) {
             const found = teamEntry.find(
               (p: any) => String(p.player_name || '').trim() === playerAName.trim()
@@ -2434,9 +2447,9 @@ function PlayerCardsContent() {
 
       {playerB && infoA && infoB && (() => {
         const getOnOffDiff = (name: string, team: string, stage: string): number | null => {
-          const pbpStage = pbpLineupData?.meta?.stage || '2026-2027 例行賽';
-          if (stage !== pbpStage || !pbpLineupData?.teams) return null;
-          const teamEntry = pbpLineupData.teams[team]?.all?.on_off_players;
+          const pbpBlock = resolveStageBlock(pbpLineupData, stage);
+          if (!pbpBlock?.teams) return null;
+          const teamEntry = pbpBlock.teams[team]?.all?.on_off_players;
           if (!Array.isArray(teamEntry)) return null;
           const found = teamEntry.find((p: any) => String(p.player_name || '').trim() === name.trim());
           return found && Number.isFinite(Number(found.diff_netrtg)) ? Number(found.diff_netrtg) : null;

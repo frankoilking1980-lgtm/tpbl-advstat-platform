@@ -14,6 +14,7 @@ TPBL 真實逐球文字直播 (Broadcasts PBP) 陣容與 On/Off 精算引擎
   - frontend/public/pbp_lineup_stats.json
 """
 
+import argparse
 import json
 import os
 import sqlite3
@@ -26,13 +27,22 @@ CURRENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CURRENT_DIR.parent
 RAW_DIR = CURRENT_DIR / "data" / "raw_game_stats"
 DB_PATH = Path(os.environ["TPBL_DB_PATH"]) if os.environ.get("TPBL_DB_PATH") else (CURRENT_DIR / "data" / "tpbl_stats.db")
-SCHED_PATH = CURRENT_DIR / "data" / "season2026" / "schedule.json"
-if not SCHED_PATH.exists():
-    SCHED_PATH = PROJECT_ROOT / "data" / "season2026" / "schedule.json"
 
 STAGING_OUT_DIR = Path(os.environ["TPBL_STAGING_OUT_DIR"]) if os.environ.get("TPBL_STAGING_OUT_DIR") else None
 OUT_BACKEND = (STAGING_OUT_DIR / "pbp_lineup_stats.json") if STAGING_OUT_DIR else (CURRENT_DIR / "data" / "pbp_lineup_stats.json")
 OUT_FRONTEND = None if STAGING_OUT_DIR else (PROJECT_ROOT / "frontend" / "public" / "pbp_lineup_stats.json")
+
+STAGE_MAPPING = {
+    "season2024": "2024-2025 例行賽",
+    "season2025": "2025-2026 例行賽",
+    "playin2025": "2025-2026 季後挑戰賽",
+    "playoff2025": "2025-2026 季後賽",
+    "final20252026": "2025-2026 冠軍賽",
+    "preseason2026": "2026-2027 熱身賽",
+    "season2026": "2026-2027 例行賽",
+}
+DEFAULT_STAGE = "2026-2027 例行賽"
+EXCLUDE_GAME_IDS = {"27540", "27541"}
 
 TEAM_ALIASES_MAP = {
     "新竹御嵿攻城獅": ["新竹御嵿攻城獅", "新竹御頂攻城獅", "新竹攻城獅", "攻城獅"],
@@ -93,17 +103,44 @@ def load_import_players_from_db(stage: str = "2026-2027 例行賽") -> Dict[Tupl
     return mapping
 
 
-def load_schedule_map() -> Dict[Tuple[str, str], Dict[str, Any]]:
-    """從 schedule.json 建立 (away_team, home_team) -> [game_meta...] 用於對應 G01..G14"""
-    res: Dict[Tuple[str, str], List[Dict[str, Any]]] = defaultdict(list)
-    if not SCHED_PATH.exists():
-        return {}
-    sched = json.loads(SCHED_PATH.read_text(encoding="utf-8"))
+def _extract_box_score_pts(side: dict) -> int:
+    tot = (side.get("teams") or {}).get("total", {}).get("won_score")
+    if tot is not None:
+        try:
+            v = int(round(float(tot)))
+            if v > 0:
+                return v
+        except (TypeError, ValueError):
+            pass
+    return int(round(sum(float(p.get("score") or 0) for p in ((side.get("players") or {}).get("total") or {}).values() if isinstance(p, dict))))
+
+
+def load_schedule_context(season_folder: str) -> Tuple[Dict[Tuple[str, str], List[Dict[str, Any]]], Dict[str, Dict[str, Any]], Set[str], Set[Tuple[str, str, int, int]]]:
+    """從指定賽季的 schedule.json 建立對照索引與賽季場次過濾器"""
+    sched_path = CURRENT_DIR / "data" / season_folder / "schedule.json"
+    if not sched_path.exists():
+        sched_path = PROJECT_ROOT / "data" / season_folder / "schedule.json"
+    by_teams: Dict[Tuple[str, str], List[Dict[str, Any]]] = defaultdict(list)
+    by_sid: Dict[str, Dict[str, Any]] = {}
+    sids: Set[str] = set()
+    score_keys: Set[Tuple[str, str, int, int]] = set()
+    if not sched_path.exists():
+        return by_teams, by_sid, sids, score_keys
+    sched = json.loads(sched_path.read_text(encoding="utf-8"))
     for g in sched:
         a = normalize_team_name(g.get("away_team", ""))
         h = normalize_team_name(g.get("home_team", ""))
-        res[(a, h)].append(g)
-    return res
+        by_teams[(a, h)].append(g)
+        sid = g.get("schedule_id") or g.get("official_id")
+        if sid is not None:
+            sid_str = str(sid)
+            sids.add(sid_str)
+            by_sid[sid_str] = g
+        a_s = int(g.get("away_score") or 0)
+        h_s = int(g.get("home_score") or 0)
+        if a and h and (a_s > 0 or h_s > 0):
+            score_keys.add((a, h, a_s, h_s))
+    return by_teams, by_sid, sids, score_keys
 
 
 def process_game(schedule_id: str, stats_data: dict, bcast_data: dict) -> dict:
@@ -626,39 +663,56 @@ def print_game_verification(gr: dict, label: str = ""):
             )
 
 
-def main():
-    bcast_files = sorted(RAW_DIR.glob("game_*_broadcasts.json"))
-    if not bcast_files:
-        print(f"❌ 找不到任何 broadcasts JSON：{RAW_DIR}")
-        return
-
-    import_map = load_import_players_from_db()
-    sched_map = load_schedule_map()
+def calculate_season(season_folder: str, bcast_files: List[Path], verbose_verify: bool = False) -> dict | None:
+    stage = STAGE_MAPPING.get(season_folder, season_folder)
+    import_map = load_import_players_from_db(stage)
+    sched_map, sched_by_sid, sched_sids, score_keys = load_schedule_context(season_folder)
     sched_used_idx: Dict[Tuple[str, str], int] = defaultdict(int)
 
     game_results = []
     for bp in bcast_files:
         sid = bp.name.split("_")[1]
+        if season_folder == "season2026" and sid in EXCLUDE_GAME_IDS:
+            continue
         sp = RAW_DIR / f"game_{sid}_stats.json"
         if not sp.exists():
             continue
-        stats_data = json.loads(sp.read_text(encoding="utf-8"))
-        bcast_data = json.loads(bp.read_text(encoding="utf-8"))
+        try:
+            stats_data = json.loads(sp.read_text(encoding="utf-8"))
+            bcast_data = json.loads(bp.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+        if sid not in sched_sids:
+            a_t = normalize_team_name((stats_data.get("away_team") or {}).get("name", ""))
+            h_t = normalize_team_name((stats_data.get("home_team") or {}).get("name", ""))
+            a_s = _extract_box_score_pts(stats_data.get("away_team") or {})
+            h_s = _extract_box_score_pts(stats_data.get("home_team") or {})
+            if (a_t, h_t, a_s, h_s) not in score_keys:
+                continue
+
         gr = process_game(sid, stats_data, bcast_data)
 
-        # 嘗試對應 schedule.json 的 game_id (G01..G14)
-        key = (gr["away_team"], gr["home_team"])
-        idx = sched_used_idx[key]
-        candidates = sched_map.get(key, [])
-        if idx < len(candidates):
-            gr["game_id"] = candidates[idx].get("game_id", sid)
-            gr["date"] = candidates[idx].get("date", "")
-            sched_used_idx[key] += 1
+        if sid in sched_by_sid:
+            gr["game_id"] = sched_by_sid[sid].get("game_id", sid)
+            gr["date"] = sched_by_sid[sid].get("date", "")
         else:
-            gr["game_id"] = sid
-            gr["date"] = ""
+            key = (gr["away_team"], gr["home_team"])
+            idx = sched_used_idx[key]
+            candidates = sched_map.get(key, [])
+            if idx < len(candidates):
+                gr["game_id"] = candidates[idx].get("game_id", sid)
+                gr["date"] = candidates[idx].get("date", "")
+                sched_used_idx[key] += 1
+            else:
+                gr["game_id"] = sid
+                gr["date"] = ""
 
         game_results.append(gr)
+
+    if not game_results:
+        print(f"⚠️ [{stage}] 尚無符合的 broadcasts/stats 原始檔，略過寫入")
+        return None
 
     teams_out = aggregate_teams(game_results, import_map)
 
@@ -667,9 +721,23 @@ def main():
         clean_gr = {k: v for k, v in gr.items() if k not in ("_raw", "box_check")}
         games_out[gr["schedule_id"]] = clean_gr
 
-    payload = {
+    print(f"✅ [{stage}] 已處理 {len(games_out)} 場比賽、{len(teams_out)} 支球隊")
+    if verbose_verify:
+        print(f"\n🔍 [{stage}] 全場次守恆快速檢查：")
+        for gr in game_results:
+            score_ok = (
+                gr["official_away_score"] == gr["pbp_away_score"]
+                and gr["official_home_score"] == gr["pbp_home_score"]
+            )
+            print(
+                f"  ID {gr['schedule_id']} ({gr['game_id']}): "
+                f"比分一致={score_ok} ({gr['pbp_away_score']}-{gr['pbp_home_score']}) | "
+                f"非5人異常={gr['bad_lineup_events']}"
+            )
+
+    return {
         "meta": {
-            "stage": "2026-2027 例行賽",
+            "stage": stage,
             "games_count": len(games_out),
             "garbage_time_rule": "Q4 <= 5:00 且分差 >= 20 分",
         },
@@ -677,33 +745,71 @@ def main():
         "teams": teams_out,
     }
 
+
+def _load_existing_payload() -> dict:
+    for cand in (OUT_BACKEND, OUT_FRONTEND):
+        if cand is not None and cand.exists():
+            try:
+                return json.loads(cand.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+    return {}
+
+
+def main():
+    parser = argparse.ArgumentParser(description="TPBL 真實逐球文字直播陣容與 On/Off 精算引擎 (支援多賽季)")
+    parser.add_argument("--season", type=str, default=None, help="指定賽季資料夾 (例如: season2024)")
+    parser.add_argument("--all-seasons", action="store_true", help="遍歷所有具備 schedule.json 的賽季資料夾")
+    args = parser.parse_args()
+
+    bcast_files = sorted(RAW_DIR.glob("game_*_broadcasts.json"))
+    if not bcast_files:
+        print(f"❌ 找不到任何 broadcasts JSON：{RAW_DIR}")
+        return
+
+    data_root = CURRENT_DIR / "data"
+    if args.all_seasons:
+        target_seasons = [
+            d.name for d in sorted(data_root.iterdir())
+            if d.is_dir() and d.name in STAGE_MAPPING and (d / "schedule.json").exists()
+        ]
+    elif args.season:
+        target_seasons = [args.season]
+    else:
+        target_seasons = ["season2026"]
+
+    existing = _load_existing_payload()
+    stages_dict = dict(existing.get("stages") or {})
+    if not stages_dict and existing.get("teams") is not None:
+        ex_stage = (existing.get("meta") or {}).get("stage") or DEFAULT_STAGE
+        stages_dict[ex_stage] = {
+            "meta": existing.get("meta", {}),
+            "games": existing.get("games", {}),
+            "teams": existing.get("teams", {}),
+        }
+
+    for sf in target_seasons:
+        stage = STAGE_MAPPING.get(sf, sf)
+        res = calculate_season(sf, bcast_files, verbose_verify=(sf == "season2026"))
+        if res is not None:
+            stages_dict[stage] = res
+
+    root_data = stages_dict.get(DEFAULT_STAGE) or (
+        next(iter(stages_dict.values())) if stages_dict else {"meta": {}, "games": {}, "teams": {}}
+    )
+    payload = {
+        "meta": root_data.get("meta", {}),
+        "games": root_data.get("games", {}),
+        "teams": root_data.get("teams", {}),
+        "stages": stages_dict,
+    }
+
     OUT_BACKEND.parent.mkdir(parents=True, exist_ok=True)
     OUT_BACKEND.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     if OUT_FRONTEND is not None:
+        OUT_FRONTEND.parent.mkdir(parents=True, exist_ok=True)
         OUT_FRONTEND.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"✅ 已處理 {len(games_out)} 場比賽、{len(teams_out)} 支球隊，輸出至：")
-    print(f"   - {OUT_BACKEND}")
-    if OUT_FRONTEND is not None:
-        print(f"   - {OUT_FRONTEND}")
-
-    # 全場次快速守恆摘要
-    print("\n🔍 全場次守恆快速檢查：")
-    for gr in game_results:
-        score_ok = (
-            gr["official_away_score"] == gr["pbp_away_score"]
-            and gr["official_home_score"] == gr["pbp_home_score"]
-        )
-        print(
-            f"  ID {gr['schedule_id']} ({gr['game_id']}): "
-            f"比分一致={score_ok} ({gr['pbp_away_score']}-{gr['pbp_home_score']}) | "
-            f"非5人異常={gr['bad_lineup_events']}"
-        )
-
-    # 印出 27555 與今天最新另一場 (27554) 供詳細核對
-    for target_sid in ("27554", "27555"):
-        for gr in game_results:
-            if gr["schedule_id"] == target_sid:
-                print_game_verification(gr, f"({gr['game_id']})")
+    print(f"🚀 已輸出多賽季 pbp_lineup_stats.json（涵蓋 {len(stages_dict)} 個賽季階段）至：{OUT_BACKEND}")
 
 
 if __name__ == "__main__":

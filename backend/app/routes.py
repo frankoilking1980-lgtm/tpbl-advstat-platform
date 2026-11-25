@@ -255,11 +255,22 @@ def _load_pbp_lineup_json() -> dict:
         return {}
 
 
+def _get_pbp_stage_block(pbp_data: dict, stage: str) -> dict:
+    if not isinstance(pbp_data, dict):
+        return {}
+    stages_map = pbp_data.get("stages")
+    if isinstance(stages_map, dict) and stage in stages_map and isinstance(stages_map[stage], dict):
+        return stages_map[stage]
+    root_stage = (pbp_data.get("meta") or {}).get("stage") or "2026-2027 例行賽"
+    if stage == root_stage:
+        return pbp_data
+    return {}
+
+
 def _find_pbp_game(stage: str, game_id: str, game_code: str, away_team: str, home_team: str) -> Optional[dict]:
-    if stage != "2026-2027 例行賽":
-        return None
     pbp_data = _load_pbp_lineup_json()
-    games_map = pbp_data.get("games", {})
+    stage_block = _get_pbp_stage_block(pbp_data, stage)
+    games_map = stage_block.get("games", {})
     if str(game_id) in games_map:
         return games_map[str(game_id)]
     for g in games_map.values():
@@ -2495,31 +2506,31 @@ def _build_team_pbp(team_name: str, stage: str, exclude_garbage_time: bool = Fal
     players = _fetch_team_players(team_name, stage)
     std_team = normalize_team_name(team_name)
 
-    if stage == "2026-2027 例行賽":
-        pbp_data = _load_pbp_lineup_json()
-        team_entry = pbp_data.get("teams", {}).get(std_team)
-        if team_entry:
-            mode_key = "non_garbage" if exclude_garbage_time else "all"
-            mode_data = team_entry.get(mode_key) or team_entry.get("all") or {}
-            on_off_players = mode_data.get("on_off_players", [])
-            five_man_lineups = mode_data.get("five_man_lineups", [])
-            foreign_duos = [
-                {**d, "features_and_advice": d.get("features_and_advice", "")}
-                for d in mode_data.get("foreign_duos", [])
-            ]
-            return {
-                "team_name": team_name,
-                "stage": stage,
-                "exclude_garbage_time": exclude_garbage_time,
-                "garbage_time_filter_supported": True,
-                "data_limitation_note": "已啟用官方逐球文字直播 (Broadcasts PBP) 真實精算；支援動態過濾垃圾時間 (Q4 最後 5 分鐘且分差 >= 20 分)。",
-                "on_off_players": on_off_players,
-                "wowy_players": on_off_players,
-                "five_man_lineups": five_man_lineups,
-                "foreign_duos": foreign_duos,
-                "player_boxscore": players,
-                "player_stats": players,
-            }
+    pbp_data = _load_pbp_lineup_json()
+    stage_block = _get_pbp_stage_block(pbp_data, stage)
+    team_entry = stage_block.get("teams", {}).get(std_team)
+    if team_entry:
+        mode_key = "non_garbage" if exclude_garbage_time else "all"
+        mode_data = team_entry.get(mode_key) or team_entry.get("all") or {}
+        on_off_players = mode_data.get("on_off_players", [])
+        five_man_lineups = mode_data.get("five_man_lineups", [])
+        foreign_duos = [
+            {**d, "features_and_advice": d.get("features_and_advice", "")}
+            for d in mode_data.get("foreign_duos", [])
+        ]
+        return {
+            "team_name": team_name,
+            "stage": stage,
+            "exclude_garbage_time": exclude_garbage_time,
+            "garbage_time_filter_supported": True,
+            "data_limitation_note": "已啟用官方逐球文字直播 (Broadcasts PBP) 真實精算；支援動態過濾垃圾時間 (Q4 最後 5 分鐘且分差 >= 20 分)。",
+            "on_off_players": on_off_players,
+            "wowy_players": on_off_players,
+            "five_man_lineups": five_man_lineups,
+            "foreign_duos": foreign_duos,
+            "player_boxscore": players,
+            "player_stats": players,
+        }
 
     season_folder = STAGE_FOLDER_MAP.get(stage, "season2026")
     team_excel = _find_team_excel_file(season_folder, team_name)
@@ -3400,6 +3411,133 @@ def admin_pipeline_staging_discard(
     _require_admin_secret(x_admin_secret)
     _clear_staging_dir()
     return {"status": "ok", "message": "已捨棄本次 Staging 預覽，線上正式資料庫與前台數據未受任何影響。"}
+
+
+class HistoricalBatchUpdateRequest(BaseModel):
+    seasons: List[str] = Field(default_factory=lambda: ["ALL"])
+    sync_missing_raw: bool = True
+
+
+@router.post("/admin/historical-batch-update", summary="歷史賽季批量數據更新（純數據重算，不消耗 AI Token）")
+def admin_historical_batch_update(
+    req: HistoricalBatchUpdateRequest,
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+):
+    """
+    針對選定歷史賽季依序執行：
+    1. (選用) fetch_tpbl_boxscores.py --sync-missing-from-schedule <season>
+    2. build_db.py --season <season> --tolerant-history
+    3. update_all_stats.py --season <season>
+    4. 清除後端記憶體快取
+    嚴格不觸發任何 LLM 短評或 AI SVG 戰術板生成。
+    """
+    _require_admin_secret(x_admin_secret)
+    import subprocess
+    import sys
+    import time as _time
+
+    t0 = _time.time()
+    all_history_seasons = [
+        "season2024",
+        "season2025",
+        "playin2025",
+        "playoff2025",
+        "final20252026",
+        "preseason2026",
+    ]
+    allowed_set = set(STAGE_FOLDER_MAP.values())
+    if not req.seasons or "ALL" in req.seasons:
+        targets = [s for s in all_history_seasons if (BACKEND_DIR / "data" / s / "schedule.json").exists()]
+    else:
+        targets = [s for s in req.seasons if s in allowed_set]
+
+    if not targets:
+        raise HTTPException(status_code=400, detail="未指定有效的歷史賽季資料夾")
+
+    folder_to_stage = {v: k for k, v in STAGE_FOLDER_MAP.items()}
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+
+    log_chunks: List[str] = []
+    results: List[Dict[str, Any]] = []
+    overall_ok = True
+
+    def _run_cmd(label: str, cmd: List[str]) -> bool:
+        log_chunks.append(f"▶ {label}\n$ {' '.join(cmd)}")
+        proc = subprocess.run(
+            cmd,
+            cwd=str(BACKEND_DIR),
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if proc.stdout:
+            log_chunks.append(proc.stdout.strip())
+        if proc.stderr:
+            log_chunks.append(f"[stderr]\n{proc.stderr.strip()}")
+        if proc.returncode != 0:
+            log_chunks.append(f"❌ {label} 失敗 (exit code={proc.returncode})")
+            return False
+        log_chunks.append(f"✅ {label} 完成")
+        return True
+
+    for season in targets:
+        stage_name = folder_to_stage.get(season, season)
+        log_chunks.append("=" * 56 + f"\n📦 開始處理賽季：{season} ({stage_name})")
+        step_ok = True
+
+        if req.sync_missing_raw:
+            step_ok = _run_cmd(
+                f"[{season}] 補抓缺漏 Raw JSON",
+                [sys.executable, str(BACKEND_DIR / "fetch_tpbl_boxscores.py"), "--sync-missing-from-schedule", season],
+            )
+
+        if step_ok:
+            step_ok = _run_cmd(
+                f"[{season}] 增量寫入資料庫 (tolerant-history)",
+                [sys.executable, str(BACKEND_DIR / "build_db.py"), "--season", season, "--tolerant-history"],
+            )
+
+        if step_ok:
+            step_ok = _run_cmd(
+                f"[{season}] 重算多賽季進階指標 JSON",
+                [sys.executable, str(BACKEND_DIR / "update_all_stats.py"), "--season", season],
+            )
+
+        games_cnt = 0
+        players_cnt = 0
+        try:
+            conn = get_db_connection()
+            try:
+                games_cnt = conn.execute("SELECT COUNT(*) FROM games WHERE stage = ?", (stage_name,)).fetchone()[0]
+                players_cnt = conn.execute("SELECT COUNT(*) FROM player_stats WHERE season_stage = ?", (stage_name,)).fetchone()[0]
+            finally:
+                conn.close()
+        except Exception:
+            pass
+
+        if not step_ok:
+            overall_ok = False
+        results.append({
+            "season": season,
+            "stage": stage_name,
+            "ok": step_ok,
+            "games_count": games_cnt,
+            "players_count": players_cnt,
+        })
+
+    clear_all_data_caches(re_warmup=True)
+    log_chunks.append("✅ 已清除後端記憶體快取並完成預熱（全程未觸發任何 AI Token 消耗）")
+
+    return {
+        "status": "ok" if overall_ok else "partial_error",
+        "duration_sec": round(_time.time() - t0, 2),
+        "results": results,
+        "logs": "\n\n".join(log_chunks),
+    }
 
 
 @router.post("/admin/pipeline/generate-reviews", summary="生成或寫入賽後 AI 質化戰術短評（單場 WOWY + 兩隊總評 + 全員賽季短評）")

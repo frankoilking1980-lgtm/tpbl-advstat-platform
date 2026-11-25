@@ -147,6 +147,19 @@ export default function PostGamePipelineCenter({
   const [missingFiles, setMissingFiles] = useState<string[]>([]);
   const [syncErrorMsg, setSyncErrorMsg] = useState<string>('');
   const [stagingPreview, setStagingPreview] = useState<StagingPreviewManifest | null>(null);
+
+  // 歷史賽季批量數據更新狀態（純數據重算，不消耗 AI Token）
+  const [selectedHistorySeasons, setSelectedHistorySeasons] = useState<string[]>(['ALL']);
+  const [syncMissingRaw, setSyncMissingRaw] = useState<boolean>(true);
+  const [historyBatchRunning, setHistoryBatchRunning] = useState<boolean>(false);
+  const [historyBatchResult, setHistoryBatchResult] = useState<{
+    status: string;
+    duration_sec: number;
+    results: Array<{ season: string; stage: string; ok: boolean; games_count: number; players_count: number }>;
+    logs: string;
+  } | null>(null);
+  const [historyBatchError, setHistoryBatchError] = useState<string>('');
+  const [showHistoryLogs, setShowHistoryLogs] = useState<boolean>(false);
   const [approvedGameIds, setApprovedGameIds] = useState<string[]>([]);
   const [publishLoading, setPublishLoading] = useState<boolean>(false);
   const [discardLoading, setDiscardLoading] = useState<boolean>(false);
@@ -231,6 +244,65 @@ export default function PostGamePipelineCenter({
       setYtSyncMsg('');
     }
   }, [selectedGameId, recentGames]);
+
+  const HISTORICAL_SEASON_OPTIONS = [
+    { id: 'season2024', label: '2024-2025 例行賽 (season2024)' },
+    { id: 'season2025', label: '2025-2026 例行賽 (season2025)' },
+    { id: 'playin2025', label: '2025-2026 季後挑戰賽 (playin2025)' },
+    { id: 'playoff2025', label: '2025-2026 季後賽 (playoff2025)' },
+    { id: 'final20252026', label: '2025-2026 冠軍賽 (final20252026)' },
+    { id: 'preseason2026', label: '2026-2027 熱身賽 (preseason2026)' },
+  ];
+
+  const toggleHistorySeason = (id: string) => {
+    if (id === 'ALL') {
+      setSelectedHistorySeasons(['ALL']);
+      return;
+    }
+    setSelectedHistorySeasons((prev) => {
+      const withoutAll = prev.filter((x) => x !== 'ALL');
+      if (withoutAll.includes(id)) {
+        const next = withoutAll.filter((x) => x !== id);
+        return next.length === 0 ? ['ALL'] : next;
+      }
+      return [...withoutAll, id];
+    });
+  };
+
+  const handleRunHistoryBatchUpdate = async () => {
+    if (!adminSecret) {
+      setHistoryBatchError('請先於上方輸入 Admin Secret 驗證碼');
+      return;
+    }
+    setHistoryBatchRunning(true);
+    setHistoryBatchError('');
+    setHistoryBatchResult(null);
+    try {
+      const res = await fetch(`${apiBase}/api/admin/historical-batch-update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Secret': adminSecret,
+        },
+        body: JSON.stringify({
+          seasons: selectedHistorySeasons,
+          sync_missing_raw: syncMissingRaw,
+        }),
+      });
+      const { ok, status, data, rawText } = await readApiResponse(res);
+      if (!ok) {
+        const parsed = parseErrorDetail(data, status, rawText);
+        setHistoryBatchError(parsed.msg);
+      } else {
+        setHistoryBatchResult(data);
+        setShowHistoryLogs(false);
+      }
+    } catch (e: any) {
+      setHistoryBatchError(e?.message || '歷史賽季批量更新請求失敗');
+    } finally {
+      setHistoryBatchRunning(false);
+    }
+  };
 
   const readApiResponse = async (res: Response): Promise<{ ok: boolean; status: number; data: any; rawText: string }> => {
     const rawText = await res.text();
@@ -1259,6 +1331,139 @@ export default function PostGamePipelineCenter({
                 );
               })}
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* 歷史賽季批量數據更新（純數據重算，不消耗 AI Token） */}
+      <div className="bg-[#161B22] border border-[#30363D] rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#21262D] pb-4">
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-white flex items-center space-x-2">
+              <Database className="w-4 h-4 text-cyan-400" />
+              <span>歷史賽季批量數據更新（純數據重算，不消耗 AI Token）</span>
+            </h3>
+            <p className="text-xs text-gray-400">
+              純依據官方 <code className="text-cyan-300">raw_game_stats/</code> 與 <code className="text-cyan-300">schedule.json</code> 增量寫入 DB 並重算多賽季 PBP、情境數據與 PR 排行榜；完整保留既有 AI 短評與戰術板。
+            </p>
+          </div>
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 self-start sm:self-auto whitespace-nowrap">
+            0 AI Token 消耗
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          <div className="text-xs font-bold text-gray-300">選擇目標歷史賽季（可多選，或選「全部歷史賽季」）：</div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => toggleHistorySeason('ALL')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                selectedHistorySeasons.includes('ALL')
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
+                  : 'bg-[#0E1117] text-gray-400 border-[#30363D] hover:text-white'
+              }`}
+            >
+              全部歷史賽季
+            </button>
+            {HISTORICAL_SEASON_OPTIONS.map((opt) => {
+              const active = !selectedHistorySeasons.includes('ALL') && selectedHistorySeasons.includes(opt.id);
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => toggleHistorySeason(opt.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    active
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 font-bold'
+                      : 'bg-[#0E1117] text-gray-400 border-[#30363D] hover:text-white'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+          <label className="flex items-center space-x-2 text-xs text-gray-200 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={syncMissingRaw}
+              onChange={(e) => setSyncMissingRaw(e.target.checked)}
+              className="rounded border-[#30363D] bg-[#0E1117] text-cyan-500 focus:ring-cyan-500"
+            />
+            <span>自動向官方 API 補抓缺漏的 broadcasts.json / stats.json</span>
+          </label>
+
+          <button
+            type="button"
+            disabled={historyBatchRunning}
+            onClick={handleRunHistoryBatchUpdate}
+            className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-black font-bold text-xs flex items-center justify-center space-x-2 transition-colors"
+          >
+            {historyBatchRunning ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>批量重算執行中...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                <span>執行歷史賽季批量更新</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {historyBatchError && (
+          <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/40 text-xs text-rose-300">
+            ❌ {historyBatchError}
+          </div>
+        )}
+
+        {historyBatchResult && (
+          <div className="space-y-3 pt-2">
+            <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-300 flex items-center justify-between">
+              <span>
+                ✅ 歷史賽季批量更新完成（狀態：{historyBatchResult.status}，耗時 {historyBatchResult.duration_sec}s）
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowHistoryLogs((v) => !v)}
+                className="text-cyan-300 hover:underline font-bold"
+              >
+                {showHistoryLogs ? '收合執行日誌' : '查看詳細執行日誌'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {historyBatchResult.results.map((r) => (
+                <div
+                  key={r.season}
+                  className={`p-3 rounded-lg border text-xs ${
+                    r.ok ? 'bg-[#0E1117] border-[#30363D]' : 'bg-rose-950/30 border-rose-500/40'
+                  }`}
+                >
+                  <div className="font-bold text-white flex items-center justify-between">
+                    <span>{r.stage}</span>
+                    <span className={r.ok ? 'text-emerald-400' : 'text-rose-400'}>
+                      {r.ok ? '成功' : '失敗'}
+                    </span>
+                  </div>
+                  <div className="text-gray-400 mt-1">
+                    場次：{r.games_count} 場 ｜ 球員：{r.players_count} 筆
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {showHistoryLogs && historyBatchResult.logs && (
+              <pre className="p-3 rounded-lg bg-[#0B0F14] border border-[#30363D] text-[11px] text-gray-300 overflow-x-auto max-h-80 overflow-y-auto whitespace-pre-wrap font-mono">
+                {historyBatchResult.logs}
+              </pre>
+            )}
           </div>
         )}
       </div>

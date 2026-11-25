@@ -320,11 +320,12 @@ def _check_score_guardrail(
     home_score: int,
     away_score: int,
     approved_game_ids: set[str] | None = None,
+    tolerant_history: bool = False,
 ) -> tuple[bool, dict | None]:
     """
     兩級制比分一致性防呆閘門：
     - OK (單隊 ≤ 6 分 且 總誤差 < 5 分)：自動通過（若有微小誤差僅記 Log，不阻斷）
-    - NEEDS_REVIEW (單隊 > 6 分 或 總誤差 ≥ 5 分)：須在 approved_game_ids 中才放行，否則跳過寫入
+    - NEEDS_REVIEW (單隊 > 6 分 或 總誤差 ≥ 5 分)：須在 approved_game_ids 中或啟用 tolerant_history 才放行，否則跳過寫入
     """
     rec = _resolve_consistency_rec(consistency_index, schedule_id, home_team, away_team, home_score, away_score)
     if rec is None:
@@ -345,6 +346,14 @@ def _check_score_guardrail(
         print(
             f"  [✓] 異常場次已獲人工確認放行 ({unique_id}, sid={rec['schedule_id']}): "
             f"Box {rec['box_away']}-{rec['box_home']} (PBP {rec['pbp_away']}-{rec['pbp_home']})"
+        )
+        return True, rec
+
+    if tolerant_history:
+        print(
+            f"  [!] ⚠️ 歷史賽季寬容放行 ({unique_id}, sid={rec['schedule_id']}): "
+            f"PBP 累計 {rec['pbp_away']}-{rec['pbp_home']} vs Box Score {rec['box_away']}-{rec['box_home']} "
+            f"(總誤差 {rec['total_diff']} 分)，依官方 Box Score 為準納入計算"
         )
         return True, rec
 
@@ -1122,21 +1131,51 @@ def _load_upcoming_schedule_lookup(folder: Path) -> dict:
     return {"by_gid": by_gid, "by_key": by_key}
 
 
-def process_season2026_from_raw(
+def _has_raw_stats_for_season(folder: Path, consistency_index: dict) -> bool:
+    """檢查該賽季資料夾的 schedule.json 是否至少有一場已對應到 raw_game_stats/game_{id}_stats.json"""
+    sched_file = folder / "schedule.json"
+    if not sched_file.exists() or not RAW_GAME_STATS_DIR.exists():
+        return False
+    try:
+        data = json.loads(sched_file.read_text(encoding="utf-8"))
+        items = data if isinstance(data, list) else data.get("games", [data])
+    except Exception:
+        return False
+
+    raw_by_score: set[tuple] = set()
+    for rec in consistency_index.values():
+        raw_by_score.add((rec["home_team"], rec["away_team"], rec["box_home"], rec["box_away"]))
+
+    for g in items:
+        sid = g.get("schedule_id") or g.get("official_id")
+        if sid is not None:
+            if (RAW_GAME_STATS_DIR / f"game_{int(sid)}_stats.json").exists():
+                return True
+        h_team = normalize_team(g.get("home_team", ""))
+        a_team = normalize_team(g.get("away_team", ""))
+        h_score = int(clean_num(g.get("home_score", 0), 0))
+        a_score = int(clean_num(g.get("away_score", 0), 0))
+        if (h_team, a_team, h_score, a_score) in raw_by_score:
+            return True
+    return False
+
+
+def process_season_from_raw(
     conn: sqlite3.Connection,
     folder: Path,
     stage_name: str,
     consistency_index: dict,
     approved_game_ids: set[str] | None = None,
+    tolerant_history: bool = False,
 ) -> list[dict]:
     """
-    2026-2027 例行賽專用：全面脫離 Excel，直接讀取 schedule.json 與 raw_game_stats/game_{id}_stats.json
+    通用 Raw JSON 彙總引擎：直接讀取 {season}/schedule.json 與 raw_game_stats/game_{id}_stats.json
     彙總計算團隊 Four Factors / Pace / ORtg / DRtg / NetRtg 與球員進階數據並 UPSERT 入庫。
     沿用 build_db.py 原有 Possessions = FGA + 0.44 * FTA - ORB + TOV 與 ORtg/DRtg 口徑。
     """
     sched_file = folder / "schedule.json"
     if not sched_file.exists():
-        print(f"  [!] 找不到 {sched_file}，略過 season2026 raw 彙總")
+        print(f"  [!] 找不到 {sched_file}，略過 {folder.name} raw 彙總")
         return []
 
     data = json.loads(sched_file.read_text(encoding="utf-8"))
@@ -1213,7 +1252,7 @@ def process_season2026_from_raw(
             skipped_games += 1
             continue
 
-        sched_id = g.get("schedule_id")
+        sched_id = g.get("schedule_id") or g.get("official_id")
         if sched_id is None:
             sched_id = (
                 upcoming_lookup["by_gid"].get(raw_gid)
@@ -1222,7 +1261,15 @@ def process_season2026_from_raw(
             )
 
         allowed, rec = _check_score_guardrail(
-            consistency_index, unique_id, sched_id, h_team, a_team, h_score, a_score, approved_game_ids=approved_game_ids
+            consistency_index,
+            unique_id,
+            sched_id,
+            h_team,
+            a_team,
+            h_score,
+            a_score,
+            approved_game_ids=approved_game_ids,
+            tolerant_history=tolerant_history,
         )
         check_entry = {
             "game_id": unique_id,
@@ -1462,10 +1509,28 @@ def process_season2026_from_raw(
 
     conn.commit()
     print(
-        f"  [OK] season2026 Raw JSON 彙總完成: 賽程寫入 {written_games} 場（略過 {skipped_games} 場），"
+        f"  [OK] {folder.name} ({stage_name}) Raw JSON 彙總完成: 賽程寫入 {written_games} 場（略過 {skipped_games} 場），"
         f"更新 {len(team_agg)} 隊、{len(player_agg)} 名球員"
     )
     return game_checks
+
+
+def process_season2026_from_raw(
+    conn: sqlite3.Connection,
+    folder: Path,
+    stage_name: str,
+    consistency_index: dict,
+    approved_game_ids: set[str] | None = None,
+    tolerant_history: bool = False,
+) -> list[dict]:
+    return process_season_from_raw(
+        conn,
+        folder,
+        stage_name,
+        consistency_index=consistency_index,
+        approved_game_ids=approved_game_ids,
+        tolerant_history=tolerant_history,
+    )
 
 
 def build_staging_preview_manifest(
@@ -1672,6 +1737,7 @@ def main():
     parser.add_argument("--export-ai", action="store_true", help="將現有資料庫內的全部 AI 戰術板匯出成 JSON 備份檔後離開")
     parser.add_argument("--staging", action="store_true", help="預覽暫存模式：將更新寫入 backend/data/staging/tpbl_stats_staging.db 並產出差異預覽")
     parser.add_argument("--approved-games", type=str, default="", help="人手強制通過的異常場次清單（以逗號分隔 game_id 或 schedule_id）")
+    parser.add_argument("--tolerant-history", action="store_true", help="歷史賽季寬容模式：PBP 與 Box Score 誤差超標時僅警告記錄，不中斷批量寫入")
     args = parser.parse_args()
 
     print("=" * 65)
@@ -1735,15 +1801,20 @@ def main():
         for folder in target_folders:
             stage_name = STAGE_MAPPING.get(folder.name, folder.name)
             print(f"\n📂 正在處理: {folder.name} -> [{stage_name}]")
-            if folder.name == "season2026":
-                season2026_checks = process_season2026_from_raw(
+            use_raw = folder.name == "season2026" or _has_raw_stats_for_season(folder, consistency_index)
+            if use_raw:
+                checks = process_season_from_raw(
                     conn,
                     folder,
                     stage_name,
                     consistency_index=consistency_index,
                     approved_game_ids=approved_game_ids,
+                    tolerant_history=args.tolerant_history,
                 )
+                if folder.name == "season2026":
+                    season2026_checks = checks
             else:
+                print(f"  [i] {folder.name} 尚無對應 raw_game_stats JSON，退回舊 Excel 彙總邏輯")
                 process_schedules(
                     conn,
                     folder,
