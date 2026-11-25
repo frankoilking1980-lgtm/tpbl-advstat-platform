@@ -10,7 +10,8 @@
     "home_score": 110,
     "home_sheet": "2025.10.11 G01 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1371
+    "schedule_id": 1371,
+    "sheet_name": "2025.10.11 G01 高雄全家海神 vs 新北國王"
   },
   {
     "game_id": "G02",
@@ -23,7 +24,8 @@
     "home_score": 112,
     "home_sheet": "2025.10.12 G02 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1372
+    "schedule_id": 1372,
+    "sheet_name": "2025.10.12 G02 福爾摩沙夢想家 vs 新北國王"
   },
   {
     "game_id": "G03",
@@ -36,7 +38,8 @@
     "home_score": 101,
     "home_sheet": "2025.10.18 G02 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1373
+    "schedule_id": 1373,
+    "sheet_name": "2025.10.18 G03 高雄全家海神 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G04",
@@ -49,7 +52,8 @@
     "home_score": 89,
     "home_sheet": "2025.10.18 G03 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1374
+    "schedule_id": 1374,
+    "sheet_name": "2025.10.18 G04 新北中信特攻 vs 新北國王"
   },
   {
     "game_id": "G05",
@@ -62,7 +66,8 @@
     "home_score": 83,
     "home_sheet": "2025.10.19 G03 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1375
+    "schedule_id": 1375,
+    "sheet_name": "2025.10.19 G05 桃園台啤永豐雲豹 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G06",
@@ -75,7 +80,8 @@
     "home_score": 120,
     "home_sheet": "2025.10.19 G04 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1376
+    "schedule_id": 1376,
+    "sheet_name": "2025.10.19 G06 臺北台新戰神 vs 新北國王"
   },
   {
     "game_id": "G07",
@@ -88,7 +94,8 @@
     "home_score": 91,
     "home_sheet": "2025.10.25 G03 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1377
+    "schedule_id": 1377,
+    "sheet_name": "2025.10.25 G07 新北國王 vs 高雄全家海神"
   },
   {
     "game_id": "G08",
@@ -101,7 +108,8 @@
     "home_score": 91,
     "home_sheet": "2025.10.25 G02 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1378
+    "schedule_id": 1378,
+    "sheet_name": "2025.10.25 G08 臺北台新戰神 vs 新北中信特攻"
   },
   {
     "game_id": "G09",
@@ -114,7 +122,8 @@
     "home_score": 82,
     "home_sheet": "2025.10.26 G04 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1379
+    "schedule_id": 1379,
+    "sheet_name": "2025.10.26 G09 新竹御嵿攻城獅 vs 高雄全家海神"
   },
   {
     "game_id": "G10",
@@ -127,7 +136,8 @@
     "home_score": 80,
     "home_sheet": "2025.10.26 G03 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1380
+    "schedule_id": 1380,
+    "sheet_name": "2025.10.26 G10 桃園台啤永豐雲豹 vs 新北中信特攻"
   },
   {
     "game_id": "G11",
@@ -140,7 +150,8 @@
     "home_score": 86,
     "home_sheet": "2025.10.29 G05 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1381
+    "schedule_id": 1381,
+    "sheet_name": "2025.10.29 G11 福爾摩沙夢想家 vs 高雄全家海神"
   },
   {
     "game_id": "G12",
@@ -153,7 +164,8 @@
     "home_score": 105,
     "home_sheet": "2025.11.01 G06 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1382
+    "schedule_id": 1382,
+    "sheet_name": "2025.11.01 G12 臺北台新戰神 vs 高雄全家海神"
   },
   {
     "game_id": "G13",
@@ -166,7 +178,8 @@
     "home_score": 99,
     "home_sheet": "2025.11.01 G04 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1383
+    "schedule_id": 1383,
+    "sheet_name": "2025.11.01 G13 福爾摩沙夢想家 vs 新北中信特攻"
   },
   {
     "game_id": "G14",
@@ -179,7 +192,8 @@
     "home_score": 78,
     "home_sheet": "2025.11.02 G07 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1384
+    "schedule_id": 1384,
+    "sheet_name": "2025.11.02 G14 桃園台啤永豐雲豹 vs 高雄全家海神"
   },
   {
     "game_id": "G15",
@@ -192,7 +206,8 @@
     "home_score": 94,
     "home_sheet": "2025.11.02 G05 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1385
+    "schedule_id": 1385,
+    "sheet_name": "2025.11.02 G15 新竹御嵿攻城獅 vs 新北中信特攻"
   },
   {
     "game_id": "G16",
@@ -205,7 +220,8 @@
     "home_score": 82,
     "home_sheet": "2025.11.05 G06 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1386
+    "schedule_id": 1386,
+    "sheet_name": "2025.11.05 G16 新竹御嵿攻城獅 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G17",
@@ -218,7 +234,8 @@
     "home_score": 92,
     "home_sheet": "2025.11.07 G07 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1387
+    "schedule_id": 1387,
+    "sheet_name": "2025.11.07 G17 新北中信特攻 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G18",
@@ -231,7 +248,8 @@
     "home_score": 89,
     "home_sheet": "2025.11.08 G06 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1388
+    "schedule_id": 1388,
+    "sheet_name": "2025.11.08 G18 新竹御嵿攻城獅 vs 新北國王"
   },
   {
     "game_id": "G19",
@@ -244,7 +262,8 @@
     "home_score": 122,
     "home_sheet": "2025.11.08 G04 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1389
+    "schedule_id": 1389,
+    "sheet_name": "2025.11.08 G19 臺北台新戰神 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G20",
@@ -257,7 +276,8 @@
     "home_score": 111,
     "home_sheet": "2025.11.09 G07 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1390
+    "schedule_id": 1390,
+    "sheet_name": "2025.11.09 G20 高雄全家海神 vs 新北國王"
   },
   {
     "game_id": "G21",
@@ -270,7 +290,8 @@
     "home_score": 85,
     "home_sheet": "2025.11.09 G05 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1391
+    "schedule_id": 1391,
+    "sheet_name": "2025.11.09 G21 新北中信特攻 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G22",
@@ -283,7 +304,8 @@
     "home_score": 94,
     "home_sheet": "2025.11.12 G08 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1392
+    "schedule_id": 1392,
+    "sheet_name": "2025.11.12 G22 福爾摩沙夢想家 vs 新北國王"
   },
   {
     "game_id": "G23",
@@ -296,7 +318,8 @@
     "home_score": 102,
     "home_sheet": "2025.11.15 G05 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1393
+    "schedule_id": 1393,
+    "sheet_name": "2025.11.15 G23 新北中信特攻 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G24",
@@ -309,7 +332,8 @@
     "home_score": 97,
     "home_sheet": "2025.11.15 G05 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1394
+    "schedule_id": 1394,
+    "sheet_name": "2025.11.15 G24 新北國王 vs 臺北台新戰神"
   },
   {
     "game_id": "G25",
@@ -322,7 +346,8 @@
     "home_score": 97,
     "home_sheet": "2025.11.16 G06 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1395
+    "schedule_id": 1395,
+    "sheet_name": "2025.11.16 G25 高雄全家海神 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G26",
@@ -335,7 +360,8 @@
     "home_score": 102,
     "home_sheet": "2025.11.16 G06 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1396
+    "schedule_id": 1396,
+    "sheet_name": "2025.11.16 G26 桃園台啤永豐雲豹 vs 臺北台新戰神"
   },
   {
     "game_id": "G27",
@@ -348,7 +374,8 @@
     "home_score": 90,
     "home_sheet": "2025.11.19 G07 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1397
+    "schedule_id": 1397,
+    "sheet_name": "2025.11.19 G27 高雄全家海神 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G28",
@@ -361,7 +388,8 @@
     "home_score": 113,
     "home_sheet": "2025.11.22 G09 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1398
+    "schedule_id": 1398,
+    "sheet_name": "2025.11.22 G28 新竹御嵿攻城獅 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G29",
@@ -374,7 +402,8 @@
     "home_score": 103,
     "home_sheet": "2025.11.22 G08 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1399
+    "schedule_id": 1399,
+    "sheet_name": "2025.11.22 G29 新北國王 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G30",
@@ -387,7 +416,8 @@
     "home_score": 128,
     "home_sheet": "2025.11.23 G10 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1400
+    "schedule_id": 1400,
+    "sheet_name": "2025.11.23 G30 臺北台新戰神 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G31",
@@ -400,7 +430,8 @@
     "home_score": 100,
     "home_sheet": "2025.11.23 G09 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1401
+    "schedule_id": 1401,
+    "sheet_name": "2025.11.23 G31 新北中信特攻 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G32",
@@ -413,7 +444,8 @@
     "home_score": 100,
     "home_sheet": "2025.12.03 G08 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1402
+    "schedule_id": 1402,
+    "sheet_name": "2025.12.03 G32 新竹御嵿攻城獅 vs 臺北台新戰神"
   },
   {
     "game_id": "G33",
@@ -426,7 +458,8 @@
     "home_score": 96,
     "home_sheet": "2025.12.06 G10 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1403
+    "schedule_id": 1403,
+    "sheet_name": "2025.12.06 G33 新竹御嵿攻城獅 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G34",
@@ -439,7 +472,8 @@
     "home_score": 104,
     "home_sheet": "2025.12.06 G09 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1404
+    "schedule_id": 1404,
+    "sheet_name": "2025.12.06 G34 新北中信特攻 vs 臺北台新戰神"
   },
   {
     "game_id": "G35",
@@ -452,7 +486,8 @@
     "home_score": 105,
     "home_sheet": "2025.12.07 G11 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1405
+    "schedule_id": 1405,
+    "sheet_name": "2025.12.07 G35 福爾摩沙夢想家 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G36",
@@ -465,7 +500,8 @@
     "home_score": 96,
     "home_sheet": "2025.12.07 G10 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1406
+    "schedule_id": 1406,
+    "sheet_name": "2025.12.07 G36 高雄全家海神 vs 臺北台新戰神"
   },
   {
     "game_id": "G37",
@@ -478,7 +514,8 @@
     "home_score": 99,
     "home_sheet": "2025.12.13 G12 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1407
+    "schedule_id": 1407,
+    "sheet_name": "2025.12.13 G37 新竹御嵿攻城獅 vs 高雄全家海神"
   },
   {
     "game_id": "G38",
@@ -491,7 +528,8 @@
     "home_score": 85,
     "home_sheet": "2025.12.13 G11 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1408
+    "schedule_id": 1408,
+    "sheet_name": "2025.12.13 G38 桃園台啤永豐雲豹 vs 新北中信特攻"
   },
   {
     "game_id": "G39",
@@ -504,7 +542,8 @@
     "home_score": 73,
     "home_sheet": "2025.12.14 G13 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1409
+    "schedule_id": 1409,
+    "sheet_name": "2025.12.14 G39 福爾摩沙夢想家 vs 高雄全家海神"
   },
   {
     "game_id": "G40",
@@ -517,7 +556,8 @@
     "home_score": 114,
     "home_sheet": "2025.12.14 G12 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1410
+    "schedule_id": 1410,
+    "sheet_name": "2025.12.14 G40 新北國王 vs 新北中信特攻"
   },
   {
     "game_id": "G41",
@@ -530,7 +570,8 @@
     "home_score": 125,
     "home_sheet": "2025.12.20 G12 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1411
+    "schedule_id": 1411,
+    "sheet_name": "2025.12.20 G41 桃園台啤永豐雲豹 vs 新北國王"
   },
   {
     "game_id": "G42",
@@ -543,7 +584,8 @@
     "home_score": 90,
     "home_sheet": "2025.12.20 G11 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1412
+    "schedule_id": 1412,
+    "sheet_name": "2025.12.20 G42 福爾摩沙夢想家 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G43",
@@ -556,7 +598,8 @@
     "home_score": 85,
     "home_sheet": "2025.12.21 G13 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1413
+    "schedule_id": 1413,
+    "sheet_name": "2025.12.21 G43 新北中信特攻 vs 新北國王"
   },
   {
     "game_id": "G44",
@@ -569,7 +612,8 @@
     "home_score": 83,
     "home_sheet": "2025.12.21 G12 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1414
+    "schedule_id": 1414,
+    "sheet_name": "2025.12.21 G44 臺北台新戰神 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G45",
@@ -582,7 +626,8 @@
     "home_score": 98,
     "home_sheet": "2025.12.24 G13 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1415
+    "schedule_id": 1415,
+    "sheet_name": "2025.12.24 G45 桃園台啤永豐雲豹 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G46",
@@ -595,7 +640,8 @@
     "home_score": 108,
     "home_sheet": "2025.12.27 G14 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1416
+    "schedule_id": 1416,
+    "sheet_name": "2025.12.27 G46 臺北台新戰神 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G47",
@@ -608,7 +654,8 @@
     "home_score": 90,
     "home_sheet": "2025.12.27 G14 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1417
+    "schedule_id": 1417,
+    "sheet_name": "2025.12.27 G47 新竹御嵿攻城獅 vs 新北國王"
   },
   {
     "game_id": "G48",
@@ -621,7 +668,8 @@
     "home_score": 104,
     "home_sheet": "2025.12.28 G15 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1418
+    "schedule_id": 1418,
+    "sheet_name": "2025.12.28 G48 新北中信特攻 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G49",
@@ -634,7 +682,8 @@
     "home_score": 86,
     "home_sheet": "2025.12.28 G15 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1419
+    "schedule_id": 1419,
+    "sheet_name": "2025.12.28 G49 高雄全家海神 vs 新北國王"
   },
   {
     "game_id": "G50",
@@ -647,7 +696,8 @@
     "home_score": 94,
     "home_sheet": "2025.12.31 G15 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1420
+    "schedule_id": 1420,
+    "sheet_name": "2025.12.31 G50 新北國王 vs 新北中信特攻"
   },
   {
     "game_id": "G51",
@@ -660,7 +710,8 @@
     "home_score": 102,
     "home_sheet": "2026.01.03 G15 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1421
+    "schedule_id": 1421,
+    "sheet_name": "2026.01.03 G51 桃園台啤永豐雲豹 vs 高雄全家海神"
   },
   {
     "game_id": "G52",
@@ -673,7 +724,8 @@
     "home_score": 79,
     "home_sheet": "2026.01.03 G16 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1422
+    "schedule_id": 1422,
+    "sheet_name": "2026.01.03 G52 新竹御嵿攻城獅 vs 新北中信特攻"
   },
   {
     "game_id": "G53",
@@ -686,7 +738,8 @@
     "home_score": 94,
     "home_sheet": "2026.01.04 G16 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1423
+    "schedule_id": 1423,
+    "sheet_name": "2026.01.04 G53 新北國王 vs 高雄全家海神"
   },
   {
     "game_id": "G54",
@@ -699,7 +752,8 @@
     "home_score": 115,
     "home_sheet": "2026.01.04 G17 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1424
+    "schedule_id": 1424,
+    "sheet_name": "2026.01.04 G54 福爾摩沙夢想家 vs 新北中信特攻"
   },
   {
     "game_id": "G55",
@@ -712,7 +766,8 @@
     "home_score": 108,
     "home_sheet": "2026.01.07 G17 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1425
+    "schedule_id": 1425,
+    "sheet_name": "2026.01.07 G55 臺北台新戰神 vs 高雄全家海神"
   },
   {
     "game_id": "G56",
@@ -725,7 +780,8 @@
     "home_score": 110,
     "home_sheet": "2026.01.09 G16 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1426
+    "schedule_id": 1426,
+    "sheet_name": "2026.01.09 G56 新北國王 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G57",
@@ -738,7 +794,8 @@
     "home_score": 114,
     "home_sheet": "2026.01.10 G18 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1427
+    "schedule_id": 1427,
+    "sheet_name": "2026.01.10 G57 新北中信特攻 vs 高雄全家海神"
   },
   {
     "game_id": "G58",
@@ -751,7 +808,8 @@
     "home_score": 91,
     "home_sheet": "2026.01.10 G14 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1428
+    "schedule_id": 1428,
+    "sheet_name": "2026.01.10 G58 福爾摩沙夢想家 vs 臺北台新戰神"
   },
   {
     "game_id": "G59",
@@ -764,7 +822,8 @@
     "home_score": 79,
     "home_sheet": "2026.01.11 G19 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1429
+    "schedule_id": 1429,
+    "sheet_name": "2026.01.11 G59 新竹御嵿攻城獅 vs 高雄全家海神"
   },
   {
     "game_id": "G60",
@@ -777,7 +836,8 @@
     "home_score": 114,
     "home_sheet": "2026.01.11 G15 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1430
+    "schedule_id": 1430,
+    "sheet_name": "2026.01.11 G60 桃園台啤永豐雲豹 vs 臺北台新戰神"
   },
   {
     "game_id": "G61",
@@ -790,7 +850,8 @@
     "home_score": 116,
     "home_sheet": "2026.01.17 G18 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1431
+    "schedule_id": 1431,
+    "sheet_name": "2026.01.17 G61 新北國王 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G62",
@@ -803,7 +864,8 @@
     "home_score": 79,
     "home_sheet": "2026.01.17 G16 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1432
+    "schedule_id": 1432,
+    "sheet_name": "2026.01.17 G62 新北中信特攻 vs 臺北台新戰神"
   },
   {
     "game_id": "G63",
@@ -816,7 +878,8 @@
     "home_score": 91,
     "home_sheet": "2026.01.18 G19 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1433
+    "schedule_id": 1433,
+    "sheet_name": "2026.01.18 G63 桃園台啤永豐雲豹 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G64",
@@ -829,7 +892,8 @@
     "home_score": 98,
     "home_sheet": "2026.01.18 G17 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1434
+    "schedule_id": 1434,
+    "sheet_name": "2026.01.18 G64 新竹御嵿攻城獅 vs 臺北台新戰神"
   },
   {
     "game_id": "G65",
@@ -842,7 +906,8 @@
     "home_score": 133,
     "home_sheet": "2026.01.24 G20 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1435
+    "schedule_id": 1435,
+    "sheet_name": "2026.01.24 G65 高雄全家海神 vs 新北中信特攻"
   },
   {
     "game_id": "G66",
@@ -855,25 +920,13 @@
     "home_score": 95,
     "home_sheet": "2026.01.24 G18 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1436
+    "schedule_id": 1436,
+    "sheet_name": "2026.01.24 G66 福爾摩沙夢想家 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G67",
     "date": "2026.01.25",
     "time": "14:30",
-    "away_team": "新北國王",
-    "away_score": 94,
-    "away_sheet": "2026.01.25 G20 vs 新竹御嵿攻城獅",
-    "home_team": "新竹御嵿攻城獅",
-    "home_score": 87,
-    "home_sheet": "2026.01.25 G19 vs 新北國王",
-    "status": "FINAL",
-    "schedule_id": 1438
-  },
-  {
-    "game_id": "G68",
-    "date": "2026.01.25",
-    "time": "17:00",
     "away_team": "臺北台新戰神",
     "away_score": 112,
     "away_sheet": "2026.01.25 G18 vs 新北中信特攻",
@@ -881,7 +934,22 @@
     "home_score": 104,
     "home_sheet": "2026.01.25 G21 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1437
+    "schedule_id": 1437,
+    "sheet_name": "2026.01.25 G67 臺北台新戰神 vs 新北中信特攻"
+  },
+  {
+    "game_id": "G68",
+    "date": "2026.01.25",
+    "time": "17:00",
+    "away_team": "新北國王",
+    "away_score": 94,
+    "away_sheet": "2026.01.25 G20 vs 新竹御嵿攻城獅",
+    "home_team": "新竹御嵿攻城獅",
+    "home_score": 87,
+    "home_sheet": "2026.01.25 G19 vs 新北國王",
+    "status": "FINAL",
+    "schedule_id": 1438,
+    "sheet_name": "2026.01.25 G68 新北國王 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G69",
@@ -894,7 +962,8 @@
     "home_score": 97,
     "home_sheet": "2026.01.31 G21 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1439
+    "schedule_id": 1439,
+    "sheet_name": "2026.01.31 G69 新北國王 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G70",
@@ -907,7 +976,8 @@
     "home_score": 92,
     "home_sheet": "2026.01.31 G19 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1440
+    "schedule_id": 1440,
+    "sheet_name": "2026.01.31 G70 新竹御嵿攻城獅 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G71",
@@ -920,7 +990,8 @@
     "home_score": 96,
     "home_sheet": "2026.02.01 G22 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1441
+    "schedule_id": 1441,
+    "sheet_name": "2026.02.01 G71 高雄全家海神 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G72",
@@ -933,7 +1004,8 @@
     "home_score": 98,
     "home_sheet": "2026.02.01 G20 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1442
+    "schedule_id": 1442,
+    "sheet_name": "2026.02.01 G72 臺北台新戰神 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G73",
@@ -946,7 +1018,8 @@
     "home_score": 75,
     "home_sheet": "2026.02.07 G22 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1443
+    "schedule_id": 1443,
+    "sheet_name": "2026.02.07 G73 桃園台啤永豐雲豹 vs 高雄全家海神"
   },
   {
     "game_id": "G74",
@@ -959,7 +1032,8 @@
     "home_score": 96,
     "home_sheet": "2026.02.07 G20 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1444
+    "schedule_id": 1444,
+    "sheet_name": "2026.02.07 G74 新北國王 vs 臺北台新戰神"
   },
   {
     "game_id": "G75",
@@ -972,7 +1046,8 @@
     "home_score": 84,
     "home_sheet": "2026.02.08 G23 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1445
+    "schedule_id": 1445,
+    "sheet_name": "2026.02.08 G75 新北中信特攻 vs 高雄全家海神"
   },
   {
     "game_id": "G76",
@@ -985,7 +1060,8 @@
     "home_score": 91,
     "home_sheet": "2026.02.08 G21 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1446
+    "schedule_id": 1446,
+    "sheet_name": "2026.02.08 G76 福爾摩沙夢想家 vs 臺北台新戰神"
   },
   {
     "game_id": "G77",
@@ -998,25 +1074,13 @@
     "home_score": 90,
     "home_sheet": "2026.02.11 G22 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1447
+    "schedule_id": 1447,
+    "sheet_name": "2026.02.11 G77 高雄全家海神 vs 臺北台新戰神"
   },
   {
     "game_id": "G78",
     "date": "2026.02.14",
     "time": "14:30",
-    "away_team": "福爾摩沙夢想家",
-    "away_score": 100,
-    "away_sheet": "2026.02.14 G24 vs 桃園台啤永豐雲豹",
-    "home_team": "桃園台啤永豐雲豹",
-    "home_score": 98,
-    "home_sheet": "2026.02.14 G22 vs 福爾摩沙夢想家",
-    "status": "FINAL",
-    "schedule_id": 1449
-  },
-  {
-    "game_id": "G79",
-    "date": "2026.02.14",
-    "time": "17:00",
     "away_team": "臺北台新戰神",
     "away_score": 95,
     "away_sheet": "2026.02.14 G23 vs 新北國王",
@@ -1024,7 +1088,22 @@
     "home_score": 116,
     "home_sheet": "2026.02.14 G23 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1448
+    "schedule_id": 1448,
+    "sheet_name": "2026.02.14 G78 臺北台新戰神 vs 新北國王"
+  },
+  {
+    "game_id": "G79",
+    "date": "2026.02.14",
+    "time": "17:00",
+    "away_team": "福爾摩沙夢想家",
+    "away_score": 100,
+    "away_sheet": "2026.02.14 G24 vs 桃園台啤永豐雲豹",
+    "home_team": "桃園台啤永豐雲豹",
+    "home_score": 98,
+    "home_sheet": "2026.02.14 G22 vs 福爾摩沙夢想家",
+    "status": "FINAL",
+    "schedule_id": 1449,
+    "sheet_name": "2026.02.14 G79 福爾摩沙夢想家 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G80",
@@ -1037,7 +1116,8 @@
     "home_score": 100,
     "home_sheet": "2026.02.15 G24 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1450
+    "schedule_id": 1450,
+    "sheet_name": "2026.02.15 G80 新竹御嵿攻城獅 vs 新北國王"
   },
   {
     "game_id": "G81",
@@ -1050,7 +1130,8 @@
     "home_score": 96,
     "home_sheet": "2026.02.15 G23 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1451
+    "schedule_id": 1451,
+    "sheet_name": "2026.02.15 G81 新北中信特攻 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G82",
@@ -1063,7 +1144,8 @@
     "home_score": 100,
     "home_sheet": "2026.03.04 G25 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1452
+    "schedule_id": 1452,
+    "sheet_name": "2026.03.04 G82 桃園台啤永豐雲豹 vs 新北國王"
   },
   {
     "game_id": "G83",
@@ -1076,7 +1158,8 @@
     "home_score": 93,
     "home_sheet": "2026.03.06 G26 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1453
+    "schedule_id": 1453,
+    "sheet_name": "2026.03.06 G83 臺北台新戰神 vs 新北國王"
   },
   {
     "game_id": "G84",
@@ -1089,7 +1172,8 @@
     "home_score": 97,
     "home_sheet": "2026.03.07 G25 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1454
+    "schedule_id": 1454,
+    "sheet_name": "2026.03.07 G84 福爾摩沙夢想家 vs 高雄全家海神"
   },
   {
     "game_id": "G85",
@@ -1102,7 +1186,8 @@
     "home_score": 111,
     "home_sheet": "2026.03.07 G25 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1455
+    "schedule_id": 1455,
+    "sheet_name": "2026.03.07 G85 新竹御嵿攻城獅 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G86",
@@ -1115,7 +1200,8 @@
     "home_score": 90,
     "home_sheet": "2026.03.08 G26 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1456
+    "schedule_id": 1456,
+    "sheet_name": "2026.03.08 G86 新北中信特攻 vs 高雄全家海神"
   },
   {
     "game_id": "G87",
@@ -1128,7 +1214,8 @@
     "home_score": 101,
     "home_sheet": "2026.03.08 G26 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1457
+    "schedule_id": 1457,
+    "sheet_name": "2026.03.08 G87 新北國王 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G88",
@@ -1141,7 +1228,8 @@
     "home_score": 94,
     "home_sheet": "2026.03.11 G23 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1458
+    "schedule_id": 1458,
+    "sheet_name": "2026.03.11 G88 臺北台新戰神 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G89",
@@ -1154,7 +1242,8 @@
     "home_score": 100,
     "home_sheet": "2026.03.14 G26 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1459
+    "schedule_id": 1459,
+    "sheet_name": "2026.03.14 G89 新北中信特攻 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G90",
@@ -1167,7 +1256,8 @@
     "home_score": 113,
     "home_sheet": "2026.03.14 G24 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1460
+    "schedule_id": 1460,
+    "sheet_name": "2026.03.14 G90 高雄全家海神 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G91",
@@ -1180,7 +1270,8 @@
     "home_score": 111,
     "home_sheet": "2026.03.15 G27 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1461
+    "schedule_id": 1461,
+    "sheet_name": "2026.03.15 G91 桃園台啤永豐雲豹 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G92",
@@ -1193,7 +1284,8 @@
     "home_score": 113,
     "home_sheet": "2026.03.15 G25 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1462
+    "schedule_id": 1462,
+    "sheet_name": "2026.03.15 G92 新北國王 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G93",
@@ -1206,7 +1298,8 @@
     "home_score": 118,
     "home_sheet": "2026.03.21 G26 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1463
+    "schedule_id": 1463,
+    "sheet_name": "2026.03.21 G93 高雄全家海神 vs 新北中信特攻"
   },
   {
     "game_id": "G94",
@@ -1219,7 +1312,8 @@
     "home_score": 73,
     "home_sheet": "2026.03.21 G26 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1464
+    "schedule_id": 1464,
+    "sheet_name": "2026.03.21 G94 桃園台啤永豐雲豹 vs 臺北台新戰神"
   },
   {
     "game_id": "G95",
@@ -1232,7 +1326,8 @@
     "home_score": 95,
     "home_sheet": "2026.03.22 G27 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1465
+    "schedule_id": 1465,
+    "sheet_name": "2026.03.22 G95 新竹御嵿攻城獅 vs 新北中信特攻"
   },
   {
     "game_id": "G96",
@@ -1245,7 +1340,8 @@
     "home_score": 96,
     "home_sheet": "2026.03.22 G27 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1466
+    "schedule_id": 1466,
+    "sheet_name": "2026.03.22 G96 福爾摩沙夢想家 vs 臺北台新戰神"
   },
   {
     "game_id": "G97",
@@ -1258,7 +1354,8 @@
     "home_score": 96,
     "home_sheet": "2026.03.25 G29 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1467
+    "schedule_id": 1467,
+    "sheet_name": "2026.03.25 G97 高雄全家海神 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G98",
@@ -1271,25 +1368,13 @@
     "home_score": 107,
     "home_sheet": "2026.03.27 G30 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1468
+    "schedule_id": 1468,
+    "sheet_name": "2026.03.27 G98 新北國王 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G99",
     "date": "2026.03.28",
     "time": "14:30",
-    "away_team": "高雄全家海神",
-    "away_score": 112,
-    "away_sheet": "2026.03.28 G30 vs 臺北台新戰神",
-    "home_team": "臺北台新戰神",
-    "home_score": 104,
-    "home_sheet": "2026.03.28 G28 vs 高雄全家海神",
-    "status": "FINAL",
-    "schedule_id": 1470
-  },
-  {
-    "game_id": "G100",
-    "date": "2026.03.28",
-    "time": "17:00",
     "away_team": "新北中信特攻",
     "away_score": 99,
     "away_sheet": "2026.03.28 G28 vs 新竹御嵿攻城獅",
@@ -1297,7 +1382,22 @@
     "home_score": 103,
     "home_sheet": "2026.03.28 G27 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1469
+    "schedule_id": 1469,
+    "sheet_name": "2026.03.28 G99 新北中信特攻 vs 新竹御嵿攻城獅"
+  },
+  {
+    "game_id": "G100",
+    "date": "2026.03.28",
+    "time": "17:00",
+    "away_team": "高雄全家海神",
+    "away_score": 112,
+    "away_sheet": "2026.03.28 G30 vs 臺北台新戰神",
+    "home_team": "臺北台新戰神",
+    "home_score": 104,
+    "home_sheet": "2026.03.28 G28 vs 高雄全家海神",
+    "status": "FINAL",
+    "schedule_id": 1470,
+    "sheet_name": "2026.03.28 G100 高雄全家海神 vs 臺北台新戰神"
   },
   {
     "game_id": "G101",
@@ -1310,7 +1410,8 @@
     "home_score": 102,
     "home_sheet": "2026.03.29 G28 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1471
+    "schedule_id": 1471,
+    "sheet_name": "2026.03.29 G101 桃園台啤永豐雲豹 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G102",
@@ -1323,7 +1424,8 @@
     "home_score": 102,
     "home_sheet": "2026.03.29 G29 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1472
+    "schedule_id": 1472,
+    "sheet_name": "2026.03.29 G102 新北國王 vs 臺北台新戰神"
   },
   {
     "game_id": "G103",
@@ -1336,7 +1438,8 @@
     "home_score": 89,
     "home_sheet": "2026.04.01 G29 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1473
+    "schedule_id": 1473,
+    "sheet_name": "2026.04.01 G103 臺北台新戰神 vs 新北中信特攻"
   },
   {
     "game_id": "G104",
@@ -1349,7 +1452,8 @@
     "home_score": 108,
     "home_sheet": "2026.04.04 G30 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1474
+    "schedule_id": 1474,
+    "sheet_name": "2026.04.04 G104 福爾摩沙夢想家 vs 新北中信特攻"
   },
   {
     "game_id": "G105",
@@ -1362,7 +1466,8 @@
     "home_score": 105,
     "home_sheet": "2026.04.04 G30 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1475
+    "schedule_id": 1475,
+    "sheet_name": "2026.04.04 G105 高雄全家海神 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G106",
@@ -1375,7 +1480,8 @@
     "home_score": 98,
     "home_sheet": "2026.04.05 G31 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1476
+    "schedule_id": 1476,
+    "sheet_name": "2026.04.05 G106 新北國王 vs 新北中信特攻"
   },
   {
     "game_id": "G107",
@@ -1388,7 +1494,8 @@
     "home_score": 107,
     "home_sheet": "2026.04.05 G31 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1477
+    "schedule_id": 1477,
+    "sheet_name": "2026.04.05 G107 臺北台新戰神 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G108",
@@ -1401,7 +1508,8 @@
     "home_score": 117,
     "home_sheet": "2026.04.08 G29 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1478
+    "schedule_id": 1478,
+    "sheet_name": "2026.04.08 G108 新北中信特攻 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G109",
@@ -1414,7 +1522,8 @@
     "home_score": 111,
     "home_sheet": "2026.04.11 G32 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1479
+    "schedule_id": 1479,
+    "sheet_name": "2026.04.11 G109 新北國王 vs 高雄全家海神"
   },
   {
     "game_id": "G110",
@@ -1427,7 +1536,8 @@
     "home_score": 79,
     "home_sheet": "2026.04.11 G30 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1480
+    "schedule_id": 1480,
+    "sheet_name": "2026.04.11 G110 桃園台啤永豐雲豹 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G111",
@@ -1440,7 +1550,8 @@
     "home_score": 93,
     "home_sheet": "2026.04.12 G33 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1481
+    "schedule_id": 1481,
+    "sheet_name": "2026.04.12 G111 臺北台新戰神 vs 高雄全家海神"
   },
   {
     "game_id": "G112",
@@ -1453,7 +1564,8 @@
     "home_score": 85,
     "home_sheet": "2026.04.12 G31 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1482
+    "schedule_id": 1482,
+    "sheet_name": "2026.04.12 G112 福爾摩沙夢想家 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G113",
@@ -1466,7 +1578,8 @@
     "home_score": 99,
     "home_sheet": "2026.04.18 G33 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1483
+    "schedule_id": 1483,
+    "sheet_name": "2026.04.18 G113 臺北台新戰神 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G114",
@@ -1479,7 +1592,8 @@
     "home_score": 107,
     "home_sheet": "2026.04.18 G33 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1484
+    "schedule_id": 1484,
+    "sheet_name": "2026.04.18 G114 桃園台啤永豐雲豹 vs 新北中信特攻"
   },
   {
     "game_id": "G115",
@@ -1492,7 +1606,8 @@
     "home_score": 92,
     "home_sheet": "2026.04.19 G34 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1485
+    "schedule_id": 1485,
+    "sheet_name": "2026.04.19 G115 新竹御嵿攻城獅 vs 福爾摩沙夢想家"
   },
   {
     "game_id": "G116",
@@ -1505,7 +1620,8 @@
     "home_score": 115,
     "home_sheet": "2026.04.19 G34 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1486
+    "schedule_id": 1486,
+    "sheet_name": "2026.04.19 G116 高雄全家海神 vs 新北中信特攻"
   },
   {
     "game_id": "G117",
@@ -1518,7 +1634,8 @@
     "home_score": 105,
     "home_sheet": "2026.04.24 G33 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1487
+    "schedule_id": 1487,
+    "sheet_name": "2026.04.24 G117 福爾摩沙夢想家 vs 新北國王"
   },
   {
     "game_id": "G118",
@@ -1531,7 +1648,8 @@
     "home_score": 99,
     "home_sheet": "2026.04.25 G34 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1503
+    "schedule_id": 1503,
+    "sheet_name": "2026.04.25 G118 高雄全家海神 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G119",
@@ -1544,7 +1662,8 @@
     "home_score": 86,
     "home_sheet": "2026.04.25 G34 vs 新竹御嵿攻城獅",
     "status": "FINAL",
-    "schedule_id": 1488
+    "schedule_id": 1488,
+    "sheet_name": "2026.04.25 G119 新竹御嵿攻城獅 vs 臺北台新戰神"
   },
   {
     "game_id": "G120",
@@ -1557,7 +1676,8 @@
     "home_score": 104,
     "home_sheet": "2026.04.26 G35 vs 福爾摩沙夢想家",
     "status": "FINAL",
-    "schedule_id": 1489
+    "schedule_id": 1489,
+    "sheet_name": "2026.04.26 G120 福爾摩沙夢想家 vs 桃園台啤永豐雲豹"
   },
   {
     "game_id": "G121",
@@ -1570,7 +1690,8 @@
     "home_score": 103,
     "home_sheet": "2026.04.26 G35 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1490
+    "schedule_id": 1490,
+    "sheet_name": "2026.04.26 G121 新北中信特攻 vs 臺北台新戰神"
   },
   {
     "game_id": "G122",
@@ -1583,7 +1704,8 @@
     "home_score": 98,
     "home_sheet": "2026.04.29 G34 vs 新北國王",
     "status": "FINAL",
-    "schedule_id": 1491
+    "schedule_id": 1491,
+    "sheet_name": "2026.04.29 G122 新北國王 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G123",
@@ -1596,7 +1718,8 @@
     "home_score": 96,
     "home_sheet": "2026.05.02 G35 vs 臺北台新戰神",
     "status": "FINAL",
-    "schedule_id": 1492
+    "schedule_id": 1492,
+    "sheet_name": "2026.05.02 G123 臺北台新戰神 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G124",
@@ -1609,7 +1732,8 @@
     "home_score": 97,
     "home_sheet": "2026.05.02 G35 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
-    "schedule_id": 1493
+    "schedule_id": 1493,
+    "sheet_name": "2026.05.02 G124 桃園台啤永豐雲豹 vs 新北國王"
   },
   {
     "game_id": "G125",
@@ -1622,7 +1746,8 @@
     "home_score": 102,
     "home_sheet": "2026.05.03 G36 vs 高雄全家海神",
     "status": "FINAL",
-    "schedule_id": 1494
+    "schedule_id": 1494,
+    "sheet_name": "2026.05.03 G125 高雄全家海神 vs 新竹御嵿攻城獅"
   },
   {
     "game_id": "G126",
@@ -1635,6 +1760,7 @@
     "home_score": 87,
     "home_sheet": "2026.05.03 G36 vs 新北中信特攻",
     "status": "FINAL",
-    "schedule_id": 1495
+    "schedule_id": 1495,
+    "sheet_name": "2026.05.03 G126 新北中信特攻 vs 新北國王"
   }
 ]

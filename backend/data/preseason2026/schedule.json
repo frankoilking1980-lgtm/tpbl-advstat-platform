@@ -7,7 +7,7 @@
     "away_score": 133,
     "home_team": "新北中信特攻",
     "home_score": 136,
-    "sheet_name": "2026.10.09 G01 海神 vs 特攻",
+    "sheet_name": "2026.10.09 G01 高雄全家海神 vs 新北中信特攻",
     "status": "FINAL (OT)",
     "schedule_id": 27535
   },
@@ -19,7 +19,7 @@
     "away_score": 122,
     "home_team": "福爾摩沙夢想家",
     "home_score": 114,
-    "sheet_name": "2026.10.09 G02 戰神 vs 夢想家",
+    "sheet_name": "2026.10.09 G02 臺北台新戰神 vs 福爾摩沙夢想家",
     "status": "FINAL",
     "schedule_id": 27536
   },
@@ -31,7 +31,7 @@
     "away_score": 93,
     "home_team": "新北國王",
     "home_score": 107,
-    "sheet_name": "2026.10.10 G03 雲豹 vs 國王",
+    "sheet_name": "2026.10.10 G03 桃園台啤永豐雲豹 vs 新北國王",
     "status": "FINAL",
     "schedule_id": 27537
   },
@@ -43,7 +43,7 @@
     "away_score": 110,
     "home_team": "高雄全家海神",
     "home_score": 134,
-    "sheet_name": "2026.10.10 G04 攻城獅 vs 海神",
+    "sheet_name": "2026.10.10 G04 新竹御嵿攻城獅 vs 高雄全家海神",
     "status": "FINAL",
     "schedule_id": 27538
   },
@@ -55,19 +55,19 @@
     "away_score": 97,
     "home_team": "新北中信特攻",
     "home_score": 92,
-    "sheet_name": "2026.10.10 G05 夢想家 vs 特攻",
+    "sheet_name": "2026.10.10 G05 福爾摩沙夢想家 vs 新北中信特攻",
     "status": "FINAL",
     "schedule_id": 27539
   },
   {
     "game_id": "G06",
     "date": "2026.10.11",
-    "time": "14:30",
+    "time": "12:00",
     "away_team": "臺北台新戰神",
     "away_score": 83,
     "home_team": "桃園台啤永豐雲豹",
     "home_score": 94,
-    "sheet_name": "2026.10.11 G06 戰神 vs 雲豹",
+    "sheet_name": "2026.10.11 G06 臺北台新戰神 vs 桃園台啤永豐雲豹",
     "status": "FINAL",
     "schedule_id": 27540
   }
