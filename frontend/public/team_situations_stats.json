@@ -1,7 +1,7 @@
 {
   "meta": {
     "season": "2026-2027 例行賽",
-    "total_games": 16
+    "total_games": 17
   },
   "teams": [
     {
@@ -35,39 +35,6 @@
         "paint_share_pct": 38.2,
         "fast_break_ppg": 19.2,
         "fast_break_share_pct": 16.6
-      }
-    },
-    {
-      "team_name": "新竹御嵿攻城獅",
-      "games_played": 3,
-      "ppg": 106.3,
-      "starter": {
-        "ppg": 61.3,
-        "share_pct": 57.7
-      },
-      "bench": {
-        "ppg": 45.0,
-        "share_pct": 42.3
-      },
-      "local": {
-        "ppg": 52.3,
-        "share_pct": 49.2
-      },
-      "import": {
-        "ppg": 54.0,
-        "share_pct": 50.8
-      },
-      "shot_distribution": {
-        "two_pt_fga_pg": 63.0,
-        "two_pt_share_pct": 68.2,
-        "three_pt_fga_pg": 29.3,
-        "three_pt_share_pct": 31.8
-      },
-      "situations": {
-        "paint_ppg": 57.3,
-        "paint_share_pct": 53.9,
-        "fast_break_ppg": 11.7,
-        "fast_break_share_pct": 11.0
       }
     },
     {
@@ -137,36 +104,36 @@
       }
     },
     {
-      "team_name": "福爾摩沙夢想家",
-      "games_played": 5,
-      "ppg": 99.8,
+      "team_name": "新竹御嵿攻城獅",
+      "games_played": 4,
+      "ppg": 100.5,
       "starter": {
-        "ppg": 62.6,
-        "share_pct": 62.7
+        "ppg": 60.8,
+        "share_pct": 60.4
       },
       "bench": {
-        "ppg": 37.2,
-        "share_pct": 37.3
+        "ppg": 39.8,
+        "share_pct": 39.6
       },
       "local": {
-        "ppg": 74.2,
-        "share_pct": 74.3
+        "ppg": 50.5,
+        "share_pct": 50.2
       },
       "import": {
-        "ppg": 25.6,
-        "share_pct": 25.7
+        "ppg": 50.0,
+        "share_pct": 49.8
       },
       "shot_distribution": {
-        "two_pt_fga_pg": 49.6,
-        "two_pt_share_pct": 60.9,
-        "three_pt_fga_pg": 31.8,
-        "three_pt_share_pct": 39.1
+        "two_pt_fga_pg": 59.2,
+        "two_pt_share_pct": 68.5,
+        "three_pt_fga_pg": 27.2,
+        "three_pt_share_pct": 31.5
       },
       "situations": {
-        "paint_ppg": 43.2,
-        "paint_share_pct": 43.3,
-        "fast_break_ppg": 10.8,
-        "fast_break_share_pct": 10.8
+        "paint_ppg": 50.5,
+        "paint_share_pct": 50.2,
+        "fast_break_ppg": 9.2,
+        "fast_break_share_pct": 9.2
       }
     },
     {
@@ -199,6 +166,39 @@
         "paint_ppg": 35.2,
         "paint_share_pct": 36.2,
         "fast_break_ppg": 11.0,
+        "fast_break_share_pct": 11.3
+      }
+    },
+    {
+      "team_name": "福爾摩沙夢想家",
+      "games_played": 6,
+      "ppg": 96.2,
+      "starter": {
+        "ppg": 58.8,
+        "share_pct": 61.2
+      },
+      "bench": {
+        "ppg": 37.3,
+        "share_pct": 38.8
+      },
+      "local": {
+        "ppg": 70.7,
+        "share_pct": 73.5
+      },
+      "import": {
+        "ppg": 25.5,
+        "share_pct": 26.5
+      },
+      "shot_distribution": {
+        "two_pt_fga_pg": 48.5,
+        "two_pt_share_pct": 59.6,
+        "three_pt_fga_pg": 32.8,
+        "three_pt_share_pct": 40.4
+      },
+      "situations": {
+        "paint_ppg": 41.7,
+        "paint_share_pct": 43.3,
+        "fast_break_ppg": 10.8,
         "fast_break_share_pct": 11.3
       }
     },
