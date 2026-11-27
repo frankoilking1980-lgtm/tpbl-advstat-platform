@@ -188,5 +188,17 @@
     "home_score": 78,
     "sheet_name": "2026.11.25 G19 新竹御嵿攻城獅 vs 福爾摩沙夢想家",
     "status": "FINAL"
+  },
+  {
+    "game_id": "G20",
+    "schedule_id": 27561,
+    "date": "2026.11.27",
+    "time": "00:00",
+    "away_team": "桃園台啤永豐雲豹",
+    "away_score": 107,
+    "home_team": "福爾摩沙夢想家",
+    "home_score": 110,
+    "sheet_name": "2026.11.27 G20 桃園台啤永豐雲豹 vs 福爾摩沙夢想家",
+    "status": "FINAL"
   }
 ]

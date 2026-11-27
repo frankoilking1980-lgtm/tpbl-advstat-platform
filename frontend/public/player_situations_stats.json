@@ -2,30 +2,30 @@
   "meta": {
     "season": "2026-2027 例行賽",
     "stage": "2026-2027 例行賽",
-    "total_games": 17
+    "total_games": 18
   },
   "players": {
     "陳振傑": {
       "team": "福爾摩沙夢想家",
       "number": "0",
       "position": "ShootingGuard",
-      "games_played": 6,
-      "mpg": 19.9,
-      "ppg": 7.2,
+      "games_played": 7,
+      "mpg": 21.2,
+      "ppg": 8.4,
       "point_composition": {
-        "paint_pct": 32.6,
+        "paint_pct": 27.1,
         "paint_ppg": 2.3,
-        "three_pt_pct": 41.9,
-        "three_pt_ppg": 3.0,
-        "mid_range_pct": 9.3,
-        "mid_range_ppg": 0.7,
-        "free_throw_pct": 16.3,
-        "free_throw_ppg": 1.2
+        "three_pt_pct": 50.8,
+        "three_pt_ppg": 4.3,
+        "mid_range_pct": 10.2,
+        "mid_range_ppg": 0.9,
+        "free_throw_pct": 11.9,
+        "free_throw_ppg": 1.0
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 1.2,
-          "share_pct": 16.3,
+          "ppg": 1.0,
+          "share_pct": 11.9,
           "fg_pct": 100.0
         },
         "second_chance": {
@@ -34,30 +34,30 @@
           "fg_pct": 0.0
         },
         "points_off_tov": {
-          "ppg": 1.2,
-          "share_pct": 16.3
+          "ppg": 1.0,
+          "share_pct": 11.9
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 22,
-          "fgm": 8,
-          "fg_pct": 36.4
+          "fga": 29,
+          "fgm": 12,
+          "fg_pct": 41.4
         },
         "two_jump_shot": {
-          "fga": 5,
+          "fga": 6,
           "fgm": 2,
-          "fg_pct": 40.0
+          "fg_pct": 33.3
         },
         "three_jump_shot": {
-          "fga": 17,
-          "fgm": 6,
-          "fg_pct": 35.3
+          "fga": 23,
+          "fgm": 10,
+          "fg_pct": 43.5
         },
         "layup": {
-          "fga": 10,
+          "fga": 11,
           "fgm": 5,
-          "fg_pct": 50.0
+          "fg_pct": 45.5
         },
         "dunk": {
           "fga": 0,
@@ -71,13 +71,13 @@
         }
       },
       "q4_crunch_time": {
-        "q4_games": 5,
-        "q4_mpg": 4.6,
-        "q4_ppg": 0.8,
-        "q4_fg_pct": 33.3,
-        "q4_ts_pct": 51.5,
+        "q4_games": 6,
+        "q4_mpg": 5.4,
+        "q4_ppg": 1.0,
+        "q4_fg_pct": 50.0,
+        "q4_ts_pct": 61.5,
         "q4_tov_pg": 0.0,
-        "q4_plus_minus_pg": 3.0
+        "q4_plus_minus_pg": 0.8
       }
     },
     "馬建豪": {
@@ -159,45 +159,45 @@
       "team": "福爾摩沙夢想家",
       "number": "3",
       "position": "ShootingGuard",
-      "games_played": 6,
-      "mpg": 23.9,
-      "ppg": 9.2,
+      "games_played": 7,
+      "mpg": 25.5,
+      "ppg": 10.6,
       "point_composition": {
-        "paint_pct": 65.5,
-        "paint_ppg": 6.0,
-        "three_pt_pct": 10.9,
-        "three_pt_ppg": 1.0,
-        "mid_range_pct": 21.8,
+        "paint_pct": 70.3,
+        "paint_ppg": 7.4,
+        "three_pt_pct": 8.1,
+        "three_pt_ppg": 0.9,
+        "mid_range_pct": 18.9,
         "mid_range_ppg": 2.0,
-        "free_throw_pct": 1.8,
-        "free_throw_ppg": 0.2
+        "free_throw_pct": 2.7,
+        "free_throw_ppg": 0.3
       },
       "tactical_situations": {
         "fast_break": {
           "ppg": 2.0,
-          "share_pct": 21.8,
+          "share_pct": 18.9,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 0.3,
-          "share_pct": 3.6,
+          "ppg": 0.6,
+          "share_pct": 5.4,
           "fg_pct": 100.0
         },
         "points_off_tov": {
-          "ppg": 0.3,
-          "share_pct": 3.6
+          "ppg": 0.6,
+          "share_pct": 5.4
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 34,
-          "fgm": 10,
-          "fg_pct": 29.4
+          "fga": 40,
+          "fgm": 11,
+          "fg_pct": 27.5
         },
         "two_jump_shot": {
-          "fga": 24,
-          "fgm": 8,
-          "fg_pct": 33.3
+          "fga": 30,
+          "fgm": 9,
+          "fg_pct": 30.0
         },
         "three_jump_shot": {
           "fga": 10,
@@ -205,9 +205,9 @@
           "fg_pct": 20.0
         },
         "layup": {
-          "fga": 19,
-          "fgm": 14,
-          "fg_pct": 73.7
+          "fga": 26,
+          "fgm": 20,
+          "fg_pct": 76.9
         },
         "dunk": {
           "fga": 0,
@@ -215,47 +215,47 @@
           "fg_pct": 0.0
         },
         "self_created": {
-          "fga": 13,
-          "fgm": 3,
-          "fg_pct": 23.1
+          "fga": 16,
+          "fgm": 4,
+          "fg_pct": 25.0
         }
       },
       "q4_crunch_time": {
-        "q4_games": 5,
-        "q4_mpg": 4.4,
-        "q4_ppg": 1.6,
-        "q4_fg_pct": 57.1,
-        "q4_ts_pct": 57.1,
+        "q4_games": 6,
+        "q4_mpg": 5.3,
+        "q4_ppg": 2.0,
+        "q4_fg_pct": 54.5,
+        "q4_ts_pct": 54.5,
         "q4_tov_pg": 0.2,
-        "q4_plus_minus_pg": -1.6
+        "q4_plus_minus_pg": -1.7
       }
     },
     "基德": {
       "team": "福爾摩沙夢想家",
       "number": "10",
       "position": "SmallForward",
-      "games_played": 6,
-      "mpg": 32.7,
-      "ppg": 14.7,
+      "games_played": 7,
+      "mpg": 33.5,
+      "ppg": 15.7,
       "point_composition": {
-        "paint_pct": 36.4,
-        "paint_ppg": 5.3,
-        "three_pt_pct": 34.1,
-        "three_pt_ppg": 5.0,
-        "mid_range_pct": 4.5,
-        "mid_range_ppg": 0.7,
-        "free_throw_pct": 25.0,
-        "free_throw_ppg": 3.7
+        "paint_pct": 40.0,
+        "paint_ppg": 6.3,
+        "three_pt_pct": 35.5,
+        "three_pt_ppg": 5.6,
+        "mid_range_pct": 3.6,
+        "mid_range_ppg": 0.6,
+        "free_throw_pct": 20.9,
+        "free_throw_ppg": 3.3
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 1.7,
-          "share_pct": 11.4,
+          "ppg": 1.4,
+          "share_pct": 9.1,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 0.8,
-          "share_pct": 5.7,
+          "ppg": 1.0,
+          "share_pct": 6.4,
           "fg_pct": 100.0
         },
         "points_off_tov": {
@@ -265,94 +265,94 @@
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 64,
-          "fgm": 17,
-          "fg_pct": 26.6
+          "fga": 72,
+          "fgm": 20,
+          "fg_pct": 27.8
         },
         "two_jump_shot": {
-          "fga": 20,
+          "fga": 21,
           "fgm": 7,
-          "fg_pct": 35.0
+          "fg_pct": 33.3
         },
         "three_jump_shot": {
-          "fga": 44,
-          "fgm": 10,
-          "fg_pct": 22.7
+          "fga": 51,
+          "fgm": 13,
+          "fg_pct": 25.5
         },
         "layup": {
-          "fga": 13,
-          "fgm": 8,
-          "fg_pct": 61.5
+          "fga": 15,
+          "fgm": 10,
+          "fg_pct": 66.7
         },
         "dunk": {
-          "fga": 1,
-          "fgm": 1,
+          "fga": 3,
+          "fgm": 3,
           "fg_pct": 100.0
         },
         "self_created": {
-          "fga": 11,
+          "fga": 12,
           "fgm": 3,
-          "fg_pct": 27.3
+          "fg_pct": 25.0
         }
       },
       "q4_crunch_time": {
-        "q4_games": 6,
-        "q4_mpg": 7.2,
-        "q4_ppg": 3.5,
-        "q4_fg_pct": 42.1,
-        "q4_ts_pct": 48.5,
-        "q4_tov_pg": 0.3,
-        "q4_plus_minus_pg": 2.2
+        "q4_games": 7,
+        "q4_mpg": 7.7,
+        "q4_ppg": 3.4,
+        "q4_fg_pct": 39.1,
+        "q4_ts_pct": 45.2,
+        "q4_tov_pg": 0.4,
+        "q4_plus_minus_pg": 0.7
       }
     },
     "林俊吉": {
       "team": "福爾摩沙夢想家",
       "number": "11",
       "position": "PointGuard",
-      "games_played": 6,
-      "mpg": 27.6,
-      "ppg": 16.8,
+      "games_played": 7,
+      "mpg": 26.2,
+      "ppg": 16.7,
       "point_composition": {
-        "paint_pct": 35.6,
-        "paint_ppg": 6.0,
-        "three_pt_pct": 32.7,
-        "three_pt_ppg": 5.5,
-        "mid_range_pct": 9.9,
-        "mid_range_ppg": 1.7,
-        "free_throw_pct": 21.8,
-        "free_throw_ppg": 3.7
+        "paint_pct": 32.5,
+        "paint_ppg": 5.4,
+        "three_pt_pct": 30.8,
+        "three_pt_ppg": 5.1,
+        "mid_range_pct": 12.0,
+        "mid_range_ppg": 2.0,
+        "free_throw_pct": 24.8,
+        "free_throw_ppg": 4.1
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 1.0,
-          "share_pct": 5.9,
+          "ppg": 0.9,
+          "share_pct": 5.1,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 0.8,
-          "share_pct": 5.0,
+          "ppg": 1.0,
+          "share_pct": 6.0,
           "fg_pct": 100.0
         },
         "points_off_tov": {
           "ppg": 0.3,
-          "share_pct": 2.0
+          "share_pct": 1.7
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 56,
-          "fgm": 24,
-          "fg_pct": 42.9
+          "fga": 61,
+          "fgm": 26,
+          "fg_pct": 42.6
         },
         "two_jump_shot": {
-          "fga": 24,
-          "fgm": 13,
-          "fg_pct": 54.2
+          "fga": 26,
+          "fgm": 14,
+          "fg_pct": 53.8
         },
         "three_jump_shot": {
-          "fga": 32,
-          "fgm": 11,
-          "fg_pct": 34.4
+          "fga": 35,
+          "fgm": 12,
+          "fg_pct": 34.3
         },
         "layup": {
           "fga": 10,
@@ -365,19 +365,19 @@
           "fg_pct": 0.0
         },
         "self_created": {
-          "fga": 17,
-          "fgm": 9,
-          "fg_pct": 52.9
+          "fga": 18,
+          "fgm": 10,
+          "fg_pct": 55.6
         }
       },
       "q4_crunch_time": {
-        "q4_games": 6,
-        "q4_mpg": 9.7,
+        "q4_games": 7,
+        "q4_mpg": 8.9,
         "q4_ppg": 5.7,
-        "q4_fg_pct": 48.0,
-        "q4_ts_pct": 61.5,
-        "q4_tov_pg": 1.5,
-        "q4_plus_minus_pg": 1.0
+        "q4_fg_pct": 50.0,
+        "q4_ts_pct": 63.5,
+        "q4_tov_pg": 1.3,
+        "q4_plus_minus_pg": -0.3
       }
     },
     "李德威": {
@@ -459,45 +459,45 @@
       "team": "福爾摩沙夢想家",
       "number": "34",
       "position": "Center",
-      "games_played": 6,
-      "mpg": 33.2,
-      "ppg": 13.3,
+      "games_played": 7,
+      "mpg": 33.3,
+      "ppg": 12.6,
       "point_composition": {
-        "paint_pct": 65.0,
-        "paint_ppg": 8.7,
-        "three_pt_pct": 3.8,
-        "three_pt_ppg": 0.5,
-        "mid_range_pct": 5.0,
-        "mid_range_ppg": 0.7,
-        "free_throw_pct": 26.2,
-        "free_throw_ppg": 3.5
+        "paint_pct": 68.2,
+        "paint_ppg": 8.6,
+        "three_pt_pct": 3.4,
+        "three_pt_ppg": 0.4,
+        "mid_range_pct": 4.5,
+        "mid_range_ppg": 0.6,
+        "free_throw_pct": 23.9,
+        "free_throw_ppg": 3.0
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 0.7,
-          "share_pct": 5.0,
+          "ppg": 0.6,
+          "share_pct": 4.5,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 3.0,
-          "share_pct": 22.5,
+          "ppg": 2.6,
+          "share_pct": 20.5,
           "fg_pct": 100.0
         },
         "points_off_tov": {
           "ppg": 0.3,
-          "share_pct": 2.5
+          "share_pct": 2.3
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 12,
-          "fgm": 2,
-          "fg_pct": 16.7
+          "fga": 13,
+          "fgm": 3,
+          "fg_pct": 23.1
         },
         "two_jump_shot": {
-          "fga": 10,
-          "fgm": 1,
-          "fg_pct": 10.0
+          "fga": 11,
+          "fgm": 2,
+          "fg_pct": 18.2
         },
         "three_jump_shot": {
           "fga": 2,
@@ -505,14 +505,14 @@
           "fg_pct": 50.0
         },
         "layup": {
-          "fga": 9,
-          "fgm": 5,
-          "fg_pct": 55.6
+          "fga": 11,
+          "fgm": 6,
+          "fg_pct": 54.5
         },
         "dunk": {
-          "fga": 12,
-          "fgm": 10,
-          "fg_pct": 83.3
+          "fga": 13,
+          "fgm": 11,
+          "fg_pct": 84.6
         },
         "self_created": {
           "fga": 0,
@@ -521,128 +521,128 @@
         }
       },
       "q4_crunch_time": {
-        "q4_games": 6,
-        "q4_mpg": 7.8,
-        "q4_ppg": 3.2,
+        "q4_games": 7,
+        "q4_mpg": 7.7,
+        "q4_ppg": 2.7,
         "q4_fg_pct": 54.5,
         "q4_ts_pct": 61.7,
-        "q4_tov_pg": 0.5,
-        "q4_plus_minus_pg": 1.0
+        "q4_tov_pg": 0.4,
+        "q4_plus_minus_pg": -1.0
       }
     },
     "霍爾曼": {
       "team": "福爾摩沙夢想家",
       "number": "35",
       "position": "PowerForward",
-      "games_played": 5,
-      "mpg": 31.2,
-      "ppg": 13.0,
+      "games_played": 6,
+      "mpg": 29.9,
+      "ppg": 13.2,
       "point_composition": {
-        "paint_pct": 36.9,
-        "paint_ppg": 4.8,
-        "three_pt_pct": 41.5,
-        "three_pt_ppg": 5.4,
-        "mid_range_pct": 6.2,
-        "mid_range_ppg": 0.8,
-        "free_throw_pct": 15.4,
-        "free_throw_ppg": 2.0
+        "paint_pct": 43.0,
+        "paint_ppg": 5.7,
+        "three_pt_pct": 34.2,
+        "three_pt_ppg": 4.5,
+        "mid_range_pct": 5.1,
+        "mid_range_ppg": 0.7,
+        "free_throw_pct": 17.7,
+        "free_throw_ppg": 2.3
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 1.8,
-          "share_pct": 13.8,
+          "ppg": 2.0,
+          "share_pct": 15.2,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 0.8,
-          "share_pct": 6.2,
+          "ppg": 1.3,
+          "share_pct": 10.1,
           "fg_pct": 100.0
         },
         "points_off_tov": {
-          "ppg": 1.4,
-          "share_pct": 10.8
+          "ppg": 1.7,
+          "share_pct": 12.7
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 51,
-          "fgm": 15,
-          "fg_pct": 29.4
+          "fga": 59,
+          "fgm": 16,
+          "fg_pct": 27.1
         },
         "two_jump_shot": {
-          "fga": 18,
-          "fgm": 6,
+          "fga": 21,
+          "fgm": 7,
           "fg_pct": 33.3
         },
         "three_jump_shot": {
-          "fga": 33,
+          "fga": 38,
           "fgm": 9,
-          "fg_pct": 27.3
+          "fg_pct": 23.7
         },
         "layup": {
-          "fga": 6,
+          "fga": 9,
           "fgm": 3,
-          "fg_pct": 50.0
+          "fg_pct": 33.3
         },
         "dunk": {
-          "fga": 3,
-          "fgm": 3,
+          "fga": 6,
+          "fgm": 6,
           "fg_pct": 100.0
         },
         "self_created": {
-          "fga": 2,
+          "fga": 3,
           "fgm": 1,
-          "fg_pct": 50.0
+          "fg_pct": 33.3
         }
       },
       "q4_crunch_time": {
-        "q4_games": 5,
-        "q4_mpg": 8.3,
+        "q4_games": 6,
+        "q4_mpg": 7.9,
         "q4_ppg": 3.2,
-        "q4_fg_pct": 29.4,
-        "q4_ts_pct": 42.6,
-        "q4_tov_pg": 0.2,
-        "q4_plus_minus_pg": -0.2
+        "q4_fg_pct": 30.0,
+        "q4_ts_pct": 42.0,
+        "q4_tov_pg": 0.5,
+        "q4_plus_minus_pg": 0.0
       }
     },
     "蔣淯安": {
       "team": "福爾摩沙夢想家",
       "number": "41",
       "position": "PointGuard",
-      "games_played": 6,
-      "mpg": 31.5,
+      "games_played": 7,
+      "mpg": 31.9,
       "ppg": 12.0,
       "point_composition": {
-        "paint_pct": 25.0,
-        "paint_ppg": 3.0,
-        "three_pt_pct": 45.8,
-        "three_pt_ppg": 5.5,
-        "mid_range_pct": 8.3,
-        "mid_range_ppg": 1.0,
-        "free_throw_pct": 20.8,
-        "free_throw_ppg": 2.5
+        "paint_pct": 26.2,
+        "paint_ppg": 3.1,
+        "three_pt_pct": 46.4,
+        "three_pt_ppg": 5.6,
+        "mid_range_pct": 7.1,
+        "mid_range_ppg": 0.9,
+        "free_throw_pct": 20.2,
+        "free_throw_ppg": 2.4
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 1.7,
-          "share_pct": 13.9,
+          "ppg": 1.4,
+          "share_pct": 11.9,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 0.8,
-          "share_pct": 6.9,
+          "ppg": 0.7,
+          "share_pct": 6.0,
           "fg_pct": 100.0
         },
         "points_off_tov": {
-          "ppg": 1.7,
-          "share_pct": 13.9
+          "ppg": 1.4,
+          "share_pct": 11.9
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 31,
-          "fgm": 14,
-          "fg_pct": 45.2
+          "fga": 35,
+          "fgm": 16,
+          "fg_pct": 45.7
         },
         "two_jump_shot": {
           "fga": 11,
@@ -650,14 +650,14 @@
           "fg_pct": 27.3
         },
         "three_jump_shot": {
-          "fga": 20,
-          "fgm": 11,
-          "fg_pct": 55.0
+          "fga": 24,
+          "fgm": 13,
+          "fg_pct": 54.2
         },
         "layup": {
-          "fga": 15,
-          "fgm": 9,
-          "fg_pct": 60.0
+          "fga": 18,
+          "fgm": 11,
+          "fg_pct": 61.1
         },
         "dunk": {
           "fga": 0,
@@ -671,31 +671,31 @@
         }
       },
       "q4_crunch_time": {
-        "q4_games": 6,
+        "q4_games": 7,
         "q4_mpg": 9.9,
-        "q4_ppg": 4.3,
-        "q4_fg_pct": 61.5,
-        "q4_ts_pct": 76.7,
-        "q4_tov_pg": 0.7,
-        "q4_plus_minus_pg": 2.8
+        "q4_ppg": 4.4,
+        "q4_fg_pct": 60.0,
+        "q4_ts_pct": 78.1,
+        "q4_tov_pg": 0.6,
+        "q4_plus_minus_pg": 2.1
       }
     },
     "忻沃克": {
       "team": "福爾摩沙夢想家",
       "number": "42",
       "position": "SmallForward",
-      "games_played": 5,
-      "mpg": 23.2,
-      "ppg": 3.0,
+      "games_played": 6,
+      "mpg": 22.5,
+      "ppg": 2.8,
       "point_composition": {
-        "paint_pct": 93.3,
-        "paint_ppg": 2.8,
+        "paint_pct": 82.4,
+        "paint_ppg": 2.3,
         "three_pt_pct": 0.0,
         "three_pt_ppg": 0.0,
         "mid_range_pct": 0.0,
         "mid_range_ppg": 0.0,
-        "free_throw_pct": 6.7,
-        "free_throw_ppg": 0.2
+        "free_throw_pct": 17.6,
+        "free_throw_ppg": 0.5
       },
       "tactical_situations": {
         "fast_break": {
@@ -704,8 +704,8 @@
           "fg_pct": 0.0
         },
         "second_chance": {
-          "ppg": 1.2,
-          "share_pct": 40.0,
+          "ppg": 1.3,
+          "share_pct": 47.1,
           "fg_pct": 100.0
         },
         "points_off_tov": {
@@ -715,9 +715,9 @@
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 18,
+          "fga": 23,
           "fgm": 2,
-          "fg_pct": 11.1
+          "fg_pct": 8.7
         },
         "two_jump_shot": {
           "fga": 7,
@@ -725,7 +725,7 @@
           "fg_pct": 28.6
         },
         "three_jump_shot": {
-          "fga": 11,
+          "fga": 16,
           "fgm": 0,
           "fg_pct": 0.0
         },
@@ -746,13 +746,13 @@
         }
       },
       "q4_crunch_time": {
-        "q4_games": 5,
-        "q4_mpg": 4.6,
+        "q4_games": 6,
+        "q4_mpg": 4.2,
         "q4_ppg": 0.0,
         "q4_fg_pct": 0.0,
         "q4_ts_pct": 0.0,
         "q4_tov_pg": 0.2,
-        "q4_plus_minus_pg": -0.2
+        "q4_plus_minus_pg": -1.5
       }
     },
     "林書緯": {
@@ -1659,18 +1659,18 @@
       "team": "福爾摩沙夢想家",
       "number": "20",
       "position": "ShootingGuard",
-      "games_played": 5,
-      "mpg": 8.8,
-      "ppg": 0.6,
+      "games_played": 6,
+      "mpg": 8.9,
+      "ppg": 0.7,
       "point_composition": {
         "paint_pct": 0.0,
         "paint_ppg": 0.0,
-        "three_pt_pct": 100.0,
-        "three_pt_ppg": 0.6,
+        "three_pt_pct": 75.0,
+        "three_pt_ppg": 0.5,
         "mid_range_pct": 0.0,
         "mid_range_ppg": 0.0,
-        "free_throw_pct": 0.0,
-        "free_throw_ppg": 0.0
+        "free_throw_pct": 25.0,
+        "free_throw_ppg": 0.2
       },
       "tactical_situations": {
         "fast_break": {
@@ -4584,55 +4584,55 @@
       "team": "桃園台啤永豐雲豹",
       "number": "5",
       "position": "PointGuard",
-      "games_played": 4,
-      "mpg": 34.4,
-      "ppg": 16.2,
+      "games_played": 5,
+      "mpg": 34.9,
+      "ppg": 18.0,
       "point_composition": {
-        "paint_pct": 24.6,
-        "paint_ppg": 4.0,
-        "three_pt_pct": 73.8,
-        "three_pt_ppg": 12.0,
+        "paint_pct": 35.6,
+        "paint_ppg": 6.4,
+        "three_pt_pct": 63.3,
+        "three_pt_ppg": 11.4,
         "mid_range_pct": 0.0,
         "mid_range_ppg": 0.0,
-        "free_throw_pct": 1.5,
+        "free_throw_pct": 1.1,
         "free_throw_ppg": 0.2
       },
       "tactical_situations": {
         "fast_break": {
           "ppg": 2.0,
-          "share_pct": 12.3,
+          "share_pct": 11.1,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 1.8,
-          "share_pct": 10.8,
+          "ppg": 1.4,
+          "share_pct": 7.8,
           "fg_pct": 100.0
         },
         "points_off_tov": {
-          "ppg": 2.0,
-          "share_pct": 12.3
+          "ppg": 2.4,
+          "share_pct": 13.3
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 36,
-          "fgm": 16,
-          "fg_pct": 44.4
+          "fga": 46,
+          "fgm": 21,
+          "fg_pct": 45.7
         },
         "two_jump_shot": {
-          "fga": 3,
-          "fgm": 0,
-          "fg_pct": 0.0
+          "fga": 5,
+          "fgm": 2,
+          "fg_pct": 40.0
         },
         "three_jump_shot": {
-          "fga": 33,
-          "fgm": 16,
-          "fg_pct": 48.5
+          "fga": 41,
+          "fgm": 19,
+          "fg_pct": 46.3
         },
         "layup": {
-          "fga": 14,
-          "fgm": 6,
-          "fg_pct": 42.9
+          "fga": 20,
+          "fgm": 12,
+          "fg_pct": 60.0
         },
         "dunk": {
           "fga": 0,
@@ -4640,59 +4640,59 @@
           "fg_pct": 0.0
         },
         "self_created": {
-          "fga": 10,
-          "fgm": 4,
-          "fg_pct": 40.0
+          "fga": 12,
+          "fgm": 6,
+          "fg_pct": 50.0
         }
       },
       "q4_crunch_time": {
-        "q4_games": 4,
-        "q4_mpg": 10.3,
-        "q4_ppg": 4.2,
-        "q4_fg_pct": 42.9,
-        "q4_ts_pct": 57.1,
+        "q4_games": 5,
+        "q4_mpg": 10.7,
+        "q4_ppg": 6.6,
+        "q4_fg_pct": 59.1,
+        "q4_ts_pct": 72.1,
         "q4_tov_pg": 1.0,
-        "q4_plus_minus_pg": -3.0
+        "q4_plus_minus_pg": -0.4
       }
     },
     "莫騰": {
       "team": "桃園台啤永豐雲豹",
       "number": "10",
       "position": "SmallForwardAndPowerForward",
-      "games_played": 4,
-      "mpg": 34.3,
-      "ppg": 17.8,
+      "games_played": 5,
+      "mpg": 36.1,
+      "ppg": 17.6,
       "point_composition": {
-        "paint_pct": 70.4,
-        "paint_ppg": 12.5,
-        "three_pt_pct": 16.9,
-        "three_pt_ppg": 3.0,
+        "paint_pct": 61.4,
+        "paint_ppg": 10.8,
+        "three_pt_pct": 27.3,
+        "three_pt_ppg": 4.8,
         "mid_range_pct": 0.0,
         "mid_range_ppg": 0.0,
-        "free_throw_pct": 12.7,
-        "free_throw_ppg": 2.2
+        "free_throw_pct": 11.4,
+        "free_throw_ppg": 2.0
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 3.2,
-          "share_pct": 18.3,
+          "ppg": 3.0,
+          "share_pct": 17.0,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 4.0,
-          "share_pct": 22.5,
+          "ppg": 3.6,
+          "share_pct": 20.5,
           "fg_pct": 100.0
         },
         "points_off_tov": {
-          "ppg": 3.2,
-          "share_pct": 18.3
+          "ppg": 2.6,
+          "share_pct": 14.8
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 23,
-          "fgm": 5,
-          "fg_pct": 21.7
+          "fga": 30,
+          "fgm": 9,
+          "fg_pct": 30.0
         },
         "two_jump_shot": {
           "fga": 5,
@@ -4700,14 +4700,14 @@
           "fg_pct": 20.0
         },
         "three_jump_shot": {
-          "fga": 18,
-          "fgm": 4,
-          "fg_pct": 22.2
+          "fga": 25,
+          "fgm": 8,
+          "fg_pct": 32.0
         },
         "layup": {
-          "fga": 24,
-          "fgm": 15,
-          "fg_pct": 62.5
+          "fga": 31,
+          "fgm": 17,
+          "fg_pct": 54.8
         },
         "dunk": {
           "fga": 2,
@@ -4721,31 +4721,31 @@
         }
       },
       "q4_crunch_time": {
-        "q4_games": 4,
-        "q4_mpg": 8.4,
-        "q4_ppg": 1.5,
-        "q4_fg_pct": 20.0,
-        "q4_ts_pct": 26.5,
+        "q4_games": 5,
+        "q4_mpg": 9.2,
+        "q4_ppg": 1.2,
+        "q4_fg_pct": 15.4,
+        "q4_ts_pct": 20.9,
         "q4_tov_pg": 0.2,
-        "q4_plus_minus_pg": -3.5
+        "q4_plus_minus_pg": -0.8
       }
     },
     "莊博元": {
       "team": "桃園台啤永豐雲豹",
       "number": "11",
       "position": "PointGuard",
-      "games_played": 4,
-      "mpg": 25.9,
-      "ppg": 5.0,
+      "games_played": 5,
+      "mpg": 25.4,
+      "ppg": 4.2,
       "point_composition": {
-        "paint_pct": 20.0,
-        "paint_ppg": 1.0,
-        "three_pt_pct": 60.0,
-        "three_pt_ppg": 3.0,
-        "mid_range_pct": 10.0,
-        "mid_range_ppg": 0.5,
-        "free_throw_pct": 10.0,
-        "free_throw_ppg": 0.5
+        "paint_pct": 19.0,
+        "paint_ppg": 0.8,
+        "three_pt_pct": 57.1,
+        "three_pt_ppg": 2.4,
+        "mid_range_pct": 9.5,
+        "mid_range_ppg": 0.4,
+        "free_throw_pct": 14.3,
+        "free_throw_ppg": 0.6
       },
       "tactical_situations": {
         "fast_break": {
@@ -4754,8 +4754,8 @@
           "fg_pct": 0.0
         },
         "second_chance": {
-          "ppg": 0.5,
-          "share_pct": 10.0,
+          "ppg": 0.4,
+          "share_pct": 9.5,
           "fg_pct": 0.0
         },
         "points_off_tov": {
@@ -4765,9 +4765,9 @@
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 15,
+          "fga": 17,
           "fgm": 5,
-          "fg_pct": 33.3
+          "fg_pct": 29.4
         },
         "two_jump_shot": {
           "fga": 3,
@@ -4775,9 +4775,9 @@
           "fg_pct": 33.3
         },
         "three_jump_shot": {
-          "fga": 12,
+          "fga": 14,
           "fgm": 4,
-          "fg_pct": 33.3
+          "fg_pct": 28.6
         },
         "layup": {
           "fga": 0,
@@ -4796,45 +4796,45 @@
         }
       },
       "q4_crunch_time": {
-        "q4_games": 4,
-        "q4_mpg": 6.5,
-        "q4_ppg": 1.8,
+        "q4_games": 5,
+        "q4_mpg": 6.3,
+        "q4_ppg": 1.6,
         "q4_fg_pct": 28.6,
-        "q4_ts_pct": 40.0,
+        "q4_ts_pct": 41.5,
         "q4_tov_pg": 0.0,
-        "q4_plus_minus_pg": -1.8
+        "q4_plus_minus_pg": -0.6
       }
     },
     "林信寬": {
       "team": "桃園台啤永豐雲豹",
       "number": "12",
       "position": "SmallForward",
-      "games_played": 4,
-      "mpg": 25.6,
-      "ppg": 7.2,
+      "games_played": 5,
+      "mpg": 23.5,
+      "ppg": 5.8,
       "point_composition": {
         "paint_pct": 48.3,
-        "paint_ppg": 3.5,
+        "paint_ppg": 2.8,
         "three_pt_pct": 41.4,
-        "three_pt_ppg": 3.0,
+        "three_pt_ppg": 2.4,
         "mid_range_pct": 6.9,
-        "mid_range_ppg": 0.5,
+        "mid_range_ppg": 0.4,
         "free_throw_pct": 3.4,
         "free_throw_ppg": 0.2
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 1.5,
+          "ppg": 1.2,
           "share_pct": 20.7,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 1.2,
+          "ppg": 1.0,
           "share_pct": 17.2,
           "fg_pct": 100.0
         },
         "points_off_tov": {
-          "ppg": 1.5,
+          "ppg": 1.2,
           "share_pct": 20.7
         }
       },
@@ -4855,9 +4855,9 @@
           "fg_pct": 33.3
         },
         "layup": {
-          "fga": 13,
+          "fga": 16,
           "fgm": 5,
-          "fg_pct": 38.5
+          "fg_pct": 31.2
         },
         "dunk": {
           "fga": 0,
@@ -4959,55 +4959,55 @@
       "team": "桃園台啤永豐雲豹",
       "number": "20",
       "position": "SmallForward",
-      "games_played": 4,
-      "mpg": 31.8,
-      "ppg": 17.8,
+      "games_played": 5,
+      "mpg": 33.7,
+      "ppg": 20.4,
       "point_composition": {
-        "paint_pct": 47.9,
-        "paint_ppg": 8.5,
-        "three_pt_pct": 16.9,
-        "three_pt_ppg": 3.0,
-        "mid_range_pct": 11.3,
-        "mid_range_ppg": 2.0,
-        "free_throw_pct": 23.9,
-        "free_throw_ppg": 4.2
+        "paint_pct": 47.1,
+        "paint_ppg": 9.6,
+        "three_pt_pct": 17.6,
+        "three_pt_ppg": 3.6,
+        "mid_range_pct": 15.7,
+        "mid_range_ppg": 3.2,
+        "free_throw_pct": 19.6,
+        "free_throw_ppg": 4.0
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 0.5,
-          "share_pct": 2.8,
-          "fg_pct": 0.0
+          "ppg": 1.8,
+          "share_pct": 8.8,
+          "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 3.2,
-          "share_pct": 18.3,
+          "ppg": 3.6,
+          "share_pct": 17.6,
           "fg_pct": 100.0
         },
         "points_off_tov": {
-          "ppg": 2.2,
-          "share_pct": 12.7
+          "ppg": 2.8,
+          "share_pct": 13.7
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 38,
-          "fgm": 9,
-          "fg_pct": 23.7
+          "fga": 51,
+          "fgm": 15,
+          "fg_pct": 29.4
         },
         "two_jump_shot": {
-          "fga": 15,
-          "fgm": 5,
-          "fg_pct": 33.3
+          "fga": 21,
+          "fgm": 9,
+          "fg_pct": 42.9
         },
         "three_jump_shot": {
-          "fga": 23,
-          "fgm": 4,
-          "fg_pct": 17.4
+          "fga": 30,
+          "fgm": 6,
+          "fg_pct": 20.0
         },
         "layup": {
-          "fga": 21,
-          "fgm": 10,
-          "fg_pct": 47.6
+          "fga": 32,
+          "fgm": 17,
+          "fg_pct": 53.1
         },
         "dunk": {
           "fga": 2,
@@ -5015,59 +5015,59 @@
           "fg_pct": 100.0
         },
         "self_created": {
-          "fga": 6,
-          "fgm": 2,
+          "fga": 9,
+          "fgm": 3,
           "fg_pct": 33.3
         }
       },
       "q4_crunch_time": {
-        "q4_games": 4,
-        "q4_mpg": 7.9,
-        "q4_ppg": 3.2,
-        "q4_fg_pct": 33.3,
-        "q4_ts_pct": 33.6,
-        "q4_tov_pg": 0.5,
-        "q4_plus_minus_pg": -3.0
+        "q4_games": 5,
+        "q4_mpg": 8.8,
+        "q4_ppg": 4.6,
+        "q4_fg_pct": 37.0,
+        "q4_ts_pct": 39.4,
+        "q4_tov_pg": 0.4,
+        "q4_plus_minus_pg": -0.4
       }
     },
     "錢肯尼": {
       "team": "桃園台啤永豐雲豹",
       "number": "23",
       "position": "PointGuard",
-      "games_played": 4,
-      "mpg": 29.1,
-      "ppg": 11.2,
+      "games_played": 5,
+      "mpg": 30.2,
+      "ppg": 12.0,
       "point_composition": {
-        "paint_pct": 80.0,
-        "paint_ppg": 9.0,
-        "three_pt_pct": 13.3,
-        "three_pt_ppg": 1.5,
+        "paint_pct": 66.7,
+        "paint_ppg": 8.0,
+        "three_pt_pct": 25.0,
+        "three_pt_ppg": 3.0,
         "mid_range_pct": 0.0,
         "mid_range_ppg": 0.0,
-        "free_throw_pct": 6.7,
-        "free_throw_ppg": 0.8
+        "free_throw_pct": 8.3,
+        "free_throw_ppg": 1.0
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 2.8,
-          "share_pct": 24.4,
+          "ppg": 3.4,
+          "share_pct": 28.3,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 3.0,
-          "share_pct": 26.7,
+          "ppg": 2.4,
+          "share_pct": 20.0,
           "fg_pct": 100.0
         },
         "points_off_tov": {
-          "ppg": 2.0,
-          "share_pct": 17.8
+          "ppg": 2.4,
+          "share_pct": 20.0
         }
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 7,
-          "fgm": 2,
-          "fg_pct": 28.6
+          "fga": 13,
+          "fgm": 5,
+          "fg_pct": 38.5
         },
         "two_jump_shot": {
           "fga": 2,
@@ -5075,14 +5075,14 @@
           "fg_pct": 0.0
         },
         "three_jump_shot": {
-          "fga": 5,
-          "fgm": 2,
-          "fg_pct": 40.0
+          "fga": 11,
+          "fgm": 5,
+          "fg_pct": 45.5
         },
         "layup": {
-          "fga": 27,
-          "fgm": 15,
-          "fg_pct": 55.6
+          "fga": 35,
+          "fgm": 17,
+          "fg_pct": 48.6
         },
         "dunk": {
           "fga": 0,
@@ -5096,25 +5096,25 @@
         }
       },
       "q4_crunch_time": {
-        "q4_games": 4,
-        "q4_mpg": 6.3,
-        "q4_ppg": 2.5,
-        "q4_fg_pct": 62.5,
-        "q4_ts_pct": 59.2,
+        "q4_games": 5,
+        "q4_mpg": 7.5,
+        "q4_ppg": 2.6,
+        "q4_fg_pct": 54.5,
+        "q4_ts_pct": 56.8,
         "q4_tov_pg": 0.2,
-        "q4_plus_minus_pg": -3.5
+        "q4_plus_minus_pg": -0.8
       }
     },
     "董永全": {
       "team": "桃園台啤永豐雲豹",
       "number": "31",
       "position": "SmallForward",
-      "games_played": 4,
-      "mpg": 7.7,
-      "ppg": 0.5,
+      "games_played": 5,
+      "mpg": 6.8,
+      "ppg": 0.4,
       "point_composition": {
         "paint_pct": 100.0,
-        "paint_ppg": 0.5,
+        "paint_ppg": 0.4,
         "three_pt_pct": 0.0,
         "three_pt_ppg": 0.0,
         "mid_range_pct": 0.0,
@@ -5155,9 +5155,9 @@
           "fg_pct": 0.0
         },
         "layup": {
-          "fga": 2,
+          "fga": 3,
           "fgm": 1,
-          "fg_pct": 50.0
+          "fg_pct": 33.3
         },
         "dunk": {
           "fga": 0,
@@ -5184,18 +5184,18 @@
       "team": "桃園台啤永豐雲豹",
       "number": "57",
       "position": "PointGuard",
-      "games_played": 4,
-      "mpg": 13.8,
-      "ppg": 1.0,
+      "games_played": 5,
+      "mpg": 15.2,
+      "ppg": 3.8,
       "point_composition": {
-        "paint_pct": 0.0,
-        "paint_ppg": 0.0,
-        "three_pt_pct": 0.0,
-        "three_pt_ppg": 0.0,
-        "mid_range_pct": 50.0,
-        "mid_range_ppg": 0.5,
-        "free_throw_pct": 50.0,
-        "free_throw_ppg": 0.5
+        "paint_pct": 52.6,
+        "paint_ppg": 2.0,
+        "three_pt_pct": 15.8,
+        "three_pt_ppg": 0.6,
+        "mid_range_pct": 10.5,
+        "mid_range_ppg": 0.4,
+        "free_throw_pct": 21.1,
+        "free_throw_ppg": 0.8
       },
       "tactical_situations": {
         "fast_break": {
@@ -5204,8 +5204,8 @@
           "fg_pct": 0.0
         },
         "second_chance": {
-          "ppg": 0.5,
-          "share_pct": 50.0,
+          "ppg": 1.0,
+          "share_pct": 26.3,
           "fg_pct": 100.0
         },
         "points_off_tov": {
@@ -5215,24 +5215,24 @@
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 6,
-          "fgm": 1,
-          "fg_pct": 16.7
+          "fga": 9,
+          "fgm": 2,
+          "fg_pct": 22.2
         },
         "two_jump_shot": {
-          "fga": 1,
+          "fga": 2,
           "fgm": 1,
-          "fg_pct": 100.0
+          "fg_pct": 50.0
         },
         "three_jump_shot": {
-          "fga": 5,
-          "fgm": 0,
-          "fg_pct": 0.0
+          "fga": 7,
+          "fgm": 1,
+          "fg_pct": 14.3
         },
         "layup": {
-          "fga": 4,
-          "fgm": 0,
-          "fg_pct": 0.0
+          "fga": 10,
+          "fgm": 5,
+          "fg_pct": 50.0
         },
         "dunk": {
           "fga": 0,
@@ -5246,13 +5246,13 @@
         }
       },
       "q4_crunch_time": {
-        "q4_games": 1,
-        "q4_mpg": 2.6,
-        "q4_ppg": 0.0,
-        "q4_fg_pct": 0.0,
-        "q4_ts_pct": 0.0,
-        "q4_tov_pg": 1.0,
-        "q4_plus_minus_pg": -2.0
+        "q4_games": 2,
+        "q4_mpg": 4.7,
+        "q4_ppg": 1.5,
+        "q4_fg_pct": 33.3,
+        "q4_ts_pct": 38.7,
+        "q4_tov_pg": 0.5,
+        "q4_plus_minus_pg": 2.0
       }
     },
     "邱子軒": {
@@ -6984,14 +6984,14 @@
       "team": "桃園台啤永豐雲豹",
       "number": "9",
       "position": "SmallForwardAndPowerForward",
-      "games_played": 3,
-      "mpg": 10.5,
-      "ppg": 1.7,
+      "games_played": 4,
+      "mpg": 10.3,
+      "ppg": 1.2,
       "point_composition": {
         "paint_pct": 40.0,
-        "paint_ppg": 0.7,
+        "paint_ppg": 0.5,
         "three_pt_pct": 60.0,
-        "three_pt_ppg": 1.0,
+        "three_pt_ppg": 0.8,
         "mid_range_pct": 0.0,
         "mid_range_ppg": 0.0,
         "free_throw_pct": 0.0,
@@ -6999,12 +6999,12 @@
       },
       "tactical_situations": {
         "fast_break": {
-          "ppg": 1.0,
+          "ppg": 0.8,
           "share_pct": 60.0,
           "fg_pct": 100.0
         },
         "second_chance": {
-          "ppg": 0.7,
+          "ppg": 0.5,
           "share_pct": 40.0,
           "fg_pct": 100.0
         },
@@ -7015,19 +7015,19 @@
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 3,
+          "fga": 5,
           "fgm": 1,
-          "fg_pct": 33.3
+          "fg_pct": 20.0
         },
         "two_jump_shot": {
-          "fga": 2,
+          "fga": 3,
           "fgm": 0,
           "fg_pct": 0.0
         },
         "three_jump_shot": {
-          "fga": 1,
+          "fga": 2,
           "fgm": 1,
-          "fg_pct": 100.0
+          "fg_pct": 50.0
         },
         "layup": {
           "fga": 2,
@@ -7284,14 +7284,14 @@
       "team": "桃園台啤永豐雲豹",
       "number": "18",
       "position": "SmallForward",
-      "games_played": 1,
-      "mpg": 21.9,
-      "ppg": 2.0,
+      "games_played": 2,
+      "mpg": 16.8,
+      "ppg": 2.5,
       "point_composition": {
-        "paint_pct": 100.0,
-        "paint_ppg": 2.0,
-        "three_pt_pct": 0.0,
-        "three_pt_ppg": 0.0,
+        "paint_pct": 40.0,
+        "paint_ppg": 1.0,
+        "three_pt_pct": 60.0,
+        "three_pt_ppg": 1.5,
         "mid_range_pct": 0.0,
         "mid_range_ppg": 0.0,
         "free_throw_pct": 0.0,
@@ -7315,9 +7315,9 @@
       },
       "finishing_breakdown": {
         "jump_shot_total": {
-          "fga": 3,
-          "fgm": 0,
-          "fg_pct": 0.0
+          "fga": 6,
+          "fgm": 1,
+          "fg_pct": 16.7
         },
         "two_jump_shot": {
           "fga": 0,
@@ -7325,12 +7325,12 @@
           "fg_pct": 0.0
         },
         "three_jump_shot": {
-          "fga": 3,
-          "fgm": 0,
-          "fg_pct": 0.0
+          "fga": 6,
+          "fgm": 1,
+          "fg_pct": 16.7
         },
         "layup": {
-          "fga": 1,
+          "fga": 2,
           "fgm": 0,
           "fg_pct": 0.0
         },
@@ -7811,30 +7811,30 @@
       "meta": {
         "season": "2026-2027 例行賽",
         "stage": "2026-2027 例行賽",
-        "total_games": 17
+        "total_games": 18
       },
       "players": {
         "陳振傑": {
           "team": "福爾摩沙夢想家",
           "number": "0",
           "position": "ShootingGuard",
-          "games_played": 6,
-          "mpg": 19.9,
-          "ppg": 7.2,
+          "games_played": 7,
+          "mpg": 21.2,
+          "ppg": 8.4,
           "point_composition": {
-            "paint_pct": 32.6,
+            "paint_pct": 27.1,
             "paint_ppg": 2.3,
-            "three_pt_pct": 41.9,
-            "three_pt_ppg": 3.0,
-            "mid_range_pct": 9.3,
-            "mid_range_ppg": 0.7,
-            "free_throw_pct": 16.3,
-            "free_throw_ppg": 1.2
+            "three_pt_pct": 50.8,
+            "three_pt_ppg": 4.3,
+            "mid_range_pct": 10.2,
+            "mid_range_ppg": 0.9,
+            "free_throw_pct": 11.9,
+            "free_throw_ppg": 1.0
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 1.2,
-              "share_pct": 16.3,
+              "ppg": 1.0,
+              "share_pct": 11.9,
               "fg_pct": 100.0
             },
             "second_chance": {
@@ -7843,30 +7843,30 @@
               "fg_pct": 0.0
             },
             "points_off_tov": {
-              "ppg": 1.2,
-              "share_pct": 16.3
+              "ppg": 1.0,
+              "share_pct": 11.9
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 22,
-              "fgm": 8,
-              "fg_pct": 36.4
+              "fga": 29,
+              "fgm": 12,
+              "fg_pct": 41.4
             },
             "two_jump_shot": {
-              "fga": 5,
+              "fga": 6,
               "fgm": 2,
-              "fg_pct": 40.0
+              "fg_pct": 33.3
             },
             "three_jump_shot": {
-              "fga": 17,
-              "fgm": 6,
-              "fg_pct": 35.3
+              "fga": 23,
+              "fgm": 10,
+              "fg_pct": 43.5
             },
             "layup": {
-              "fga": 10,
+              "fga": 11,
               "fgm": 5,
-              "fg_pct": 50.0
+              "fg_pct": 45.5
             },
             "dunk": {
               "fga": 0,
@@ -7880,13 +7880,13 @@
             }
           },
           "q4_crunch_time": {
-            "q4_games": 5,
-            "q4_mpg": 4.6,
-            "q4_ppg": 0.8,
-            "q4_fg_pct": 33.3,
-            "q4_ts_pct": 51.5,
+            "q4_games": 6,
+            "q4_mpg": 5.4,
+            "q4_ppg": 1.0,
+            "q4_fg_pct": 50.0,
+            "q4_ts_pct": 61.5,
             "q4_tov_pg": 0.0,
-            "q4_plus_minus_pg": 3.0
+            "q4_plus_minus_pg": 0.8
           }
         },
         "馬建豪": {
@@ -7968,45 +7968,45 @@
           "team": "福爾摩沙夢想家",
           "number": "3",
           "position": "ShootingGuard",
-          "games_played": 6,
-          "mpg": 23.9,
-          "ppg": 9.2,
+          "games_played": 7,
+          "mpg": 25.5,
+          "ppg": 10.6,
           "point_composition": {
-            "paint_pct": 65.5,
-            "paint_ppg": 6.0,
-            "three_pt_pct": 10.9,
-            "three_pt_ppg": 1.0,
-            "mid_range_pct": 21.8,
+            "paint_pct": 70.3,
+            "paint_ppg": 7.4,
+            "three_pt_pct": 8.1,
+            "three_pt_ppg": 0.9,
+            "mid_range_pct": 18.9,
             "mid_range_ppg": 2.0,
-            "free_throw_pct": 1.8,
-            "free_throw_ppg": 0.2
+            "free_throw_pct": 2.7,
+            "free_throw_ppg": 0.3
           },
           "tactical_situations": {
             "fast_break": {
               "ppg": 2.0,
-              "share_pct": 21.8,
+              "share_pct": 18.9,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 0.3,
-              "share_pct": 3.6,
+              "ppg": 0.6,
+              "share_pct": 5.4,
               "fg_pct": 100.0
             },
             "points_off_tov": {
-              "ppg": 0.3,
-              "share_pct": 3.6
+              "ppg": 0.6,
+              "share_pct": 5.4
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 34,
-              "fgm": 10,
-              "fg_pct": 29.4
+              "fga": 40,
+              "fgm": 11,
+              "fg_pct": 27.5
             },
             "two_jump_shot": {
-              "fga": 24,
-              "fgm": 8,
-              "fg_pct": 33.3
+              "fga": 30,
+              "fgm": 9,
+              "fg_pct": 30.0
             },
             "three_jump_shot": {
               "fga": 10,
@@ -8014,9 +8014,9 @@
               "fg_pct": 20.0
             },
             "layup": {
-              "fga": 19,
-              "fgm": 14,
-              "fg_pct": 73.7
+              "fga": 26,
+              "fgm": 20,
+              "fg_pct": 76.9
             },
             "dunk": {
               "fga": 0,
@@ -8024,47 +8024,47 @@
               "fg_pct": 0.0
             },
             "self_created": {
-              "fga": 13,
-              "fgm": 3,
-              "fg_pct": 23.1
+              "fga": 16,
+              "fgm": 4,
+              "fg_pct": 25.0
             }
           },
           "q4_crunch_time": {
-            "q4_games": 5,
-            "q4_mpg": 4.4,
-            "q4_ppg": 1.6,
-            "q4_fg_pct": 57.1,
-            "q4_ts_pct": 57.1,
+            "q4_games": 6,
+            "q4_mpg": 5.3,
+            "q4_ppg": 2.0,
+            "q4_fg_pct": 54.5,
+            "q4_ts_pct": 54.5,
             "q4_tov_pg": 0.2,
-            "q4_plus_minus_pg": -1.6
+            "q4_plus_minus_pg": -1.7
           }
         },
         "基德": {
           "team": "福爾摩沙夢想家",
           "number": "10",
           "position": "SmallForward",
-          "games_played": 6,
-          "mpg": 32.7,
-          "ppg": 14.7,
+          "games_played": 7,
+          "mpg": 33.5,
+          "ppg": 15.7,
           "point_composition": {
-            "paint_pct": 36.4,
-            "paint_ppg": 5.3,
-            "three_pt_pct": 34.1,
-            "three_pt_ppg": 5.0,
-            "mid_range_pct": 4.5,
-            "mid_range_ppg": 0.7,
-            "free_throw_pct": 25.0,
-            "free_throw_ppg": 3.7
+            "paint_pct": 40.0,
+            "paint_ppg": 6.3,
+            "three_pt_pct": 35.5,
+            "three_pt_ppg": 5.6,
+            "mid_range_pct": 3.6,
+            "mid_range_ppg": 0.6,
+            "free_throw_pct": 20.9,
+            "free_throw_ppg": 3.3
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 1.7,
-              "share_pct": 11.4,
+              "ppg": 1.4,
+              "share_pct": 9.1,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 0.8,
-              "share_pct": 5.7,
+              "ppg": 1.0,
+              "share_pct": 6.4,
               "fg_pct": 100.0
             },
             "points_off_tov": {
@@ -8074,94 +8074,94 @@
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 64,
-              "fgm": 17,
-              "fg_pct": 26.6
+              "fga": 72,
+              "fgm": 20,
+              "fg_pct": 27.8
             },
             "two_jump_shot": {
-              "fga": 20,
+              "fga": 21,
               "fgm": 7,
-              "fg_pct": 35.0
+              "fg_pct": 33.3
             },
             "three_jump_shot": {
-              "fga": 44,
-              "fgm": 10,
-              "fg_pct": 22.7
+              "fga": 51,
+              "fgm": 13,
+              "fg_pct": 25.5
             },
             "layup": {
-              "fga": 13,
-              "fgm": 8,
-              "fg_pct": 61.5
+              "fga": 15,
+              "fgm": 10,
+              "fg_pct": 66.7
             },
             "dunk": {
-              "fga": 1,
-              "fgm": 1,
+              "fga": 3,
+              "fgm": 3,
               "fg_pct": 100.0
             },
             "self_created": {
-              "fga": 11,
+              "fga": 12,
               "fgm": 3,
-              "fg_pct": 27.3
+              "fg_pct": 25.0
             }
           },
           "q4_crunch_time": {
-            "q4_games": 6,
-            "q4_mpg": 7.2,
-            "q4_ppg": 3.5,
-            "q4_fg_pct": 42.1,
-            "q4_ts_pct": 48.5,
-            "q4_tov_pg": 0.3,
-            "q4_plus_minus_pg": 2.2
+            "q4_games": 7,
+            "q4_mpg": 7.7,
+            "q4_ppg": 3.4,
+            "q4_fg_pct": 39.1,
+            "q4_ts_pct": 45.2,
+            "q4_tov_pg": 0.4,
+            "q4_plus_minus_pg": 0.7
           }
         },
         "林俊吉": {
           "team": "福爾摩沙夢想家",
           "number": "11",
           "position": "PointGuard",
-          "games_played": 6,
-          "mpg": 27.6,
-          "ppg": 16.8,
+          "games_played": 7,
+          "mpg": 26.2,
+          "ppg": 16.7,
           "point_composition": {
-            "paint_pct": 35.6,
-            "paint_ppg": 6.0,
-            "three_pt_pct": 32.7,
-            "three_pt_ppg": 5.5,
-            "mid_range_pct": 9.9,
-            "mid_range_ppg": 1.7,
-            "free_throw_pct": 21.8,
-            "free_throw_ppg": 3.7
+            "paint_pct": 32.5,
+            "paint_ppg": 5.4,
+            "three_pt_pct": 30.8,
+            "three_pt_ppg": 5.1,
+            "mid_range_pct": 12.0,
+            "mid_range_ppg": 2.0,
+            "free_throw_pct": 24.8,
+            "free_throw_ppg": 4.1
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 1.0,
-              "share_pct": 5.9,
+              "ppg": 0.9,
+              "share_pct": 5.1,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 0.8,
-              "share_pct": 5.0,
+              "ppg": 1.0,
+              "share_pct": 6.0,
               "fg_pct": 100.0
             },
             "points_off_tov": {
               "ppg": 0.3,
-              "share_pct": 2.0
+              "share_pct": 1.7
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 56,
-              "fgm": 24,
-              "fg_pct": 42.9
+              "fga": 61,
+              "fgm": 26,
+              "fg_pct": 42.6
             },
             "two_jump_shot": {
-              "fga": 24,
-              "fgm": 13,
-              "fg_pct": 54.2
+              "fga": 26,
+              "fgm": 14,
+              "fg_pct": 53.8
             },
             "three_jump_shot": {
-              "fga": 32,
-              "fgm": 11,
-              "fg_pct": 34.4
+              "fga": 35,
+              "fgm": 12,
+              "fg_pct": 34.3
             },
             "layup": {
               "fga": 10,
@@ -8174,19 +8174,19 @@
               "fg_pct": 0.0
             },
             "self_created": {
-              "fga": 17,
-              "fgm": 9,
-              "fg_pct": 52.9
+              "fga": 18,
+              "fgm": 10,
+              "fg_pct": 55.6
             }
           },
           "q4_crunch_time": {
-            "q4_games": 6,
-            "q4_mpg": 9.7,
+            "q4_games": 7,
+            "q4_mpg": 8.9,
             "q4_ppg": 5.7,
-            "q4_fg_pct": 48.0,
-            "q4_ts_pct": 61.5,
-            "q4_tov_pg": 1.5,
-            "q4_plus_minus_pg": 1.0
+            "q4_fg_pct": 50.0,
+            "q4_ts_pct": 63.5,
+            "q4_tov_pg": 1.3,
+            "q4_plus_minus_pg": -0.3
           }
         },
         "李德威": {
@@ -8268,45 +8268,45 @@
           "team": "福爾摩沙夢想家",
           "number": "34",
           "position": "Center",
-          "games_played": 6,
-          "mpg": 33.2,
-          "ppg": 13.3,
+          "games_played": 7,
+          "mpg": 33.3,
+          "ppg": 12.6,
           "point_composition": {
-            "paint_pct": 65.0,
-            "paint_ppg": 8.7,
-            "three_pt_pct": 3.8,
-            "three_pt_ppg": 0.5,
-            "mid_range_pct": 5.0,
-            "mid_range_ppg": 0.7,
-            "free_throw_pct": 26.2,
-            "free_throw_ppg": 3.5
+            "paint_pct": 68.2,
+            "paint_ppg": 8.6,
+            "three_pt_pct": 3.4,
+            "three_pt_ppg": 0.4,
+            "mid_range_pct": 4.5,
+            "mid_range_ppg": 0.6,
+            "free_throw_pct": 23.9,
+            "free_throw_ppg": 3.0
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 0.7,
-              "share_pct": 5.0,
+              "ppg": 0.6,
+              "share_pct": 4.5,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 3.0,
-              "share_pct": 22.5,
+              "ppg": 2.6,
+              "share_pct": 20.5,
               "fg_pct": 100.0
             },
             "points_off_tov": {
               "ppg": 0.3,
-              "share_pct": 2.5
+              "share_pct": 2.3
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 12,
-              "fgm": 2,
-              "fg_pct": 16.7
+              "fga": 13,
+              "fgm": 3,
+              "fg_pct": 23.1
             },
             "two_jump_shot": {
-              "fga": 10,
-              "fgm": 1,
-              "fg_pct": 10.0
+              "fga": 11,
+              "fgm": 2,
+              "fg_pct": 18.2
             },
             "three_jump_shot": {
               "fga": 2,
@@ -8314,14 +8314,14 @@
               "fg_pct": 50.0
             },
             "layup": {
-              "fga": 9,
-              "fgm": 5,
-              "fg_pct": 55.6
+              "fga": 11,
+              "fgm": 6,
+              "fg_pct": 54.5
             },
             "dunk": {
-              "fga": 12,
-              "fgm": 10,
-              "fg_pct": 83.3
+              "fga": 13,
+              "fgm": 11,
+              "fg_pct": 84.6
             },
             "self_created": {
               "fga": 0,
@@ -8330,128 +8330,128 @@
             }
           },
           "q4_crunch_time": {
-            "q4_games": 6,
-            "q4_mpg": 7.8,
-            "q4_ppg": 3.2,
+            "q4_games": 7,
+            "q4_mpg": 7.7,
+            "q4_ppg": 2.7,
             "q4_fg_pct": 54.5,
             "q4_ts_pct": 61.7,
-            "q4_tov_pg": 0.5,
-            "q4_plus_minus_pg": 1.0
+            "q4_tov_pg": 0.4,
+            "q4_plus_minus_pg": -1.0
           }
         },
         "霍爾曼": {
           "team": "福爾摩沙夢想家",
           "number": "35",
           "position": "PowerForward",
-          "games_played": 5,
-          "mpg": 31.2,
-          "ppg": 13.0,
+          "games_played": 6,
+          "mpg": 29.9,
+          "ppg": 13.2,
           "point_composition": {
-            "paint_pct": 36.9,
-            "paint_ppg": 4.8,
-            "three_pt_pct": 41.5,
-            "three_pt_ppg": 5.4,
-            "mid_range_pct": 6.2,
-            "mid_range_ppg": 0.8,
-            "free_throw_pct": 15.4,
-            "free_throw_ppg": 2.0
+            "paint_pct": 43.0,
+            "paint_ppg": 5.7,
+            "three_pt_pct": 34.2,
+            "three_pt_ppg": 4.5,
+            "mid_range_pct": 5.1,
+            "mid_range_ppg": 0.7,
+            "free_throw_pct": 17.7,
+            "free_throw_ppg": 2.3
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 1.8,
-              "share_pct": 13.8,
+              "ppg": 2.0,
+              "share_pct": 15.2,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 0.8,
-              "share_pct": 6.2,
+              "ppg": 1.3,
+              "share_pct": 10.1,
               "fg_pct": 100.0
             },
             "points_off_tov": {
-              "ppg": 1.4,
-              "share_pct": 10.8
+              "ppg": 1.7,
+              "share_pct": 12.7
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 51,
-              "fgm": 15,
-              "fg_pct": 29.4
+              "fga": 59,
+              "fgm": 16,
+              "fg_pct": 27.1
             },
             "two_jump_shot": {
-              "fga": 18,
-              "fgm": 6,
+              "fga": 21,
+              "fgm": 7,
               "fg_pct": 33.3
             },
             "three_jump_shot": {
-              "fga": 33,
+              "fga": 38,
               "fgm": 9,
-              "fg_pct": 27.3
+              "fg_pct": 23.7
             },
             "layup": {
-              "fga": 6,
+              "fga": 9,
               "fgm": 3,
-              "fg_pct": 50.0
+              "fg_pct": 33.3
             },
             "dunk": {
-              "fga": 3,
-              "fgm": 3,
+              "fga": 6,
+              "fgm": 6,
               "fg_pct": 100.0
             },
             "self_created": {
-              "fga": 2,
+              "fga": 3,
               "fgm": 1,
-              "fg_pct": 50.0
+              "fg_pct": 33.3
             }
           },
           "q4_crunch_time": {
-            "q4_games": 5,
-            "q4_mpg": 8.3,
+            "q4_games": 6,
+            "q4_mpg": 7.9,
             "q4_ppg": 3.2,
-            "q4_fg_pct": 29.4,
-            "q4_ts_pct": 42.6,
-            "q4_tov_pg": 0.2,
-            "q4_plus_minus_pg": -0.2
+            "q4_fg_pct": 30.0,
+            "q4_ts_pct": 42.0,
+            "q4_tov_pg": 0.5,
+            "q4_plus_minus_pg": 0.0
           }
         },
         "蔣淯安": {
           "team": "福爾摩沙夢想家",
           "number": "41",
           "position": "PointGuard",
-          "games_played": 6,
-          "mpg": 31.5,
+          "games_played": 7,
+          "mpg": 31.9,
           "ppg": 12.0,
           "point_composition": {
-            "paint_pct": 25.0,
-            "paint_ppg": 3.0,
-            "three_pt_pct": 45.8,
-            "three_pt_ppg": 5.5,
-            "mid_range_pct": 8.3,
-            "mid_range_ppg": 1.0,
-            "free_throw_pct": 20.8,
-            "free_throw_ppg": 2.5
+            "paint_pct": 26.2,
+            "paint_ppg": 3.1,
+            "three_pt_pct": 46.4,
+            "three_pt_ppg": 5.6,
+            "mid_range_pct": 7.1,
+            "mid_range_ppg": 0.9,
+            "free_throw_pct": 20.2,
+            "free_throw_ppg": 2.4
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 1.7,
-              "share_pct": 13.9,
+              "ppg": 1.4,
+              "share_pct": 11.9,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 0.8,
-              "share_pct": 6.9,
+              "ppg": 0.7,
+              "share_pct": 6.0,
               "fg_pct": 100.0
             },
             "points_off_tov": {
-              "ppg": 1.7,
-              "share_pct": 13.9
+              "ppg": 1.4,
+              "share_pct": 11.9
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 31,
-              "fgm": 14,
-              "fg_pct": 45.2
+              "fga": 35,
+              "fgm": 16,
+              "fg_pct": 45.7
             },
             "two_jump_shot": {
               "fga": 11,
@@ -8459,14 +8459,14 @@
               "fg_pct": 27.3
             },
             "three_jump_shot": {
-              "fga": 20,
-              "fgm": 11,
-              "fg_pct": 55.0
+              "fga": 24,
+              "fgm": 13,
+              "fg_pct": 54.2
             },
             "layup": {
-              "fga": 15,
-              "fgm": 9,
-              "fg_pct": 60.0
+              "fga": 18,
+              "fgm": 11,
+              "fg_pct": 61.1
             },
             "dunk": {
               "fga": 0,
@@ -8480,31 +8480,31 @@
             }
           },
           "q4_crunch_time": {
-            "q4_games": 6,
+            "q4_games": 7,
             "q4_mpg": 9.9,
-            "q4_ppg": 4.3,
-            "q4_fg_pct": 61.5,
-            "q4_ts_pct": 76.7,
-            "q4_tov_pg": 0.7,
-            "q4_plus_minus_pg": 2.8
+            "q4_ppg": 4.4,
+            "q4_fg_pct": 60.0,
+            "q4_ts_pct": 78.1,
+            "q4_tov_pg": 0.6,
+            "q4_plus_minus_pg": 2.1
           }
         },
         "忻沃克": {
           "team": "福爾摩沙夢想家",
           "number": "42",
           "position": "SmallForward",
-          "games_played": 5,
-          "mpg": 23.2,
-          "ppg": 3.0,
+          "games_played": 6,
+          "mpg": 22.5,
+          "ppg": 2.8,
           "point_composition": {
-            "paint_pct": 93.3,
-            "paint_ppg": 2.8,
+            "paint_pct": 82.4,
+            "paint_ppg": 2.3,
             "three_pt_pct": 0.0,
             "three_pt_ppg": 0.0,
             "mid_range_pct": 0.0,
             "mid_range_ppg": 0.0,
-            "free_throw_pct": 6.7,
-            "free_throw_ppg": 0.2
+            "free_throw_pct": 17.6,
+            "free_throw_ppg": 0.5
           },
           "tactical_situations": {
             "fast_break": {
@@ -8513,8 +8513,8 @@
               "fg_pct": 0.0
             },
             "second_chance": {
-              "ppg": 1.2,
-              "share_pct": 40.0,
+              "ppg": 1.3,
+              "share_pct": 47.1,
               "fg_pct": 100.0
             },
             "points_off_tov": {
@@ -8524,9 +8524,9 @@
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 18,
+              "fga": 23,
               "fgm": 2,
-              "fg_pct": 11.1
+              "fg_pct": 8.7
             },
             "two_jump_shot": {
               "fga": 7,
@@ -8534,7 +8534,7 @@
               "fg_pct": 28.6
             },
             "three_jump_shot": {
-              "fga": 11,
+              "fga": 16,
               "fgm": 0,
               "fg_pct": 0.0
             },
@@ -8555,13 +8555,13 @@
             }
           },
           "q4_crunch_time": {
-            "q4_games": 5,
-            "q4_mpg": 4.6,
+            "q4_games": 6,
+            "q4_mpg": 4.2,
             "q4_ppg": 0.0,
             "q4_fg_pct": 0.0,
             "q4_ts_pct": 0.0,
             "q4_tov_pg": 0.2,
-            "q4_plus_minus_pg": -0.2
+            "q4_plus_minus_pg": -1.5
           }
         },
         "林書緯": {
@@ -9468,18 +9468,18 @@
           "team": "福爾摩沙夢想家",
           "number": "20",
           "position": "ShootingGuard",
-          "games_played": 5,
-          "mpg": 8.8,
-          "ppg": 0.6,
+          "games_played": 6,
+          "mpg": 8.9,
+          "ppg": 0.7,
           "point_composition": {
             "paint_pct": 0.0,
             "paint_ppg": 0.0,
-            "three_pt_pct": 100.0,
-            "three_pt_ppg": 0.6,
+            "three_pt_pct": 75.0,
+            "three_pt_ppg": 0.5,
             "mid_range_pct": 0.0,
             "mid_range_ppg": 0.0,
-            "free_throw_pct": 0.0,
-            "free_throw_ppg": 0.0
+            "free_throw_pct": 25.0,
+            "free_throw_ppg": 0.2
           },
           "tactical_situations": {
             "fast_break": {
@@ -12393,55 +12393,55 @@
           "team": "桃園台啤永豐雲豹",
           "number": "5",
           "position": "PointGuard",
-          "games_played": 4,
-          "mpg": 34.4,
-          "ppg": 16.2,
+          "games_played": 5,
+          "mpg": 34.9,
+          "ppg": 18.0,
           "point_composition": {
-            "paint_pct": 24.6,
-            "paint_ppg": 4.0,
-            "three_pt_pct": 73.8,
-            "three_pt_ppg": 12.0,
+            "paint_pct": 35.6,
+            "paint_ppg": 6.4,
+            "three_pt_pct": 63.3,
+            "three_pt_ppg": 11.4,
             "mid_range_pct": 0.0,
             "mid_range_ppg": 0.0,
-            "free_throw_pct": 1.5,
+            "free_throw_pct": 1.1,
             "free_throw_ppg": 0.2
           },
           "tactical_situations": {
             "fast_break": {
               "ppg": 2.0,
-              "share_pct": 12.3,
+              "share_pct": 11.1,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 1.8,
-              "share_pct": 10.8,
+              "ppg": 1.4,
+              "share_pct": 7.8,
               "fg_pct": 100.0
             },
             "points_off_tov": {
-              "ppg": 2.0,
-              "share_pct": 12.3
+              "ppg": 2.4,
+              "share_pct": 13.3
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 36,
-              "fgm": 16,
-              "fg_pct": 44.4
+              "fga": 46,
+              "fgm": 21,
+              "fg_pct": 45.7
             },
             "two_jump_shot": {
-              "fga": 3,
-              "fgm": 0,
-              "fg_pct": 0.0
+              "fga": 5,
+              "fgm": 2,
+              "fg_pct": 40.0
             },
             "three_jump_shot": {
-              "fga": 33,
-              "fgm": 16,
-              "fg_pct": 48.5
+              "fga": 41,
+              "fgm": 19,
+              "fg_pct": 46.3
             },
             "layup": {
-              "fga": 14,
-              "fgm": 6,
-              "fg_pct": 42.9
+              "fga": 20,
+              "fgm": 12,
+              "fg_pct": 60.0
             },
             "dunk": {
               "fga": 0,
@@ -12449,59 +12449,59 @@
               "fg_pct": 0.0
             },
             "self_created": {
-              "fga": 10,
-              "fgm": 4,
-              "fg_pct": 40.0
+              "fga": 12,
+              "fgm": 6,
+              "fg_pct": 50.0
             }
           },
           "q4_crunch_time": {
-            "q4_games": 4,
-            "q4_mpg": 10.3,
-            "q4_ppg": 4.2,
-            "q4_fg_pct": 42.9,
-            "q4_ts_pct": 57.1,
+            "q4_games": 5,
+            "q4_mpg": 10.7,
+            "q4_ppg": 6.6,
+            "q4_fg_pct": 59.1,
+            "q4_ts_pct": 72.1,
             "q4_tov_pg": 1.0,
-            "q4_plus_minus_pg": -3.0
+            "q4_plus_minus_pg": -0.4
           }
         },
         "莫騰": {
           "team": "桃園台啤永豐雲豹",
           "number": "10",
           "position": "SmallForwardAndPowerForward",
-          "games_played": 4,
-          "mpg": 34.3,
-          "ppg": 17.8,
+          "games_played": 5,
+          "mpg": 36.1,
+          "ppg": 17.6,
           "point_composition": {
-            "paint_pct": 70.4,
-            "paint_ppg": 12.5,
-            "three_pt_pct": 16.9,
-            "three_pt_ppg": 3.0,
+            "paint_pct": 61.4,
+            "paint_ppg": 10.8,
+            "three_pt_pct": 27.3,
+            "three_pt_ppg": 4.8,
             "mid_range_pct": 0.0,
             "mid_range_ppg": 0.0,
-            "free_throw_pct": 12.7,
-            "free_throw_ppg": 2.2
+            "free_throw_pct": 11.4,
+            "free_throw_ppg": 2.0
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 3.2,
-              "share_pct": 18.3,
+              "ppg": 3.0,
+              "share_pct": 17.0,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 4.0,
-              "share_pct": 22.5,
+              "ppg": 3.6,
+              "share_pct": 20.5,
               "fg_pct": 100.0
             },
             "points_off_tov": {
-              "ppg": 3.2,
-              "share_pct": 18.3
+              "ppg": 2.6,
+              "share_pct": 14.8
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 23,
-              "fgm": 5,
-              "fg_pct": 21.7
+              "fga": 30,
+              "fgm": 9,
+              "fg_pct": 30.0
             },
             "two_jump_shot": {
               "fga": 5,
@@ -12509,14 +12509,14 @@
               "fg_pct": 20.0
             },
             "three_jump_shot": {
-              "fga": 18,
-              "fgm": 4,
-              "fg_pct": 22.2
+              "fga": 25,
+              "fgm": 8,
+              "fg_pct": 32.0
             },
             "layup": {
-              "fga": 24,
-              "fgm": 15,
-              "fg_pct": 62.5
+              "fga": 31,
+              "fgm": 17,
+              "fg_pct": 54.8
             },
             "dunk": {
               "fga": 2,
@@ -12530,31 +12530,31 @@
             }
           },
           "q4_crunch_time": {
-            "q4_games": 4,
-            "q4_mpg": 8.4,
-            "q4_ppg": 1.5,
-            "q4_fg_pct": 20.0,
-            "q4_ts_pct": 26.5,
+            "q4_games": 5,
+            "q4_mpg": 9.2,
+            "q4_ppg": 1.2,
+            "q4_fg_pct": 15.4,
+            "q4_ts_pct": 20.9,
             "q4_tov_pg": 0.2,
-            "q4_plus_minus_pg": -3.5
+            "q4_plus_minus_pg": -0.8
           }
         },
         "莊博元": {
           "team": "桃園台啤永豐雲豹",
           "number": "11",
           "position": "PointGuard",
-          "games_played": 4,
-          "mpg": 25.9,
-          "ppg": 5.0,
+          "games_played": 5,
+          "mpg": 25.4,
+          "ppg": 4.2,
           "point_composition": {
-            "paint_pct": 20.0,
-            "paint_ppg": 1.0,
-            "three_pt_pct": 60.0,
-            "three_pt_ppg": 3.0,
-            "mid_range_pct": 10.0,
-            "mid_range_ppg": 0.5,
-            "free_throw_pct": 10.0,
-            "free_throw_ppg": 0.5
+            "paint_pct": 19.0,
+            "paint_ppg": 0.8,
+            "three_pt_pct": 57.1,
+            "three_pt_ppg": 2.4,
+            "mid_range_pct": 9.5,
+            "mid_range_ppg": 0.4,
+            "free_throw_pct": 14.3,
+            "free_throw_ppg": 0.6
           },
           "tactical_situations": {
             "fast_break": {
@@ -12563,8 +12563,8 @@
               "fg_pct": 0.0
             },
             "second_chance": {
-              "ppg": 0.5,
-              "share_pct": 10.0,
+              "ppg": 0.4,
+              "share_pct": 9.5,
               "fg_pct": 0.0
             },
             "points_off_tov": {
@@ -12574,9 +12574,9 @@
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 15,
+              "fga": 17,
               "fgm": 5,
-              "fg_pct": 33.3
+              "fg_pct": 29.4
             },
             "two_jump_shot": {
               "fga": 3,
@@ -12584,9 +12584,9 @@
               "fg_pct": 33.3
             },
             "three_jump_shot": {
-              "fga": 12,
+              "fga": 14,
               "fgm": 4,
-              "fg_pct": 33.3
+              "fg_pct": 28.6
             },
             "layup": {
               "fga": 0,
@@ -12605,45 +12605,45 @@
             }
           },
           "q4_crunch_time": {
-            "q4_games": 4,
-            "q4_mpg": 6.5,
-            "q4_ppg": 1.8,
+            "q4_games": 5,
+            "q4_mpg": 6.3,
+            "q4_ppg": 1.6,
             "q4_fg_pct": 28.6,
-            "q4_ts_pct": 40.0,
+            "q4_ts_pct": 41.5,
             "q4_tov_pg": 0.0,
-            "q4_plus_minus_pg": -1.8
+            "q4_plus_minus_pg": -0.6
           }
         },
         "林信寬": {
           "team": "桃園台啤永豐雲豹",
           "number": "12",
           "position": "SmallForward",
-          "games_played": 4,
-          "mpg": 25.6,
-          "ppg": 7.2,
+          "games_played": 5,
+          "mpg": 23.5,
+          "ppg": 5.8,
           "point_composition": {
             "paint_pct": 48.3,
-            "paint_ppg": 3.5,
+            "paint_ppg": 2.8,
             "three_pt_pct": 41.4,
-            "three_pt_ppg": 3.0,
+            "three_pt_ppg": 2.4,
             "mid_range_pct": 6.9,
-            "mid_range_ppg": 0.5,
+            "mid_range_ppg": 0.4,
             "free_throw_pct": 3.4,
             "free_throw_ppg": 0.2
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 1.5,
+              "ppg": 1.2,
               "share_pct": 20.7,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 1.2,
+              "ppg": 1.0,
               "share_pct": 17.2,
               "fg_pct": 100.0
             },
             "points_off_tov": {
-              "ppg": 1.5,
+              "ppg": 1.2,
               "share_pct": 20.7
             }
           },
@@ -12664,9 +12664,9 @@
               "fg_pct": 33.3
             },
             "layup": {
-              "fga": 13,
+              "fga": 16,
               "fgm": 5,
-              "fg_pct": 38.5
+              "fg_pct": 31.2
             },
             "dunk": {
               "fga": 0,
@@ -12768,55 +12768,55 @@
           "team": "桃園台啤永豐雲豹",
           "number": "20",
           "position": "SmallForward",
-          "games_played": 4,
-          "mpg": 31.8,
-          "ppg": 17.8,
+          "games_played": 5,
+          "mpg": 33.7,
+          "ppg": 20.4,
           "point_composition": {
-            "paint_pct": 47.9,
-            "paint_ppg": 8.5,
-            "three_pt_pct": 16.9,
-            "three_pt_ppg": 3.0,
-            "mid_range_pct": 11.3,
-            "mid_range_ppg": 2.0,
-            "free_throw_pct": 23.9,
-            "free_throw_ppg": 4.2
+            "paint_pct": 47.1,
+            "paint_ppg": 9.6,
+            "three_pt_pct": 17.6,
+            "three_pt_ppg": 3.6,
+            "mid_range_pct": 15.7,
+            "mid_range_ppg": 3.2,
+            "free_throw_pct": 19.6,
+            "free_throw_ppg": 4.0
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 0.5,
-              "share_pct": 2.8,
-              "fg_pct": 0.0
+              "ppg": 1.8,
+              "share_pct": 8.8,
+              "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 3.2,
-              "share_pct": 18.3,
+              "ppg": 3.6,
+              "share_pct": 17.6,
               "fg_pct": 100.0
             },
             "points_off_tov": {
-              "ppg": 2.2,
-              "share_pct": 12.7
+              "ppg": 2.8,
+              "share_pct": 13.7
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 38,
-              "fgm": 9,
-              "fg_pct": 23.7
+              "fga": 51,
+              "fgm": 15,
+              "fg_pct": 29.4
             },
             "two_jump_shot": {
-              "fga": 15,
-              "fgm": 5,
-              "fg_pct": 33.3
+              "fga": 21,
+              "fgm": 9,
+              "fg_pct": 42.9
             },
             "three_jump_shot": {
-              "fga": 23,
-              "fgm": 4,
-              "fg_pct": 17.4
+              "fga": 30,
+              "fgm": 6,
+              "fg_pct": 20.0
             },
             "layup": {
-              "fga": 21,
-              "fgm": 10,
-              "fg_pct": 47.6
+              "fga": 32,
+              "fgm": 17,
+              "fg_pct": 53.1
             },
             "dunk": {
               "fga": 2,
@@ -12824,59 +12824,59 @@
               "fg_pct": 100.0
             },
             "self_created": {
-              "fga": 6,
-              "fgm": 2,
+              "fga": 9,
+              "fgm": 3,
               "fg_pct": 33.3
             }
           },
           "q4_crunch_time": {
-            "q4_games": 4,
-            "q4_mpg": 7.9,
-            "q4_ppg": 3.2,
-            "q4_fg_pct": 33.3,
-            "q4_ts_pct": 33.6,
-            "q4_tov_pg": 0.5,
-            "q4_plus_minus_pg": -3.0
+            "q4_games": 5,
+            "q4_mpg": 8.8,
+            "q4_ppg": 4.6,
+            "q4_fg_pct": 37.0,
+            "q4_ts_pct": 39.4,
+            "q4_tov_pg": 0.4,
+            "q4_plus_minus_pg": -0.4
           }
         },
         "錢肯尼": {
           "team": "桃園台啤永豐雲豹",
           "number": "23",
           "position": "PointGuard",
-          "games_played": 4,
-          "mpg": 29.1,
-          "ppg": 11.2,
+          "games_played": 5,
+          "mpg": 30.2,
+          "ppg": 12.0,
           "point_composition": {
-            "paint_pct": 80.0,
-            "paint_ppg": 9.0,
-            "three_pt_pct": 13.3,
-            "three_pt_ppg": 1.5,
+            "paint_pct": 66.7,
+            "paint_ppg": 8.0,
+            "three_pt_pct": 25.0,
+            "three_pt_ppg": 3.0,
             "mid_range_pct": 0.0,
             "mid_range_ppg": 0.0,
-            "free_throw_pct": 6.7,
-            "free_throw_ppg": 0.8
+            "free_throw_pct": 8.3,
+            "free_throw_ppg": 1.0
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 2.8,
-              "share_pct": 24.4,
+              "ppg": 3.4,
+              "share_pct": 28.3,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 3.0,
-              "share_pct": 26.7,
+              "ppg": 2.4,
+              "share_pct": 20.0,
               "fg_pct": 100.0
             },
             "points_off_tov": {
-              "ppg": 2.0,
-              "share_pct": 17.8
+              "ppg": 2.4,
+              "share_pct": 20.0
             }
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 7,
-              "fgm": 2,
-              "fg_pct": 28.6
+              "fga": 13,
+              "fgm": 5,
+              "fg_pct": 38.5
             },
             "two_jump_shot": {
               "fga": 2,
@@ -12884,14 +12884,14 @@
               "fg_pct": 0.0
             },
             "three_jump_shot": {
-              "fga": 5,
-              "fgm": 2,
-              "fg_pct": 40.0
+              "fga": 11,
+              "fgm": 5,
+              "fg_pct": 45.5
             },
             "layup": {
-              "fga": 27,
-              "fgm": 15,
-              "fg_pct": 55.6
+              "fga": 35,
+              "fgm": 17,
+              "fg_pct": 48.6
             },
             "dunk": {
               "fga": 0,
@@ -12905,25 +12905,25 @@
             }
           },
           "q4_crunch_time": {
-            "q4_games": 4,
-            "q4_mpg": 6.3,
-            "q4_ppg": 2.5,
-            "q4_fg_pct": 62.5,
-            "q4_ts_pct": 59.2,
+            "q4_games": 5,
+            "q4_mpg": 7.5,
+            "q4_ppg": 2.6,
+            "q4_fg_pct": 54.5,
+            "q4_ts_pct": 56.8,
             "q4_tov_pg": 0.2,
-            "q4_plus_minus_pg": -3.5
+            "q4_plus_minus_pg": -0.8
           }
         },
         "董永全": {
           "team": "桃園台啤永豐雲豹",
           "number": "31",
           "position": "SmallForward",
-          "games_played": 4,
-          "mpg": 7.7,
-          "ppg": 0.5,
+          "games_played": 5,
+          "mpg": 6.8,
+          "ppg": 0.4,
           "point_composition": {
             "paint_pct": 100.0,
-            "paint_ppg": 0.5,
+            "paint_ppg": 0.4,
             "three_pt_pct": 0.0,
             "three_pt_ppg": 0.0,
             "mid_range_pct": 0.0,
@@ -12964,9 +12964,9 @@
               "fg_pct": 0.0
             },
             "layup": {
-              "fga": 2,
+              "fga": 3,
               "fgm": 1,
-              "fg_pct": 50.0
+              "fg_pct": 33.3
             },
             "dunk": {
               "fga": 0,
@@ -12993,18 +12993,18 @@
           "team": "桃園台啤永豐雲豹",
           "number": "57",
           "position": "PointGuard",
-          "games_played": 4,
-          "mpg": 13.8,
-          "ppg": 1.0,
+          "games_played": 5,
+          "mpg": 15.2,
+          "ppg": 3.8,
           "point_composition": {
-            "paint_pct": 0.0,
-            "paint_ppg": 0.0,
-            "three_pt_pct": 0.0,
-            "three_pt_ppg": 0.0,
-            "mid_range_pct": 50.0,
-            "mid_range_ppg": 0.5,
-            "free_throw_pct": 50.0,
-            "free_throw_ppg": 0.5
+            "paint_pct": 52.6,
+            "paint_ppg": 2.0,
+            "three_pt_pct": 15.8,
+            "three_pt_ppg": 0.6,
+            "mid_range_pct": 10.5,
+            "mid_range_ppg": 0.4,
+            "free_throw_pct": 21.1,
+            "free_throw_ppg": 0.8
           },
           "tactical_situations": {
             "fast_break": {
@@ -13013,8 +13013,8 @@
               "fg_pct": 0.0
             },
             "second_chance": {
-              "ppg": 0.5,
-              "share_pct": 50.0,
+              "ppg": 1.0,
+              "share_pct": 26.3,
               "fg_pct": 100.0
             },
             "points_off_tov": {
@@ -13024,24 +13024,24 @@
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 6,
-              "fgm": 1,
-              "fg_pct": 16.7
+              "fga": 9,
+              "fgm": 2,
+              "fg_pct": 22.2
             },
             "two_jump_shot": {
-              "fga": 1,
+              "fga": 2,
               "fgm": 1,
-              "fg_pct": 100.0
+              "fg_pct": 50.0
             },
             "three_jump_shot": {
-              "fga": 5,
-              "fgm": 0,
-              "fg_pct": 0.0
+              "fga": 7,
+              "fgm": 1,
+              "fg_pct": 14.3
             },
             "layup": {
-              "fga": 4,
-              "fgm": 0,
-              "fg_pct": 0.0
+              "fga": 10,
+              "fgm": 5,
+              "fg_pct": 50.0
             },
             "dunk": {
               "fga": 0,
@@ -13055,13 +13055,13 @@
             }
           },
           "q4_crunch_time": {
-            "q4_games": 1,
-            "q4_mpg": 2.6,
-            "q4_ppg": 0.0,
-            "q4_fg_pct": 0.0,
-            "q4_ts_pct": 0.0,
-            "q4_tov_pg": 1.0,
-            "q4_plus_minus_pg": -2.0
+            "q4_games": 2,
+            "q4_mpg": 4.7,
+            "q4_ppg": 1.5,
+            "q4_fg_pct": 33.3,
+            "q4_ts_pct": 38.7,
+            "q4_tov_pg": 0.5,
+            "q4_plus_minus_pg": 2.0
           }
         },
         "邱子軒": {
@@ -14793,14 +14793,14 @@
           "team": "桃園台啤永豐雲豹",
           "number": "9",
           "position": "SmallForwardAndPowerForward",
-          "games_played": 3,
-          "mpg": 10.5,
-          "ppg": 1.7,
+          "games_played": 4,
+          "mpg": 10.3,
+          "ppg": 1.2,
           "point_composition": {
             "paint_pct": 40.0,
-            "paint_ppg": 0.7,
+            "paint_ppg": 0.5,
             "three_pt_pct": 60.0,
-            "three_pt_ppg": 1.0,
+            "three_pt_ppg": 0.8,
             "mid_range_pct": 0.0,
             "mid_range_ppg": 0.0,
             "free_throw_pct": 0.0,
@@ -14808,12 +14808,12 @@
           },
           "tactical_situations": {
             "fast_break": {
-              "ppg": 1.0,
+              "ppg": 0.8,
               "share_pct": 60.0,
               "fg_pct": 100.0
             },
             "second_chance": {
-              "ppg": 0.7,
+              "ppg": 0.5,
               "share_pct": 40.0,
               "fg_pct": 100.0
             },
@@ -14824,19 +14824,19 @@
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 3,
+              "fga": 5,
               "fgm": 1,
-              "fg_pct": 33.3
+              "fg_pct": 20.0
             },
             "two_jump_shot": {
-              "fga": 2,
+              "fga": 3,
               "fgm": 0,
               "fg_pct": 0.0
             },
             "three_jump_shot": {
-              "fga": 1,
+              "fga": 2,
               "fgm": 1,
-              "fg_pct": 100.0
+              "fg_pct": 50.0
             },
             "layup": {
               "fga": 2,
@@ -15093,14 +15093,14 @@
           "team": "桃園台啤永豐雲豹",
           "number": "18",
           "position": "SmallForward",
-          "games_played": 1,
-          "mpg": 21.9,
-          "ppg": 2.0,
+          "games_played": 2,
+          "mpg": 16.8,
+          "ppg": 2.5,
           "point_composition": {
-            "paint_pct": 100.0,
-            "paint_ppg": 2.0,
-            "three_pt_pct": 0.0,
-            "three_pt_ppg": 0.0,
+            "paint_pct": 40.0,
+            "paint_ppg": 1.0,
+            "three_pt_pct": 60.0,
+            "three_pt_ppg": 1.5,
             "mid_range_pct": 0.0,
             "mid_range_ppg": 0.0,
             "free_throw_pct": 0.0,
@@ -15124,9 +15124,9 @@
           },
           "finishing_breakdown": {
             "jump_shot_total": {
-              "fga": 3,
-              "fgm": 0,
-              "fg_pct": 0.0
+              "fga": 6,
+              "fgm": 1,
+              "fg_pct": 16.7
             },
             "two_jump_shot": {
               "fga": 0,
@@ -15134,12 +15134,12 @@
               "fg_pct": 0.0
             },
             "three_jump_shot": {
-              "fga": 3,
-              "fgm": 0,
-              "fg_pct": 0.0
+              "fga": 6,
+              "fgm": 1,
+              "fg_pct": 16.7
             },
             "layup": {
-              "fga": 1,
+              "fga": 2,
               "fgm": 0,
               "fg_pct": 0.0
             },

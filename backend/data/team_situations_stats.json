@@ -2,7 +2,7 @@
   "meta": {
     "season": "2026-2027 例行賽",
     "stage": "2026-2027 例行賽",
-    "total_games": 17
+    "total_games": 18
   },
   "teams": [
     {
@@ -138,6 +138,39 @@
       }
     },
     {
+      "team_name": "福爾摩沙夢想家",
+      "games_played": 7,
+      "ppg": 98.1,
+      "starter": {
+        "ppg": 61.4,
+        "share_pct": 62.6
+      },
+      "bench": {
+        "ppg": 36.7,
+        "share_pct": 37.4
+      },
+      "local": {
+        "ppg": 71.1,
+        "share_pct": 72.5
+      },
+      "import": {
+        "ppg": 27.0,
+        "share_pct": 27.5
+      },
+      "shot_distribution": {
+        "two_pt_fga_pg": 49.4,
+        "two_pt_share_pct": 60.4,
+        "three_pt_fga_pg": 32.4,
+        "three_pt_share_pct": 39.6
+      },
+      "situations": {
+        "paint_ppg": 43.4,
+        "paint_share_pct": 44.3,
+        "fast_break_ppg": 10.0,
+        "fast_break_share_pct": 10.2
+      }
+    },
+    {
       "team_name": "新北國王",
       "games_played": 5,
       "ppg": 97.2,
@@ -171,69 +204,36 @@
       }
     },
     {
-      "team_name": "福爾摩沙夢想家",
-      "games_played": 6,
-      "ppg": 96.2,
-      "starter": {
-        "ppg": 58.8,
-        "share_pct": 61.2
-      },
-      "bench": {
-        "ppg": 37.3,
-        "share_pct": 38.8
-      },
-      "local": {
-        "ppg": 70.7,
-        "share_pct": 73.5
-      },
-      "import": {
-        "ppg": 25.5,
-        "share_pct": 26.5
-      },
-      "shot_distribution": {
-        "two_pt_fga_pg": 48.5,
-        "two_pt_share_pct": 59.6,
-        "three_pt_fga_pg": 32.8,
-        "three_pt_share_pct": 40.4
-      },
-      "situations": {
-        "paint_ppg": 41.7,
-        "paint_share_pct": 43.3,
-        "fast_break_ppg": 10.8,
-        "fast_break_share_pct": 11.3
-      }
-    },
-    {
       "team_name": "桃園台啤永豐雲豹",
-      "games_played": 4,
-      "ppg": 93.2,
+      "games_played": 5,
+      "ppg": 96.0,
       "starter": {
-        "ppg": 70.2,
-        "share_pct": 75.3
+        "ppg": 73.8,
+        "share_pct": 76.9
       },
       "bench": {
-        "ppg": 23.0,
-        "share_pct": 24.7
+        "ppg": 22.2,
+        "share_pct": 23.1
       },
       "local": {
-        "ppg": 45.5,
-        "share_pct": 48.8
+        "ppg": 48.2,
+        "share_pct": 50.2
       },
       "import": {
         "ppg": 47.8,
-        "share_pct": 51.2
+        "share_pct": 49.8
       },
       "shot_distribution": {
-        "two_pt_fga_pg": 55.8,
-        "two_pt_share_pct": 64.8,
-        "three_pt_fga_pg": 30.2,
-        "three_pt_share_pct": 35.2
+        "two_pt_fga_pg": 55.6,
+        "two_pt_share_pct": 63.9,
+        "three_pt_fga_pg": 31.4,
+        "three_pt_share_pct": 36.1
       },
       "situations": {
-        "paint_ppg": 47.0,
-        "paint_share_pct": 50.4,
-        "fast_break_ppg": 13.0,
-        "fast_break_share_pct": 13.9
+        "paint_ppg": 47.2,
+        "paint_share_pct": 49.2,
+        "fast_break_ppg": 13.8,
+        "fast_break_share_pct": 14.4
       }
     }
   ],
@@ -242,7 +242,7 @@
       "meta": {
         "season": "2026-2027 例行賽",
         "stage": "2026-2027 例行賽",
-        "total_games": 17
+        "total_games": 18
       },
       "teams": [
         {
@@ -378,6 +378,39 @@
           }
         },
         {
+          "team_name": "福爾摩沙夢想家",
+          "games_played": 7,
+          "ppg": 98.1,
+          "starter": {
+            "ppg": 61.4,
+            "share_pct": 62.6
+          },
+          "bench": {
+            "ppg": 36.7,
+            "share_pct": 37.4
+          },
+          "local": {
+            "ppg": 71.1,
+            "share_pct": 72.5
+          },
+          "import": {
+            "ppg": 27.0,
+            "share_pct": 27.5
+          },
+          "shot_distribution": {
+            "two_pt_fga_pg": 49.4,
+            "two_pt_share_pct": 60.4,
+            "three_pt_fga_pg": 32.4,
+            "three_pt_share_pct": 39.6
+          },
+          "situations": {
+            "paint_ppg": 43.4,
+            "paint_share_pct": 44.3,
+            "fast_break_ppg": 10.0,
+            "fast_break_share_pct": 10.2
+          }
+        },
+        {
           "team_name": "新北國王",
           "games_played": 5,
           "ppg": 97.2,
@@ -411,69 +444,36 @@
           }
         },
         {
-          "team_name": "福爾摩沙夢想家",
-          "games_played": 6,
-          "ppg": 96.2,
-          "starter": {
-            "ppg": 58.8,
-            "share_pct": 61.2
-          },
-          "bench": {
-            "ppg": 37.3,
-            "share_pct": 38.8
-          },
-          "local": {
-            "ppg": 70.7,
-            "share_pct": 73.5
-          },
-          "import": {
-            "ppg": 25.5,
-            "share_pct": 26.5
-          },
-          "shot_distribution": {
-            "two_pt_fga_pg": 48.5,
-            "two_pt_share_pct": 59.6,
-            "three_pt_fga_pg": 32.8,
-            "three_pt_share_pct": 40.4
-          },
-          "situations": {
-            "paint_ppg": 41.7,
-            "paint_share_pct": 43.3,
-            "fast_break_ppg": 10.8,
-            "fast_break_share_pct": 11.3
-          }
-        },
-        {
           "team_name": "桃園台啤永豐雲豹",
-          "games_played": 4,
-          "ppg": 93.2,
+          "games_played": 5,
+          "ppg": 96.0,
           "starter": {
-            "ppg": 70.2,
-            "share_pct": 75.3
+            "ppg": 73.8,
+            "share_pct": 76.9
           },
           "bench": {
-            "ppg": 23.0,
-            "share_pct": 24.7
+            "ppg": 22.2,
+            "share_pct": 23.1
           },
           "local": {
-            "ppg": 45.5,
-            "share_pct": 48.8
+            "ppg": 48.2,
+            "share_pct": 50.2
           },
           "import": {
             "ppg": 47.8,
-            "share_pct": 51.2
+            "share_pct": 49.8
           },
           "shot_distribution": {
-            "two_pt_fga_pg": 55.8,
-            "two_pt_share_pct": 64.8,
-            "three_pt_fga_pg": 30.2,
-            "three_pt_share_pct": 35.2
+            "two_pt_fga_pg": 55.6,
+            "two_pt_share_pct": 63.9,
+            "three_pt_fga_pg": 31.4,
+            "three_pt_share_pct": 36.1
           },
           "situations": {
-            "paint_ppg": 47.0,
-            "paint_share_pct": 50.4,
-            "fast_break_ppg": 13.0,
-            "fast_break_share_pct": 13.9
+            "paint_ppg": 47.2,
+            "paint_share_pct": 49.2,
+            "fast_break_ppg": 13.8,
+            "fast_break_share_pct": 14.4
           }
         }
       ]
